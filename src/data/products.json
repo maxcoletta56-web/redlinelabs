@@ -1,0 +1,648 @@
+[
+  {
+    "id": 159,
+    "name": "DSIP",
+    "slug": "products-dsip",
+    "sku": "Dsip15",
+    "categories": [
+      "COGNITIVE/FOCUS"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/b254e9c6-f1ca-4197-ba2f-64f5a8e72bc4-1.png?fit=800%2C800&ssl=1",
+    "description": "DSIP, or Delta Sleep-Inducing Peptide, is a synthetic neuropeptide researched for its potential in enhancing sleep quality and aiding stress management. It may influence relaxation, nervous system balance, and recovery from fatigue. Ideal for wellness and recovery research, DSIP offers hope for improved sleep and stress responses.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 120,
+        "sku": "Dsip15"
+      },
+      {
+        "option": "15",
+        "price": 135,
+        "sku": "Dsip15"
+      }
+    ],
+    "minPrice": 120.0,
+    "maxPrice": 135.0,
+    "featured": false
+  },
+  {
+    "id": 118,
+    "name": "Epitalon",
+    "slug": "epitalon",
+    "sku": "Epi50",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/d63e66e3-61fc-4318-91c8-13d8942dcb45-1.png?fit=800%2C800&ssl=1",
+    "description": "Epitalon is a synthetic peptide linked to the pineal gland, extensively studied for its potential benefits in healthy aging, cellular repair, and circadian rhythm support. This compound is thought to enhance sleep quality, boost antioxidant processes, and promote overall vitality. Ideal for those exploring longevity research, Epitalon offers exciting possibilities for enhancing cellular health and wellness.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 130,
+        "sku": "Epi50"
+      },
+      {
+        "option": "50",
+        "price": 190,
+        "sku": "Epi50"
+      }
+    ],
+    "minPrice": 130.0,
+    "maxPrice": 190.0,
+    "featured": false
+  },
+  {
+    "id": 200,
+    "name": "BACTERIAL WATER",
+    "slug": "product-bacterial-water",
+    "sku": "Bac09",
+    "categories": [],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/BC4C9D3E-5347-4F93-9856-ED19DE40BD2D.png?fit=800%2C800&ssl=1",
+    "description": "BACTERIAL WATER is a sterile, bacteriostatic solution containing 0.9% USP benzyl alcohol to inhibit bacterial growth. Ideal for medical and laboratory use, it effectively reconstitutes and dilutes medications and research compounds. Ensure safe and precise preparation with this essential tool for clinical and scientific settings, promoting hygiene and reliability in research and healthcare environments.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 10.0,
+    "maxPrice": 10.0,
+    "featured": false
+  },
+  {
+    "id": 133,
+    "name": "MELANOTAN 2",
+    "slug": "melanotan-2",
+    "sku": "MT2",
+    "categories": [
+      "TANNING"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/16f7a4fd-bb07-481b-ad10-291e818a41c3.png?fit=800%2C800&ssl=1",
+    "description": "MELANOTAN 2, or MT-2, is a synthetic peptide frequently studied for its role in enhancing melanin production and improving skin pigmentation. Research often explores its potential for aiding tanning response, the skin\u2019s reaction to UV exposure, and supporting studies related to appetite and libido, as well as peptide and hormonal pathways.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 85.0,
+    "maxPrice": 85.0,
+    "featured": false
+  },
+  {
+    "id": 59,
+    "name": "BPC-157",
+    "slug": "bpc-157",
+    "sku": "BPC157",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/92edc320-815d-4868-8ace-ecee3d9e1795.png?fit=800%2C800&ssl=1",
+    "description": "BPC-157 is a synthetic peptide that supports muscle recovery, tendon repair, and gut health. Derived from a natural protein, it reduces inflammation and speeds up healing, making it perfect for athletes and those healing from injuries. Boost recovery and enhance overall wellness with this scientifically studied compound. Ideal for promoting faster healing and reducing inflammation.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 110,
+        "sku": "BPC157"
+      },
+      {
+        "option": "13",
+        "price": 120,
+        "sku": "Bpc13"
+      },
+      {
+        "option": "20",
+        "price": 150,
+        "sku": "Bpc20"
+      }
+    ],
+    "minPrice": 110.0,
+    "maxPrice": 150.0,
+    "featured": false
+  },
+  {
+    "id": 23,
+    "name": "RETATRUTIDE",
+    "slug": "retatrutide",
+    "sku": "Ret1010",
+    "categories": [
+      "GLP-1/FAT LOSS"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/1dae6e54-ce43-4548-b793-2095955ea9db-1.png?fit=800%2C800&ssl=1",
+    "description": "Retatrutide is a groundbreaking innovation by Eli Lilly, designed to revolutionize metabolic health. This triple hormone receptor agonist activates GLP-1, GIP, and glucagon receptors simultaneously. Unlike previous drugs targeting fewer pathways, Retatrutide offers a more effective solution for metabolic regulation, promising better outcomes for conditions like diabetes and obesity. Experience a comprehensive approach to metabolic wellness with Retatrutide.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 100,
+        "sku": "Reta10"
+      },
+      {
+        "option": "13",
+        "price": 130,
+        "sku": "Ret1313"
+      },
+      {
+        "option": "20",
+        "price": 200,
+        "sku": "Ret2020"
+      },
+      {
+        "option": "30",
+        "price": 295,
+        "sku": "Ret1010"
+      }
+    ],
+    "minPrice": 100.0,
+    "maxPrice": 295.0,
+    "featured": true
+  },
+  {
+    "id": 443,
+    "name": "GHK-CU",
+    "slug": "ghk-cu",
+    "sku": "ghkcu",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/07978340-9f56-45c6-b2c1-f50ca197ae3e.png?fit=800%2C800&ssl=1",
+    "description": "GHK-CU (Glycyl-L-Histidyl-L-Lysine Copper Complex) is a naturally occurring copper-binding tripeptide that has been studied extensively in laboratory research. First identified in human plasma, GHK-CU has attracted scientific interest because of its interactions with cellular signalling pathways and its role in research relating to skin biology, connective tissue, and other biological processes.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 90.0,
+    "maxPrice": 90.0,
+    "featured": true
+  },
+  {
+    "id": 99,
+    "name": "CJC/IPAMORELIN",
+    "slug": "cjc-ipamorelin",
+    "sku": "Cjcipa",
+    "categories": [
+      "BLENDS",
+      "GH SECRETAGOGUES"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/360b5d60-a422-4503-a969-e394cf95e9b2-1.png?fit=800%2C800&ssl=1",
+    "description": "CJC/IPA is a potent research peptide blend combining CJC-1295 and Ipamorelin. This synergistic mix is commonly explored for its potential to boost growth hormone release, enhance muscle recovery, and improve sleep quality. It is also studied for its effects on body composition, performance, and overall wellness. Ideal for regenerative research enthusiasts.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "5/5",
+        "price": 150,
+        "sku": "Cjcipa"
+      },
+      {
+        "option": "10/5",
+        "price": 170,
+        "sku": "Cjcipa"
+      }
+    ],
+    "minPrice": 150.0,
+    "maxPrice": 170.0,
+    "featured": true
+  },
+  {
+    "id": 199,
+    "name": "SLU-PP-322",
+    "slug": "products-slu-pp-322",
+    "sku": "Slupp37",
+    "categories": [
+      "MITOCHONDRIA/ENERGY"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/0dabca18-074e-4f43-b153-6348707de2dc-1.png?fit=800%2C800&ssl=1",
+    "description": "SLU-PP-332 is a groundbreaking research compound geared towards enhancing metabolism and boosting endurance. Often used in studies on mitochondrial activity, it shows promise in optimizing fat metabolism and energy utilization. This compound aids research on energy, exercise performance, and cellular function, promoting wellness and recovery in clinical and experimental settings.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 165.0,
+    "maxPrice": 165.0,
+    "featured": false
+  },
+  {
+    "id": 181,
+    "name": "NAD+",
+    "slug": "products-nad",
+    "sku": "Nad5100",
+    "categories": [
+      "COGNITIVE/FOCUS",
+      "MITOCHONDRIA/ENERGY"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/bc064f20-b2ac-4a5d-afe2-be0e542d3f1f-1.png?fit=800%2C800&ssl=1",
+    "description": "NAD+ (Nicotinamide Adenine Dinucleotide) is a vital coenzyme in every cell, crucial for boosting cellular energy and metabolism. Studied for promoting healthy aging, it supports cognitive functions, cellular repair, and overall wellness. Enhance your body\u2019s natural aging process and energy production with NAD+, a key player in maintaining mitochondrial health and longevity.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "500",
+        "price": 120,
+        "sku": "Nad5100"
+      },
+      {
+        "option": "1000",
+        "price": 140,
+        "sku": "Nad5100"
+      }
+    ],
+    "minPrice": 120.0,
+    "maxPrice": 140.0,
+    "featured": false
+  },
+  {
+    "id": 441,
+    "name": "TB-1",
+    "slug": "product-tb-1",
+    "sku": "Tb111",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/54b3e9a7-6243-458f-a112-941b9e83f14f.png?fit=800%2C800&ssl=1",
+    "description": "Introducing TB-1, a research peptide often marketed for recovery, inflammation, and immune support studies. Its naming can vary between suppliers, so it\u2019s important to verify the specific compound. Popular in underground and experimental markets for its healing claims, TB-1 offers a promising focus for scientists aiming to explore tissue repair and injury recovery.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 200.0,
+    "maxPrice": 200.0,
+    "featured": false
+  },
+  {
+    "id": 67,
+    "name": "BPC-157/TB-500 BLEND",
+    "slug": "bpc-tb-blend",
+    "sku": "Blendtbbpc",
+    "categories": [
+      "BLENDS",
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/409e2786-5a96-4299-b4dd-f7f2dae89990-1.png?fit=800%2C800&ssl=1",
+    "description": "BPC-157/TB-500 BLEND is a potent research peptide fusion of TB-500 and BPC-157, designed to accelerate recovery. This blend enhances muscle, tendon, and ligament repair while promoting tissue regeneration. Ideal for reducing inflammation and soreness, it boosts mobility and flexibility. Perfect for anyone dealing with physical strain, injury, or inflammatory issues.",
+    "variantLabel": "MG",
+    "variants": [],
+    "minPrice": 190.0,
+    "maxPrice": 190.0,
+    "featured": false
+  },
+  {
+    "id": 195,
+    "name": "Kisspeptin",
+    "slug": "products-kisspepien",
+    "sku": "Kisspep",
+    "categories": [
+      "GH SECRETAGOGUES",
+      "LIBIDO/HCG"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/ce3a0d71-6a5a-4fe7-8eea-355b3110c65f.png?fit=800%2C800&ssl=1",
+    "description": "Kisspepien is a cutting-edge product designed for researchers investigating the vital role of Kisspeptin in reproductive hormone signaling, fertility, and endocrine balance. It supports studies focused on gonadotropin-releasing hormone (GnRH) and pituitary functions, aiding in the exploration of testosterone regulation and overall hormonal health. Ideal for advancing fertility and hormonal research.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 145.0,
+    "maxPrice": 145.0,
+    "featured": false
+  },
+  {
+    "id": 177,
+    "name": "IPAMORELIN",
+    "slug": "products-ipamorelin",
+    "sku": "Ipaipa",
+    "categories": [
+      "GH SECRETAGOGUES"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/303b31cf-61de-4c6b-9f82-d0088fed126b-1.png?fit=800%2C800&ssl=1",
+    "description": "Ipamorelin is a synthetic peptide that aids in growth hormone research, focusing on muscle recovery and sleep support. This compound, often explored for enhancing body composition and performance, is known for its selective stimulation capabilities in promoting growth hormone production. Widely studied for wellness and regenerative benefits, it offers promising insights for those interested in optimized recovery processes.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 145,
+        "sku": "Ipaipa"
+      }
+    ],
+    "minPrice": 145.0,
+    "maxPrice": 145.0,
+    "featured": false
+  },
+  {
+    "id": 130,
+    "name": "TB4",
+    "slug": "tb4",
+    "sku": "TB4",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/b21f2966-724f-4937-a570-1f8fd0ae4d33.png?fit=800%2C800&ssl=1",
+    "description": "Introducing TB4, a groundbreaking peptide known for its potential in boosting tissue repair and reducing inflammation. Found naturally in the body, TB4 plays a key role in muscle, tendon, and ligament recovery. Ideal for supporting wound healing and enhancing flexibility, TB4 is a popular choice in the research community for promoting faster recovery and improved mobility.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 150.0,
+    "maxPrice": 150.0,
+    "featured": false
+  },
+  {
+    "id": 1242,
+    "name": "GHK-1200",
+    "slug": "ghk-1200",
+    "sku": "",
+    "categories": [],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/08/13e1a67c-bd3c-4703-af05-3f97270e318f.png?fit=800%2C800&ssl=1",
+    "description": "GHK 1200 Face Serum + Astaxanthin Experience advanced skin rejuvenation with GHK 1200 Face Serum + Astaxanthin, a high-performance formula designed to hydrate, nourish, and support healthier-looking skin. Powered by 1.2% GHK (Copper Tripeptide Chelate), this lightweight serum helps improve the appearance of skin firmness, texture, and elasticity while promoting a smoother, more youthful complexion. Infused with 1% Sodium Hyaluronate, it delivers long-lasting hydration, while 1% Provitamin B5 (Panthenol) helps soothe and strengthen the skin barrier. 0.6% Astaxanthin, a potent antioxidant, helps defend against environmental stressors and supports brighter, more radiant skin. Perfect for daily use, this fast-absorbing serum leaves skin feeling hydrated, refreshed, and revitalized without a greasy residue",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 130.0,
+    "maxPrice": 130.0,
+    "featured": false
+  },
+  {
+    "id": 1149,
+    "name": "CJC-1295",
+    "slug": "cjc-1295",
+    "sku": "",
+    "categories": [
+      "GH SECRETAGOGUES",
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/07/74e45ff1-5775-4c9e-b896-ef7df87935e2.png?fit=800%2C800&ssl=1",
+    "description": "CJC-1295 is offered by Redline Labs for laboratory and research applications. This product is supplied in a sealed vial and presented for research purposes. Each vial is manufactured to high standards and packaged to maintain quality during storage and transport.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 140.0,
+    "maxPrice": 140.0,
+    "featured": false
+  },
+  {
+    "id": 192,
+    "name": "IGF-1",
+    "slug": "products-igf-1",
+    "sku": "Igf1g",
+    "categories": [
+      "GH SECRETAGOGUES"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/4b5258d0-71a3-4f37-83f1-79cb40275088-1.png?fit=800%2C800&ssl=1",
+    "description": "IGF-1, or Insulin-Like Growth Factor 1, is a hormone that plays a crucial role in muscle growth, tissue repair, and recovery. It supports research on cellular development, performance enhancement, and endurance improvement. IGF-1 is vital in studies exploring regeneration, aiding wellness, and optimizing growth, making it essential for scientific advancements in these fields.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "1",
+        "price": 190,
+        "sku": "Igf1g"
+      }
+    ],
+    "minPrice": 190.0,
+    "maxPrice": 190.0,
+    "featured": false
+  },
+  {
+    "id": 190,
+    "name": "SS-31",
+    "slug": "products-ss-31",
+    "sku": "Ss31s",
+    "categories": [],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/823d16a2-431d-4f87-b002-8bc6410776e2-1.png?fit=800%2C800&ssl=1",
+    "description": "SS-31, known as Elamipretide, is a cutting-edge peptide focused on enhancing mitochondrial function and boosting cellular energy. It\u2019s widely researched for its potential to improve muscle and cardiovascular health, support endurance, and reduce oxidative stress. SS-31 plays a crucial role in promoting healthy aging and metabolic well-being, making it central to modern biochemistry studies.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 160.0,
+    "maxPrice": 160.0,
+    "featured": false
+  },
+  {
+    "id": 173,
+    "name": "KPV",
+    "slug": "products-kpv",
+    "sku": "Kpvvpm",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/87c4b482-9af2-4f2d-a79e-5a5acdd0fa7b-1.png?fit=800%2C800&ssl=1",
+    "description": "KPV is a versatile synthetic peptide derived from alpha-MSH, researched for its anti-inflammatory and immune-supportive properties. It\u2019s a key focus in studies on inflammation and digestive health, potentially aiding tissue repair and overall recovery. KPV is also explored for skin health and its role in promoting overall wellness through regenerative pathways.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 140.0,
+    "maxPrice": 140.0,
+    "featured": false
+  },
+  {
+    "id": 169,
+    "name": "GLOW",
+    "slug": "products-glow",
+    "sku": "Glow70",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/7ef586d7-0a65-4ccd-92be-37fb1d56692b-1.png?fit=800%2C800&ssl=1",
+    "description": "GLOW is a potent wellness blend designed to boost skin health, enhance hydration, and support collagen production. This rejuvenating formula improves skin elasticity and radiance while promoting healthier nails and hair. Ideal for anti-aging research, GLOW offers a comprehensive approach to achieving vibrant, youthful skin and overall wellness. Perfect for recovery and improving skin texture.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "70",
+        "price": 170,
+        "sku": "Glow70"
+      }
+    ],
+    "minPrice": 170.0,
+    "maxPrice": 170.0,
+    "featured": false
+  },
+  {
+    "id": 167,
+    "name": "KLOW",
+    "slug": "products-klow",
+    "sku": "Klow80",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/5842077A-6D42-458C-9E12-12B4E1443B64.png?fit=800%2C800&ssl=1",
+    "description": "KLOW is commonly used as a branded peptide or wellness blend name in research markets, often formulated to support studies involving skin health, recovery, hydration, and overall appearance enhancement. Exact ingredients and concentrations can vary depending on the supplier. In research settings, KLOW blends are often associated with: Supporting skin hydration and rejuvenation Promoting collagen and wellness research Assisting recovery and anti-aging studies Supporting hair, skin, and nail appearance Helping improve overall skin radiance and \u201cglow\u201d",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "80",
+        "price": 190,
+        "sku": "Klow80"
+      }
+    ],
+    "minPrice": 190.0,
+    "maxPrice": 190.0,
+    "featured": false
+  },
+  {
+    "id": 163,
+    "name": "PT-141",
+    "slug": "products-pt-141",
+    "sku": "Pt141",
+    "categories": [
+      "LIBIDO/HCG"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/9700570a-6a2b-47ff-9a2b-b94f2aafd3fc.png?fit=800%2C800&ssl=1",
+    "description": "PT-141, known as Bremelanotide, is a cutting-edge synthetic peptide that enhances sexual wellness and boosts libido by targeting melanocortin receptors. Unlike traditional treatments, it focuses on arousal and mood, offering promising insights for researchers studying sexual function and desire. An ideal tool for exploring libido and overall well-being, PT-141 stands out in sexual wellness research.",
+    "variantLabel": null,
+    "variants": [],
+    "minPrice": 135.0,
+    "maxPrice": 135.0,
+    "featured": false
+  },
+  {
+    "id": 155,
+    "name": "SELANK",
+    "slug": "products-selank",
+    "sku": "Selank10",
+    "categories": [
+      "COGNITIVE/FOCUS"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/41b60065-0d44-47c2-9d9a-96047c0b3678-1.png?fit=800%2C800&ssl=1",
+    "description": "SELANK is a synthetic peptide known for reducing anxiety and enhancing cognitive function. It promotes relaxation and stress management, delivering calming effects and mental clarity without drowsiness. SELANK is studied for improving mood and emotional balance, making it a popular focus in neurological and wellness research for boosting cognitive performance and mental wellbeing.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 140,
+        "sku": "Selank10"
+      }
+    ],
+    "minPrice": 140.0,
+    "maxPrice": 140.0,
+    "featured": false
+  },
+  {
+    "id": 146,
+    "name": "MOTS-C",
+    "slug": "products-mots-c",
+    "sku": "Mot-c",
+    "categories": [
+      "COGNITIVE/FOCUS"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/b5f53374-8de7-4721-ac6e-ad50316a3f9b.png?fit=800%2C800&ssl=1",
+    "description": "MOTS-C is a cutting-edge mitochondrial-derived peptide explored for its impact on metabolism, energy levels, and exercise performance. Researchers focus on its role in enhancing metabolic health, boosting endurance, and improving cellular function. This peptide is pivotal in studies examining glucose metabolism, recovery, and healthy aging, making it essential for scientific advancements in these areas.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 135,
+        "sku": "Mot-c"
+      },
+      {
+        "option": "20",
+        "price": 160,
+        "sku": "Mot-c"
+      }
+    ],
+    "minPrice": 135.0,
+    "maxPrice": 160.0,
+    "featured": false
+  },
+  {
+    "id": 139,
+    "name": "Semax",
+    "slug": "products-semax",
+    "sku": "Semax130",
+    "categories": [
+      "COGNITIVE/FOCUS"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/925e654e-8e31-47e4-a620-b1f364100a8e.png?fit=800%2C800&ssl=1",
+    "description": "Semax is a synthetic peptide renowned for its potential to enhance cognitive function, focus, and memory. Derived from ACTH fragments, it is widely studied for its role in boosting mental clarity and concentration. Known for promoting neuroprotective benefits, Semax supports stress resilience and mental performance, making it essential in cognitive and neurological research.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 120,
+        "sku": "Semax130"
+      },
+      {
+        "option": "30",
+        "price": 150,
+        "sku": "Semax130"
+      }
+    ],
+    "minPrice": 120.0,
+    "maxPrice": 150.0,
+    "featured": false
+  },
+  {
+    "id": 126,
+    "name": "HMG",
+    "slug": "hmg",
+    "sku": "HMG75",
+    "categories": [
+      "LIBIDO/HCG"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/8531cb9d-e7ec-424b-a511-0a180ad5011b.png?fit=800%2C800&ssl=1",
+    "description": "HMG, or Human Menopausal Gonadotropin, is a hormone-based compound crucial for advancing research in fertility and reproductive health. Comprising follicle-stimulating hormone (FSH) and luteinizing hormone (LH), HMG aids in exploring ovarian and testicular functions, sperm production, and ovulation. Essential for understanding hormone balance, it supports vital discoveries in endocrine studies.",
+    "variantLabel": "IU",
+    "variants": [
+      {
+        "option": "75",
+        "price": 140,
+        "sku": "HMG75"
+      }
+    ],
+    "minPrice": 140.0,
+    "maxPrice": 140.0,
+    "featured": false
+  },
+  {
+    "id": 107,
+    "name": "HCG",
+    "slug": "hcg",
+    "sku": "HCGK",
+    "categories": [
+      "LIBIDO/HCG"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/c098000b-d09d-4327-bc37-edd6793646b5.png?fit=800%2C800&ssl=1",
+    "description": "HCG, or Human Chorionic Gonadotropin, is a key hormone in pregnancy, also vital in hormone regulation and reproductive health studies. Frequently used in medical research, it supports hormone production, aids fertility, and maintains testicular function. Ideal for studies in endocrine system balance and natural testosterone production, HCG is essential in reproductive and hormonal health exploration.",
+    "variantLabel": "Iu",
+    "variants": [
+      {
+        "option": "5000",
+        "price": 160,
+        "sku": "HCGK"
+      },
+      {
+        "option": "10,000",
+        "price": 190,
+        "sku": "HCGK"
+      }
+    ],
+    "minPrice": 160.0,
+    "maxPrice": 190.0,
+    "featured": false
+  },
+  {
+    "id": 96,
+    "name": "TESAMORELIN",
+    "slug": "tesamorelin",
+    "sku": "Tesa10",
+    "categories": [
+      "GH SECRETAGOGUES"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/1c939013-f8de-4b32-a05d-453c638bb953.png?fit=800%2C800&ssl=1",
+    "description": "Tesamorelin is a synthetic peptide known as a growth hormone-releasing hormone (GHRH) analogue. It\u2019s popular in research for its potential effects on boosting growth hormone, enhancing fat metabolism, and improving body composition. Studies also explore its role in supporting recovery, regenerative processes, and overall vitality, making it a key focus in metabolism and wellness research.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "10",
+        "price": 160,
+        "sku": "Tesa10"
+      }
+    ],
+    "minPrice": 160.0,
+    "maxPrice": 160.0,
+    "featured": true
+  },
+  {
+    "id": 44,
+    "name": "TB-500",
+    "slug": "tb-500",
+    "sku": "TB-500",
+    "categories": [
+      "HEALING/COLLAGEN"
+    ],
+    "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/3506cfcc-4d10-478a-988a-613867fa453a-2.png?fit=800%2C800&ssl=1",
+    "description": "TB-500 is a synthetic peptide derived from Thymosin Beta-4, a natural protein in the body. Often explored for its potential in enhancing recovery and reducing inflammation, it supports muscle, tendon, and ligament healing. Known for promoting tissue repair, TB-500 aids flexibility, mobility, and recovery from physical strain or injury, making it ideal in rehabilitation research.",
+    "variantLabel": "MG",
+    "variants": [
+      {
+        "option": "12",
+        "price": 140,
+        "sku": "Tb512"
+      },
+      {
+        "option": "20",
+        "price": 185,
+        "sku": "Tb520"
+      }
+    ],
+    "minPrice": 140.0,
+    "maxPrice": 185.0,
+    "featured": false
+  }
+]
