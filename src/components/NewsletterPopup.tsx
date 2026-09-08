@@ -9,34 +9,33 @@ export function NewsletterPopup() {
 
   useEffect(() => {
     if (sessionStorage.getItem("rl-popup")) return;
-    const t = setTimeout(() => setOpen(true), 1800);
+    const t = setTimeout(() => setOpen(true), 9000);
     return () => clearTimeout(t);
   }, []);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
       <button
-        className="absolute inset-0 bg-black/75"
+        className="absolute inset-0 bg-black/70"
         onClick={() => {
           sessionStorage.setItem("rl-popup", "1");
           setOpen(false);
         }}
         aria-label="Dismiss offer"
       />
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.3)] bg-[#0b0b0b] p-8 text-center shadow-[0_0_80px_rgba(212,175,55,0.15)]">
-        <p className="mb-2 text-xs tracking-[0.28em] text-[#d4af37] uppercase">
-          Especially for you
+      <div className="relative w-full max-w-md border border-[rgba(212,175,55,0.28)] bg-[#0c0c0c] p-8">
+        <p className="mb-2 text-[11px] tracking-[0.22em] text-[#d4af37] uppercase">
+          Subscriber offer
         </p>
-        <h3 className="gold-text mb-2 text-4xl font-extrabold">15% OFF</h3>
-        <p className="mb-6 text-sm text-[#cfcfcf]">
-          Sign up below to unlock 15% off Retatrutide. Be the first to hear
-          about special offers, new product releases, and availability.
+        <h3 className="mb-2 text-2xl font-semibold">15% off Retatrutide</h3>
+        <p className="mb-6 text-sm leading-7 text-[#c8c8c8]">
+          Join the list for availability updates and a one-time catalogue offer.
         </p>
         {done ? (
           <p className="text-sm text-[#d4af37]">
-            Check your inbox or spam folder to confirm your subscription.
+            Check your inbox to confirm the subscription.
           </p>
         ) : (
           <form
@@ -53,23 +52,25 @@ export function NewsletterPopup() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
-              className="w-full rounded-sm border border-[rgba(212,175,55,0.3)] bg-black px-4 py-3 text-sm outline-none focus:border-[#d4af37]"
+              className="w-full border border-[rgba(212,175,55,0.28)] bg-black px-4 py-3 text-sm outline-none focus:border-[#d4af37]"
             />
             <button
               type="submit"
-              className="w-full rounded-sm bg-[#d4af37] py-3 text-xs font-bold tracking-[0.18em] text-black uppercase"
+              className="w-full bg-[#d4af37] py-3 text-[11px] font-semibold tracking-[0.16em] text-black uppercase"
             >
               Join the list
             </button>
           </form>
         )}
-        <p className="mt-4 text-[11px] text-[#8d8d8d]">
-          We don’t spam. Read our{" "}
-          <a href="/privacy-policy" className="text-[#d4af37] underline">
-            privacy policy
-          </a>{" "}
-          for more info.
-        </p>
+        <button
+          className="mt-4 text-xs text-[#8d8d8d] underline"
+          onClick={() => {
+            sessionStorage.setItem("rl-popup", "1");
+            setOpen(false);
+          }}
+        >
+          No thanks
+        </button>
       </div>
     </div>
   );

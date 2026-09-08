@@ -60,7 +60,7 @@ export function AddToCart({ product }: { product: Product }) {
               qty,
             )
           }
-          className="rounded-sm bg-[#d4af37] px-8 py-3 text-xs font-bold tracking-[0.18em] text-black uppercase transition hover:bg-[#f6e7b2]"
+          className="bg-[#d4af37] px-8 py-3 text-[11px] font-semibold tracking-[0.16em] text-black uppercase transition hover:bg-[#f0d78a]"
         >
           Add to cart
         </button>

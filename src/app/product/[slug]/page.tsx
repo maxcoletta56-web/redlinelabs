@@ -41,7 +41,7 @@ export default async function ProductPage({ params }: Props) {
         / {product.name}
       </p>
       <div className="grid gap-10 lg:grid-cols-2">
-        <div className="rounded-[28px] border border-[#54544e] bg-[#020101] p-6">
+        <div className="border border-[rgba(212,175,55,0.16)] bg-[#0a0a0a] p-6">
           <div className="relative aspect-square">
             <Image
               src={product.image}
@@ -57,7 +57,7 @@ export default async function ProductPage({ params }: Props) {
           <p className="mb-2 text-xs tracking-[0.22em] text-[#d4af37] uppercase">
             {product.categories[0] ?? "Research"}
           </p>
-          <h1 className="mb-4 text-4xl font-bold">{product.name}</h1>
+          <h1 className="mb-4 text-4xl font-semibold tracking-tight">{product.name}</h1>
           <p className="mb-6 text-sm text-[#9a9a9a]">SKU: {product.sku || "—"}</p>
           <AddToCart product={product} />
           <p className="mt-8 text-sm leading-8 text-[#cfcfcf]">{product.description}</p>

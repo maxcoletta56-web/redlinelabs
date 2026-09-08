@@ -13,7 +13,7 @@ export default function AboutPage() {
   return (
     <div className="mx-auto max-w-[1100px] px-5 py-16">
       <p className="mb-3 text-xs tracking-[0.28em] text-[#d4af37] uppercase">Redline Labs</p>
-      <h1 className="mb-4 text-4xl font-bold">Precision. Quality. Consistency.</h1>
+      <h1 className="mb-4 text-4xl font-semibold tracking-tight">Precision. Quality. Consistency.</h1>
       <p className="mb-12 max-w-2xl text-lg leading-8 text-[#cfcfcf]">
         Built for professionals who demand excellence, reliability, and premium
         standards in every order.
@@ -22,7 +22,7 @@ export default function AboutPage() {
       <p className="mb-3 text-xs font-bold tracking-[0.24em] text-[#d4af37] uppercase">
         Our mission
       </p>
-      <h2 className="mb-5 text-3xl font-bold">Built For Serious Research</h2>
+      <h2 className="mb-5 text-3xl font-semibold tracking-tight">Built For Serious Research</h2>
       <div className="space-y-5 text-base leading-8 text-[#c8c8c8]">
         <p>
           Redline Labs was created with a simple mission: provide premium
@@ -46,7 +46,7 @@ export default function AboutPage() {
         {steps.map((step) => (
           <article
             key={step.n}
-            className="rounded-2xl border border-[rgba(212,175,55,0.18)] p-6"
+            className="border border-[rgba(212,175,55,0.18)] bg-[#0a0a0a] p-6"
           >
             <p className="mb-2 text-sm font-bold text-[#d4af37]">{step.n}</p>
             <h3 className="mb-2 text-xl font-semibold">{step.title}</h3>
