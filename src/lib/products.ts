@@ -49,14 +49,14 @@ export function displayName(product: Product) {
 
 export const categories = [
   "All",
-  "GLP-1/FAT LOSS",
-  "HEALING/COLLAGEN",
-  "GH SECRETAGOGUES",
-  "COGNITIVE/FOCUS",
-  "MITOCHONDRIA/ENERGY",
-  "LIBIDO/HCG",
+  "GLP-1 RESEARCH",
+  "TISSUE RESEARCH",
+  "GHRH / GHRELIN RESEARCH",
+  "NEUROPEPTIDE RESEARCH",
+  "MITOCHONDRIAL RESEARCH",
+  "GONADOTROPIN RESEARCH",
   "BLENDS",
-  "TANNING",
+  "MELANOCORTIN RESEARCH",
 ] as const;
 
 export function getProduct(slug: string) {

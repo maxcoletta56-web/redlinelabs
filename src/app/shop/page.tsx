@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
+import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { categories, products } from "@/lib/products";
 
 export default function ShopPage() {
@@ -23,10 +24,12 @@ export default function ShopPage() {
   return (
     <div className="mx-auto max-w-[1180px] px-5 py-12">
       <p className="mb-6 text-sm text-[#9a9a9a]">Home / Shop</p>
+      <ResearchDisclaimer className="mb-8" />
       <div className="mb-8 text-center">
-        <h1 className="mb-3 text-4xl font-extrabold">Shop research peptides</h1>
+        <h1 className="mb-3 text-4xl font-extrabold">Shop</h1>
         <p className="text-[#9a9a9a]">
-          High-purity, lab-tested peptides for research use only.
+          Laboratory research chemicals. Confirm identity against vial labels
+          and any documentation you hold for the batch.
         </p>
       </div>
 

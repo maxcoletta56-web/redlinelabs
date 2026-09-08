@@ -43,9 +43,10 @@ export function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10 px-5 py-6 text-center text-[11px] leading-6 text-[#7a7a7a]">
-        All products are intended for laboratory research use only. Not for human
-        or veterinary use, diagnostic, or therapeutic applications.
+      <div className="border-t border-white/10 px-5 py-6 text-center text-[13px] leading-7 text-[#cfcfcf]">
+        For laboratory research use only. Not for human or veterinary
+        consumption. Not evaluated or approved for the diagnosis, treatment,
+        cure, or prevention of any disease.
       </div>
     </footer>
   );

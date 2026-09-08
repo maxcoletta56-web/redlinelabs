@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
+import { CoaSection } from "@/components/CoaSection";
 import { ProductCard } from "@/components/ProductCard";
+import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import {
   displayName,
   getProduct,
@@ -35,7 +37,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-[1180px] px-5 py-10">
-      <p className="mb-8 text-sm text-[#9a9a9a]">
+      <p className="mb-6 text-sm text-[#9a9a9a]">
         <Link href="/" className="hover:text-[#d4af37]">
           Home
         </Link>
@@ -46,6 +48,7 @@ export default async function ProductPage({ params }: Props) {
         <span className="mx-2">/</span>
         {product.name}
       </p>
+      <ResearchDisclaimer className="mb-8" />
       <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="relative aspect-square overflow-hidden rounded-xl bg-[#111]">
           <Image
@@ -62,22 +65,19 @@ export default async function ProductPage({ params }: Props) {
             {displayName(product)}
           </h1>
           <AddToCart product={product} />
-          <p className="mt-6 flex items-center gap-2 text-sm text-[#d4af37]">
-            In stock
-          </p>
-          <p className="mt-4 text-sm text-[#9a9a9a]">
-            For research purposes only. Not for human consumption.
+          <p className="mt-6 text-sm text-[#9a9a9a]">
+            SKU {product.sku || "not listed"} · Lot number not published
           </p>
           <div className="mt-8">
-            <h2 className="mb-3 text-xl font-bold">Product description</h2>
+            <h2 className="mb-3 text-xl font-bold">Description</h2>
             <p className="text-[15px] leading-8 text-[#cfcfcf]">{product.description}</p>
           </div>
-          <p className="mt-6 text-xs leading-6 text-[#7a7a7a]">SKU {product.sku || "—"}</p>
+          <CoaSection sku={product.sku} />
         </div>
       </div>
 
       <section className="mt-16">
-        <h2 className="mb-8 text-2xl font-bold">Related products</h2>
+        <h2 className="mb-8 text-2xl font-bold">Related catalogue items</h2>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {related.map((item) => (
             <ProductCard key={item.slug} product={item} />

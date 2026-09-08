@@ -1,41 +1,35 @@
 import type { Metadata } from "next";
 import { FaqList } from "@/components/FaqList";
 import { PageIntro } from "@/components/PageIntro";
+import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 
 export const metadata: Metadata = { title: "FAQ" };
 
 const faqs = [
   {
-    q: "What makes Redline Labs different?",
-    a: "A focus on quality standards, considered packaging, and a straightforward customer experience.",
+    q: "Are these products for human use?",
+    a: "No. They are sold for laboratory research only. They are not for human or veterinary consumption and are not evaluated or approved for the diagnosis, treatment, cure, or prevention of any disease.",
+  },
+  {
+    q: "Do you publish Certificates of Analysis?",
+    a: "COAs are not currently published on product pages. Request a COA by emailing redlinelabsltd@pm.me with the product name and SKU.",
   },
   {
     q: "How quickly are orders processed?",
-    a: "Most orders are processed within 1–3 business days after payment confirmation.",
-  },
-  {
-    q: "How are products packaged?",
-    a: "Materials are packed to help maintain quality and arrive in good condition.",
-  },
-  {
-    q: "Do you offer customer support?",
-    a: "Yes. The team can assist with general inquiries and order-related questions.",
+    a: "The shipping policy on this site states that orders are typically processed within 1–3 business days after payment confirmation. Confirm current times with support if you need a specific commitment.",
   },
   {
     q: "How can I contact Redline Labs?",
-    a: "Use the Contact page. We respond as soon as possible during business hours.",
-  },
-  {
-    q: "Are these products for human use?",
-    a: "No. All materials are supplied strictly for laboratory research and are not intended for human or veterinary use.",
+    a: "Email redlinelabsltd@pm.me or use the Contact page.",
   },
 ];
 
 export default function FaqPage() {
   return (
     <div className="mx-auto max-w-[860px] px-5 py-14">
+      <ResearchDisclaimer className="mb-8" />
       <PageIntro kicker="FAQ" title="Frequently asked questions">
-        Ordering, dispatch, packaging, and quality — the essentials.
+        Research-use supply, documentation, and contact.
       </PageIntro>
       <FaqList items={faqs} />
     </div>

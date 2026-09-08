@@ -22,7 +22,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40">
       <div className="bg-[#d4af37] py-2.5 text-center text-[13px] font-medium text-black">
-        Orders dispatched within 1–3 business days · Fast Australia-wide shipping
+        For laboratory research use only. Not for human or veterinary consumption.
       </div>
       <div className="border-b border-white/10 bg-[#050505]/95 backdrop-blur">
         <div className="mx-auto flex h-[76px] max-w-[1180px] items-center justify-between gap-4 px-5">
