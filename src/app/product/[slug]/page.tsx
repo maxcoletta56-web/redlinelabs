@@ -4,11 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
 import { ProductCard } from "@/components/ProductCard";
-import {
-  getProduct,
-  products,
-  relatedProducts,
-} from "@/lib/products";
+import { getProduct, products, relatedProducts } from "@/lib/products";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -34,14 +30,15 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-[1200px] px-5 py-12">
-      <p className="mb-6 text-xs tracking-wide text-[#9a9a9a]">
+      <p className="mb-8 text-xs tracking-wide text-[#7d786c]">
         <Link href="/shop" className="hover:text-[#d4af37]">
-          Shop
-        </Link>{" "}
-        / {product.name}
+          Catalogue
+        </Link>
+        <span className="mx-2">/</span>
+        {product.name}
       </p>
-      <div className="grid gap-10 lg:grid-cols-2">
-        <div className="border border-[rgba(212,175,55,0.16)] bg-[#0a0a0a] p-6">
+      <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="border border-[rgba(212,175,55,0.14)] bg-[#0a0a0a] p-8">
           <div className="relative aspect-square">
             <Image
               src={product.image}
@@ -53,24 +50,22 @@ export default async function ProductPage({ params }: Props) {
             />
           </div>
         </div>
-        <div>
-          <p className="mb-2 text-xs tracking-[0.22em] text-[#d4af37] uppercase">
-            {product.categories[0] ?? "Research"}
-          </p>
-          <h1 className="mb-4 text-4xl font-semibold tracking-tight">{product.name}</h1>
-          <p className="mb-6 text-sm text-[#9a9a9a]">SKU: {product.sku || "—"}</p>
+        <div className="lg:pt-2">
+          <p className="kicker mb-3">{product.categories[0] ?? "Research"}</p>
+          <h1 className="font-serif mb-4 text-5xl font-medium tracking-tight">{product.name}</h1>
+          <p className="mb-8 text-sm text-[#7d786c]">SKU {product.sku || "—"}</p>
           <AddToCart product={product} />
-          <p className="mt-8 text-sm leading-8 text-[#cfcfcf]">{product.description}</p>
-          <div className="mt-6 rounded-xl border border-[rgba(212,175,55,0.2)] bg-[rgba(212,175,55,0.05)] p-4 text-xs leading-6 text-[#d4af37]">
+          <p className="mt-10 text-[15px] leading-8 text-[#cfc8b8]">{product.description}</p>
+          <p className="mt-8 border-t border-[rgba(212,175,55,0.14)] pt-6 text-xs leading-6 text-[#a7a193]">
             For laboratory research use only. Not for human or veterinary
             consumption, diagnostic, or therapeutic applications.
-          </div>
+          </p>
         </div>
       </div>
 
       <section className="mt-20">
-        <h2 className="mb-8 text-2xl font-bold">Related products</h2>
-        <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="font-serif mb-8 text-3xl font-medium">Related materials</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {related.map((item) => (
             <ProductCard key={item.slug} product={item} />
           ))}

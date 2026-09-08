@@ -9,37 +9,34 @@ export default function CartPage() {
   const { items, subtotal, updateQty, removeItem } = useCart();
 
   return (
-    <div className="mx-auto max-w-[1000px] px-5 py-16">
-      <h1 className="mb-8 text-4xl font-bold">Your Cart</h1>
+    <div className="mx-auto max-w-[980px] px-5 py-16">
+      <h1 className="font-serif mb-10 text-4xl font-medium tracking-tight">Cart</h1>
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-[rgba(212,175,55,0.18)] p-12 text-center">
-          <p className="mb-6 text-[#cfcfcf]">Your cart is empty</p>
-          <Link
-            href="/shop"
-            className="inline-flex rounded-sm bg-[#d4af37] px-6 py-3 text-xs font-bold tracking-[0.16em] text-black uppercase"
-          >
-            Return to Shop
+        <div className="border border-[rgba(212,175,55,0.14)] p-12 text-center">
+          <p className="mb-6 text-[#a7a193]">Your cart is empty.</p>
+          <Link href="/shop" className="btn">
+            Return to catalogue
           </Link>
         </div>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
-          <ul className="space-y-5">
+        <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
+          <ul className="space-y-4">
             {items.map((item) => (
               <li
                 key={itemKey(item)}
-                className="flex gap-4 rounded-2xl border border-[rgba(212,175,55,0.15)] p-4"
+                className="flex gap-4 border border-[rgba(212,175,55,0.14)] p-4"
               >
                 <Image
                   src={item.image}
                   alt={item.name}
                   width={88}
                   height={88}
-                  className="h-[88px] w-[88px] rounded-md object-cover"
+                  className="h-[88px] w-[88px] object-cover"
                 />
                 <div className="flex-1">
-                  <p className="font-semibold">{item.name}</p>
+                  <p className="font-serif text-xl font-medium">{item.name}</p>
                   {item.option && (
-                    <p className="text-sm text-[#b8b8b8]">
+                    <p className="text-sm text-[#a7a193]">
                       {item.variantLabel}: {item.option}
                     </p>
                   )}
@@ -52,11 +49,11 @@ export default function CartPage() {
                       onChange={(e) =>
                         updateQty(itemKey(item), Number(e.target.value) || 1)
                       }
-                      className="w-16 rounded border border-[rgba(212,175,55,0.25)] bg-black px-2 py-1"
+                      className="field w-16 py-1"
                     />
                     <button
                       onClick={() => removeItem(itemKey(item))}
-                      className="text-sm text-[#cf2e2e]"
+                      className="text-sm text-[#a7a193] hover:text-white"
                     >
                       Remove
                     </button>
@@ -65,18 +62,15 @@ export default function CartPage() {
               </li>
             ))}
           </ul>
-          <aside className="h-fit rounded-2xl border border-[rgba(212,175,55,0.18)] p-6">
-            <div className="mb-4 flex justify-between">
+          <aside className="h-fit border border-[rgba(212,175,55,0.14)] p-6">
+            <div className="mb-4 flex justify-between text-sm">
               <span>Subtotal</span>
               <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
             </div>
-            <p className="mb-4 text-xs text-[#9a9a9a]">
+            <p className="mb-4 text-xs leading-6 text-[#7d786c]">
               Shipping is calculated at checkout. Australia-wide dispatch.
             </p>
-            <Link
-              href="/checkout"
-              className="flex w-full items-center justify-center rounded-sm bg-[#d4af37] py-3 text-xs font-bold tracking-[0.16em] text-black uppercase"
-            >
+            <Link href="/checkout" className="btn w-full">
               Continue to checkout
             </Link>
           </aside>

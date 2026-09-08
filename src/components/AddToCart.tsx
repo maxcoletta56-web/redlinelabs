@@ -18,16 +18,14 @@ export function AddToCart({ product }: { product: Product }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-2xl font-semibold text-[#ffdf00]">{formatPrice(price)}</p>
+      <p className="font-serif text-3xl font-medium text-[#d4af37]">{formatPrice(price)}</p>
       {variants.length > 0 && (
-        <label className="block text-sm">
-          <span className="mb-2 block text-xs font-bold tracking-[0.18em] text-[#d4af37] uppercase">
-            {product.variantLabel ?? "Option"}
-          </span>
+        <label className="block max-w-xs text-sm">
+          <span className="kicker mb-2 block">{product.variantLabel ?? "Option"}</span>
           <select
             value={option}
             onChange={(e) => setOption(e.target.value)}
-            className="w-full max-w-xs rounded-sm border border-[rgba(212,175,55,0.3)] bg-black px-3 py-3 outline-none focus:border-[#d4af37]"
+            className="field"
           >
             {variants.map((variant) => (
               <option key={variant.option} value={variant.option}>
@@ -43,7 +41,7 @@ export function AddToCart({ product }: { product: Product }) {
           min={1}
           value={qty}
           onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-          className="w-20 rounded-sm border border-[rgba(212,175,55,0.3)] bg-black px-3 py-3"
+          className="field w-20"
         />
         <button
           type="button"
@@ -60,7 +58,7 @@ export function AddToCart({ product }: { product: Product }) {
               qty,
             )
           }
-          className="bg-[#d4af37] px-8 py-3 text-[11px] font-semibold tracking-[0.16em] text-black uppercase transition hover:bg-[#f0d78a]"
+          className="btn"
         >
           Add to cart
         </button>

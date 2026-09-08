@@ -1,46 +1,42 @@
 import type { Metadata } from "next";
 import { FaqList } from "@/components/FaqList";
+import { PageIntro } from "@/components/PageIntro";
 
 export const metadata: Metadata = { title: "FAQ" };
 
 const faqs = [
   {
     q: "What makes Redline Labs different?",
-    a: "Redline Labs is committed to premium quality standards, professional service, secure packaging, and a seamless customer experience.",
+    a: "A focus on quality standards, considered packaging, and a straightforward customer experience.",
   },
   {
     q: "How quickly are orders processed?",
-    a: "Most orders are processed promptly to ensure efficient fulfillment and delivery.",
+    a: "Most orders are processed promptly to keep fulfillment efficient.",
   },
   {
     q: "How are products packaged?",
-    a: "Products are securely packaged to help maintain quality and ensure safe delivery.",
+    a: "Materials are packed to help maintain quality and arrive in good condition.",
   },
   {
     q: "Do you offer customer support?",
-    a: "Yes. Our team is available to assist with general inquiries and order-related questions.",
+    a: "Yes. The team can assist with general inquiries and order-related questions.",
   },
   {
     q: "How can I contact Redline Labs?",
-    a: "You can reach out through our Contact page and our team will respond as soon as possible.",
+    a: "Use the Contact page. We respond as soon as possible during business hours.",
   },
   {
     q: "Are these products for human use?",
-    a: "No. All materials are supplied strictly for laboratory research. They are not intended for human or veterinary use.",
+    a: "No. All materials are supplied strictly for laboratory research and are not intended for human or veterinary use.",
   },
 ];
 
 export default function FaqPage() {
   return (
-    <div className="mx-auto max-w-[900px] px-5 py-16">
-      <p className="mb-3 text-xs tracking-[0.28em] text-[#d4af37] uppercase">
-        Frequently asked questions
-      </p>
-      <h1 className="mb-4 text-4xl font-bold">Everything You Need To Know</h1>
-      <p className="mb-10 text-base leading-8 text-[#cfcfcf]">
-        Find answers to common questions about our products, ordering process,
-        shipping, and quality standards.
-      </p>
+    <div className="mx-auto max-w-[860px] px-5 py-16">
+      <PageIntro kicker="FAQ" title="Questions, answered.">
+        Ordering, dispatch, packaging, and quality — the essentials.
+      </PageIntro>
       <FaqList items={faqs} />
     </div>
   );
