@@ -4,9 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
 } from "react";
 import { getProduct } from "./products";
 
@@ -34,63 +33,96 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "redline-cart-v1";
+const empty: CartItem[] = [];
 
 export function itemKey(item: Pick<CartItem, "slug" | "option">) {
   return `${item.slug}::${item.option ?? "default"}`;
 }
 
+function readCart(): CartItem[] {
+  if (typeof window === "undefined") return empty;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as CartItem[];
+    return parsed.filter((item) => getProduct(item.slug) && item.qty > 0);
+  } catch {
+    return empty;
+  }
+}
+
+let itemsSnapshot: CartItem[] = empty;
+let drawerOpen = false;
+const listeners = new Set<() => void>();
+
+function emit() {
+  listeners.forEach((listener) => listener());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getItemsSnapshot() {
+  return itemsSnapshot;
+}
+
+function writeItems(next: CartItem[]) {
+  itemsSnapshot = next;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+  emit();
+}
+
+if (typeof window !== "undefined") {
+  itemsSnapshot = readCart();
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as CartItem[];
-        setItems(
-          parsed.filter((item) => getProduct(item.slug) && item.qty > 0),
-        );
-      }
-    } catch {
-      /* ignore */
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items, hydrated]);
+  const items = useSyncExternalStore(subscribe, getItemsSnapshot, () => empty);
+  const isDrawerOpen = useSyncExternalStore(
+    subscribe,
+    () => drawerOpen,
+    () => false,
+  );
 
   const addItem = useCallback((item: Omit<CartItem, "qty">, qty = 1) => {
-    setItems((prev) => {
-      const key = itemKey(item);
-      const existing = prev.find((p) => itemKey(p) === key);
-      if (existing) {
-        return prev.map((p) =>
-          itemKey(p) === key ? { ...p, qty: p.qty + qty } : p,
-        );
-      }
-      return [...prev, { ...item, qty }];
-    });
-    setDrawerOpen(true);
+    const key = itemKey(item);
+    const current = itemsSnapshot;
+    const existing = current.find((p) => itemKey(p) === key);
+    writeItems(
+      existing
+        ? current.map((p) =>
+            itemKey(p) === key ? { ...p, qty: p.qty + qty } : p,
+          )
+        : [...current, { ...item, qty }],
+    );
+    drawerOpen = true;
+    emit();
   }, []);
 
   const updateQty = useCallback((key: string, qty: number) => {
-    setItems((prev) =>
-      prev
+    writeItems(
+      itemsSnapshot
         .map((p) => (itemKey(p) === key ? { ...p, qty } : p))
         .filter((p) => p.qty > 0),
     );
   }, []);
 
   const removeItem = useCallback((key: string) => {
-    setItems((prev) => prev.filter((p) => itemKey(p) !== key));
+    writeItems(itemsSnapshot.filter((p) => itemKey(p) !== key));
   }, []);
 
-  const clear = useCallback(() => setItems([]), []);
+  const clear = useCallback(() => writeItems([]), []);
+
+  const setDrawerOpen = useCallback((open: boolean) => {
+    drawerOpen = open;
+    emit();
+  }, []);
 
   const count = items.reduce((sum, item) => sum + item.qty, 0);
   const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -104,10 +136,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       updateQty,
       removeItem,
       clear,
-      drawerOpen,
+      drawerOpen: isDrawerOpen,
       setDrawerOpen,
     }),
-    [items, count, subtotal, addItem, updateQty, removeItem, clear, drawerOpen],
+    [
+      items,
+      count,
+      subtotal,
+      addItem,
+      updateQty,
+      removeItem,
+      clear,
+      isDrawerOpen,
+      setDrawerOpen,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
