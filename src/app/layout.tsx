@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Providers } from "@/components/Providers";
@@ -10,19 +10,13 @@ const sans = Inter({
   subsets: ["latin"],
 });
 
-const serif = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
 export const metadata: Metadata = {
   title: {
-    default: "Redline Labs | Research materials, Australia",
+    default: "Redline Labs | Research peptides Australia",
     template: "%s | Redline Labs",
   },
   description:
-    "Redline Labs supplies laboratory-grade research materials with nationwide Australian dispatch and defined quality procedures.",
+    "Ultra-pure, lab-verified research peptides, shipped Australia-wide.",
   icons: {
     icon: "/brand/icon.jpeg",
     apple: "/brand/icon.jpeg",
@@ -31,11 +25,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${sans.variable} ${serif.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#efece3]">
+    <html lang="en" className={`${sans.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#f4f4f4]">
         <Providers>
           <Header />
           <main className="flex-1">{children}</main>

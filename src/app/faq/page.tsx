@@ -11,7 +11,7 @@ const faqs = [
   },
   {
     q: "How quickly are orders processed?",
-    a: "Most orders are processed promptly to keep fulfillment efficient.",
+    a: "Most orders are processed within 1–3 business days after payment confirmation.",
   },
   {
     q: "How are products packaged?",
@@ -33,8 +33,8 @@ const faqs = [
 
 export default function FaqPage() {
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-16">
-      <PageIntro kicker="FAQ" title="Questions, answered.">
+    <div className="mx-auto max-w-[860px] px-5 py-14">
+      <PageIntro kicker="FAQ" title="Frequently asked questions">
         Ordering, dispatch, packaging, and quality — the essentials.
       </PageIntro>
       <FaqList items={faqs} />

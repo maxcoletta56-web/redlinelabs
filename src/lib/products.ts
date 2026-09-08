@@ -30,6 +30,23 @@ export const featuredSlugs = [
   "tesamorelin",
 ];
 
+export const premiumSlugs = ["bpc-157", "products-nad", "tb-500", "products-glow"];
+
+export function productsBySlugs(slugs: string[]) {
+  return slugs
+    .map((slug) => products.find((p) => p.slug === slug))
+    .filter((p): p is Product => Boolean(p));
+}
+
+export function displayName(product: Product) {
+  const option = product.variants[0]?.option;
+  const unit = product.variantLabel;
+  if (!option) return product.name;
+  if (unit === "MG") return `${product.name} (${option}mg)`;
+  if (unit === "IU" || unit === "Iu") return `${product.name} (${option} IU)`;
+  return `${product.name} (${option})`;
+}
+
 export const categories = [
   "All",
   "GLP-1/FAT LOSS",
@@ -47,9 +64,11 @@ export function getProduct(slug: string) {
 }
 
 export function featuredProducts() {
-  return featuredSlugs
-    .map((slug) => products.find((p) => p.slug === slug))
-    .filter((p): p is Product => Boolean(p));
+  return productsBySlugs(featuredSlugs);
+}
+
+export function premiumProducts() {
+  return productsBySlugs(premiumSlugs);
 }
 
 export function relatedProducts(product: Product, limit = 4) {

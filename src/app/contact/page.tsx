@@ -9,7 +9,7 @@ export default function ContactPage() {
 
   return (
     <div className="mx-auto max-w-[980px] px-5 py-16">
-      <PageIntro kicker="Contact" title="Start a conversation.">
+      <PageIntro kicker="Contact Us" title="Contact us">
         Questions about an order or the catalogue? The team responds during
         business hours across Australia.
       </PageIntro>

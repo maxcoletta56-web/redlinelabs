@@ -20,7 +20,7 @@ export function CartDrawer() {
       />
       <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[rgba(212,175,55,0.16)] bg-[#0a0a0a]">
         <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.14)] px-6 py-5">
-          <h2 className="font-serif text-2xl font-medium">Cart</h2>
+          <h2 className="font-bold text-2xl font-medium">Cart</h2>
           <button onClick={() => setDrawerOpen(false)} className="text-sm text-[#d4af37]">
             Close
           </button>
@@ -45,7 +45,7 @@ export function CartDrawer() {
                     className="h-[72px] w-[72px] object-cover"
                   />
                   <div className="flex-1">
-                    <p className="font-serif text-lg font-medium">{item.name}</p>
+                    <p className="font-bold text-lg font-medium">{item.name}</p>
                     {item.option && (
                       <p className="text-xs text-[#a7a193]">
                         {item.variantLabel}: {item.option}

@@ -1,25 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PageIntro } from "@/components/PageIntro";
 import { ProductCard } from "@/components/ProductCard";
 import { categories, products } from "@/lib/products";
-
-const sorts = [
-  { id: "featured", label: "Featured" },
-  { id: "az", label: "Name A–Z" },
-  { id: "low", label: "Price: low to high" },
-  { id: "high", label: "Price: high to low" },
-] as const;
 
 export default function ShopPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof categories)[number]>("All");
-  const [sort, setSort] = useState<(typeof sorts)[number]["id"]>("featured");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = products.filter((p) => {
+    return products.filter((p) => {
       const matchesQuery =
         !q ||
         p.name.toLowerCase().includes(q) ||
@@ -27,53 +18,36 @@ export default function ShopPage() {
       const matchesCat = category === "All" || p.categories.includes(category);
       return matchesQuery && matchesCat;
     });
-    if (sort === "az") list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-    if (sort === "low") list = [...list].sort((a, b) => a.minPrice - b.minPrice);
-    if (sort === "high") list = [...list].sort((a, b) => b.minPrice - a.minPrice);
-    return list;
-  }, [query, category, sort]);
+  }, [query, category]);
 
   return (
-    <div className="mx-auto max-w-[1200px] px-5 py-14">
-      <PageIntro kicker="Catalogue" title="Research materials">
-        Thirty compounds, supplied for laboratory use. Filter by category or
-        search by name.
-      </PageIntro>
+    <div className="mx-auto max-w-[1180px] px-5 py-12">
+      <p className="mb-6 text-sm text-[#9a9a9a]">Home / Shop</p>
+      <div className="mb-8 text-center">
+        <h1 className="mb-3 text-4xl font-extrabold">Shop research peptides</h1>
+        <p className="text-[#9a9a9a]">
+          High-purity, lab-tested peptides for research use only.
+        </p>
+      </div>
 
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-6 flex justify-center">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the catalogue"
+          placeholder="Search"
           className="field max-w-sm"
         />
-        <div className="flex flex-wrap items-center gap-3 text-sm text-[#a7a193]">
-          <p>
-            {filtered.length} of {products.length}
-          </p>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as typeof sort)}
-            className="field w-auto"
-          >
-            {sorts.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
-      <div className="mb-8 flex flex-wrap gap-2">
+      <div className="mb-10 flex flex-wrap justify-center gap-2">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`border px-3.5 py-2 text-[11px] font-medium tracking-[0.12em] uppercase ${
+            className={`pill border px-4 py-2 text-[13px] font-medium ${
               category === cat
                 ? "border-[#d4af37] bg-[#d4af37] text-black"
-                : "border-[rgba(212,175,55,0.18)] text-[#d5d0c4] hover:border-[#d4af37]"
+                : "border-white/15 text-[#d0d0d0] hover:border-[#d4af37]"
             }`}
           >
             {cat}
@@ -81,7 +55,7 @@ export default function ShopPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {filtered.map((product) => (
           <ProductCard key={product.slug} product={product} />
         ))}

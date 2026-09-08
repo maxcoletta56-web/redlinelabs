@@ -10,7 +10,7 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto max-w-[980px] px-5 py-16">
-      <h1 className="font-serif mb-10 text-4xl font-medium tracking-tight">Cart</h1>
+      <h1 className="font-bold mb-10 text-4xl font-medium tracking-tight">Cart</h1>
       {items.length === 0 ? (
         <div className="border border-[rgba(212,175,55,0.14)] p-12 text-center">
           <p className="mb-6 text-[#a7a193]">Your cart is empty.</p>
@@ -34,7 +34,7 @@ export default function CartPage() {
                   className="h-[88px] w-[88px] object-cover"
                 />
                 <div className="flex-1">
-                  <p className="font-serif text-xl font-medium">{item.name}</p>
+                  <p className="font-bold text-xl font-medium">{item.name}</p>
                   {item.option && (
                     <p className="text-sm text-[#a7a193]">
                       {item.variantLabel}: {item.option}
