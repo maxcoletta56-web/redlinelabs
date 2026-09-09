@@ -1,34 +1,49 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { Field, SelectField } from "@/components/Field";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { categories, products } from "@/lib/products";
 
+const sorts = [
+  { value: "catalogue", label: "Catalogue order" },
+  { value: "name", label: "Name A–Z" },
+  { value: "price-asc", label: "Price low to high" },
+  { value: "price-desc", label: "Price high to low" },
+] as const;
+
+type Sort = (typeof sorts)[number]["value"];
+
 export default function ShopPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof categories)[number]>("All");
+  const [sort, setSort] = useState<Sort>("catalogue");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products.filter((p) => {
+    const list = products.filter((p) => {
       const matchesQuery =
         !q ||
         p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
         p.categories.some((c) => c.toLowerCase().includes(q));
       const matchesCat = category === "All" || p.categories.includes(category);
       return matchesQuery && matchesCat;
     });
-  }, [query, category]);
+
+    return [...list].sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "price-asc") return a.minPrice - b.minPrice;
+      if (sort === "price-desc") return b.minPrice - a.minPrice;
+      return 0;
+    });
+  }, [query, category, sort]);
 
   return (
     <div className="wrap py-12">
-      <p className="mb-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
-        <Link href="/" className="hover:text-[#d4af37]">Home</Link>
-        <span className="mx-2 text-white/20">/</span>
-        Catalogue
-      </p>
+      <Breadcrumbs items={[{ href: "/", label: "Home" }, { label: "Catalogue" }]} />
       <ResearchDisclaimer className="mb-10" />
       <div className="mb-10 flex flex-col justify-between gap-6 border-b border-[rgba(212,175,55,0.16)] pb-8 lg:flex-row lg:items-end">
         <div>
@@ -41,19 +56,37 @@ export default function ShopPage() {
             and any documentation you hold for the batch.
           </p>
         </div>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search catalogue"
-          className="field max-w-xs"
-        />
+        <div className="flex w-full max-w-xl flex-col gap-3 sm:flex-row">
+          <Field
+            id="catalogue-search"
+            label="Search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Name, SKU, or category"
+            className="field"
+          />
+          <SelectField
+            id="catalogue-sort"
+            label="Sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+          >
+            {sorts.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </SelectField>
+        </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filter by category">
         {categories.map((cat) => (
           <button
             key={cat}
+            type="button"
             onClick={() => setCategory(cat)}
+            aria-pressed={category === cat}
             className={`border px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] uppercase ${
               category === cat
                 ? "border-[#d4af37] bg-[#d4af37] text-black"
@@ -64,15 +97,33 @@ export default function ShopPage() {
           </button>
         ))}
       </div>
-      <p className="mb-8 text-[12px] text-[#8f8c84]">
+      <p className="mb-8 text-[12px] text-[#8f8c84]" aria-live="polite">
         {filtered.length} listing{filtered.length === 1 ? "" : "s"}
       </p>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {filtered.map((product) => (
-          <ProductCard key={product.slug} product={product} />
-        ))}
-      </div>
+      {filtered.length === 0 ? (
+        <div className="surface p-12 text-center">
+          <p className="mb-3 text-sm text-[#8f8c84]">
+            No listings match this search or category.
+          </p>
+          <button
+            type="button"
+            className="text-[#d4af37]"
+            onClick={() => {
+              setQuery("");
+              setCategory("All");
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {filtered.map((product) => (
+            <ProductCard key={product.slug} product={product} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

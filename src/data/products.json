@@ -58,7 +58,9 @@
     "name": "BACTERIAL WATER",
     "slug": "product-bacterial-water",
     "sku": "Bac09",
-    "categories": [],
+    "categories": [
+      "LAB SUPPLIES"
+    ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/BC4C9D3E-5347-4F93-9856-ED19DE40BD2D.png?fit=800%2C800&ssl=1",
     "description": "Bacteriostatic water is sterile water containing 0.9% benzyl alcohol as a bacteriostatic agent. It is supplied as a laboratory solvent for reconstituting lyophilised research compounds. Not a medicine and not for injection or other use in humans or animals.",
     "variantLabel": null,
@@ -267,7 +269,7 @@
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/409e2786-5a96-4299-b4dd-f7f2dae89990-1.png?fit=800%2C800&ssl=1",
     "description": "This item is a research blend of BPC-157 (a synthetic pentadecapeptide) and TB-500 (a synthetic fragment related to thymosin beta-4). Each peptide is studied in laboratory literature on cytoskeletal and tissue-response pathways in experimental models. Supplied for laboratory research only.",
-    "variantLabel": "MG",
+    "variantLabel": null,
     "variants": [],
     "minPrice": 190.0,
     "maxPrice": 190.0,
@@ -333,7 +335,9 @@
     "name": "GHK-1200",
     "slug": "ghk-1200",
     "sku": "",
-    "categories": [],
+    "categories": [
+      "TISSUE RESEARCH"
+    ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/08/13e1a67c-bd3c-4703-af05-3f97270e318f.png?fit=800%2C800&ssl=1",
     "description": "This listing is a topical research formulation containing GHK (copper tripeptide chelate), sodium hyaluronate, panthenol, and astaxanthin as labelled by the supplier. It is presented for laboratory and formulation research. It is not a cosmetic medicine and is not offered as a treatment or skin-care outcome product.",
     "variantLabel": null,
@@ -386,7 +390,9 @@
     "name": "SS-31",
     "slug": "products-ss-31",
     "sku": "Ss31s",
-    "categories": [],
+    "categories": [
+      "MITOCHONDRIAL RESEARCH"
+    ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/823d16a2-431d-4f87-b002-8bc6410776e2-1.png?fit=800%2C800&ssl=1",
     "description": "SS-31 (elamipretide) is a mitochondria-targeted tetrapeptide used in laboratory research. Published experimental work examines its association with cardiolipin and mitochondrial membranes in non-clinical models. Supplied for laboratory research only.",
     "variantLabel": null,
@@ -579,7 +585,7 @@
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/c098000b-d09d-4327-bc37-edd6793646b5.png?fit=800%2C800&ssl=1",
     "description": "hCG (human chorionic gonadotropin) is a glycoprotein hormone that acts at the LH/hCG receptor. It is supplied for laboratory research on gonadotropin signalling. It is not supplied for medical, fertility, or other human use.",
-    "variantLabel": "Iu",
+    "variantLabel": "IU",
     "variants": [
       {
         "option": "5000",

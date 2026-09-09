@@ -76,14 +76,19 @@ export function Header() {
               type="button"
               className="flex h-10 w-10 items-center justify-center text-white lg:hidden"
               onClick={() => setOpen((v) => !v)}
-              aria-label="Toggle menu"
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              aria-controls="mobile-nav"
             >
               <MenuIcon open={open} />
             </button>
           </div>
         </div>
         {open && (
-          <div className="border-t border-[rgba(212,175,55,0.16)] bg-[#050505] px-5 py-3 lg:hidden">
+          <div
+            id="mobile-nav"
+            className="border-t border-[rgba(212,175,55,0.16)] bg-[#050505] px-5 py-3 lg:hidden"
+          >
             {links.map((link) => (
               <Link
                 key={link.href}

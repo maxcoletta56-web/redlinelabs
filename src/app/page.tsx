@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { NewsletterForm } from "@/components/NewsletterForm";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { featuredProducts, premiumProducts } from "@/lib/products";
@@ -123,17 +124,7 @@ export default function Home() {
             Catalogue updates and availability notices. Research-use listings
             only.
           </p>
-          <form className="mx-auto flex max-w-md overflow-hidden border border-[rgba(212,175,55,0.2)]">
-            <input
-              type="email"
-              required
-              placeholder="Email"
-              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm outline-none"
-            />
-            <button className="bg-[#d4af37] px-5 text-[11px] font-semibold tracking-[0.08em] text-black uppercase">
-              Submit
-            </button>
-          </form>
+          <NewsletterForm />
         </div>
       </section>
     </div>

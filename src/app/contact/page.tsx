@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Field, TextAreaField } from "@/components/Field";
 import { IconClock, IconMail, IconPin } from "@/components/Icons";
 import { PageIntro } from "@/components/PageIntro";
 
@@ -16,9 +17,17 @@ export default function ContactPage() {
 
       <div className="surface mb-12 grid md:grid-cols-3">
         {[
-          { icon: IconMail, title: "Email", text: "redlinelabsltd@pm.me" },
+          {
+            icon: IconMail,
+            title: "Email",
+            text: (
+              <a href="mailto:redlinelabsltd@pm.me" className="hover:text-[#d4af37]">
+                redlinelabsltd@pm.me
+              </a>
+            ),
+          },
           { icon: IconPin, title: "Dispatch", text: "Australia-wide" },
-          { icon: IconClock, title: "Hours", text: "Monday–Sunday, 6AM–6PM" },
+          { icon: IconClock, title: "Hours", text: "Monday–Sunday, 6AM–6PM AEST" },
         ].map((item, i) => (
           <div
             key={item.title}
@@ -35,12 +44,26 @@ export default function ContactPage() {
 
       <div className="grid gap-10 lg:grid-cols-2">
         <p className="text-[15px] leading-8 text-[#8f8c84]">
-          For order assistance, product information, or general inquiries, we
-          aim to reply promptly and clearly.
+          For order assistance, product information, or general inquiries, email{" "}
+          <a
+            href="mailto:redlinelabsltd@pm.me"
+            className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+          >
+            redlinelabsltd@pm.me
+          </a>
+          . The form below is a demonstration and does not send a message.
         </p>
         {sent ? (
-          <p className="surface p-8 text-[#d4af37]">
-            Message received. We will reply as soon as possible.
+          <p className="surface p-8 text-sm leading-7 text-[#cfc8b8]">
+            This contact form is a front-end demonstration. No message was sent.
+            Email{" "}
+            <a
+              href="mailto:redlinelabsltd@pm.me"
+              className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+            >
+              redlinelabsltd@pm.me
+            </a>{" "}
+            directly.
           </p>
         ) : (
           <form
@@ -50,10 +73,10 @@ export default function ContactPage() {
               setSent(true);
             }}
           >
-            <input required placeholder="Name" className="field" />
-            <input required type="email" placeholder="Email" className="field" />
-            <textarea required rows={5} placeholder="Message" className="field" />
-            <button className="btn">Send message</button>
+            <Field id="contact-name" label="Name" name="name" required autoComplete="name" />
+            <Field id="contact-email" label="Email" name="email" type="email" required autoComplete="email" />
+            <TextAreaField id="contact-message" label="Message" name="message" required rows={5} />
+            <button type="submit" className="btn">Send message</button>
           </form>
         )}
       </div>

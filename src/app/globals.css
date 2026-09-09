@@ -50,6 +50,24 @@ a {
   outline-offset: 3px;
 }
 
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 80;
+  background: var(--gold);
+  color: #111;
+  padding: 0.6rem 0.9rem;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
 .wrap {
   margin-inline: auto;
   width: 100%;

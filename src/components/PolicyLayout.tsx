@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export function PolicyLayout({
   kicker,
@@ -13,6 +14,7 @@ export function PolicyLayout({
 }) {
   return (
     <div className="wrap max-w-[780px] py-16">
+      <Breadcrumbs items={[{ href: "/", label: "Home" }, { label: title }]} />
       <p className="kicker mb-3">{kicker}</p>
       <h1 className="mb-2 text-[2.15rem] font-semibold tracking-[-0.03em] text-white">{title}</h1>
       <p className="mb-10 text-sm text-[#8f8c84]">Last updated: {updated}</p>

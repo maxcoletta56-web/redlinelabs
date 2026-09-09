@@ -39,14 +39,21 @@ export function AddToCart({ product }: { product: Product }) {
           </select>
         </label>
       )}
-      <div className="flex max-w-md items-center gap-3">
-        <input
-          type="number"
-          min={1}
-          value={qty}
-          onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-          className="field w-20"
-        />
+      <div className="flex max-w-md items-end gap-3">
+        <label className="block w-20">
+          <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] uppercase">
+            Qty
+          </span>
+          <input
+            type="number"
+            min={1}
+            inputMode="numeric"
+            aria-label="Quantity"
+            value={qty}
+            onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+            className="field w-20"
+          />
+        </label>
         <button
           type="button"
           onClick={() =>
