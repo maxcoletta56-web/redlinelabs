@@ -12,11 +12,11 @@ export function PolicyLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[780px] px-5 py-16">
+    <div className="wrap max-w-[780px] py-16">
       <p className="kicker mb-3">{kicker}</p>
-      <h1 className="font-bold mb-2 text-4xl font-medium tracking-tight">{title}</h1>
-      <p className="mb-10 text-sm text-[#7d786c]">Last updated: {updated}</p>
-      <div className="space-y-5 text-sm leading-8 text-[#cfc8b8] [&_h2]:mt-8 [&_h2]:font-bold [&_h2]:text-2xl [&_h2]:font-medium [&_h2]:text-[#f4f1e8]">
+      <h1 className="mb-2 text-[2.15rem] font-semibold tracking-[-0.03em] text-white">{title}</h1>
+      <p className="mb-10 text-sm text-[#8f8c84]">Last updated: {updated}</p>
+      <div className="space-y-5 text-sm leading-8 text-[#cfc8b8] [&_h2]:mt-8 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h2]:tracking-[0.12em] [&_h2]:text-white [&_h2]:uppercase">
         {children}
       </div>
     </div>

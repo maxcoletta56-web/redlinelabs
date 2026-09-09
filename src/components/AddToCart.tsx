@@ -17,11 +17,15 @@ export function AddToCart({ product }: { product: Product }) {
   const price = selected?.price ?? product.minPrice;
 
   return (
-    <div className="space-y-4">
-      <p className="text-2xl font-bold text-white">{formatPrice(price)}</p>
+    <div className="space-y-5">
+      <p className="text-[1.65rem] font-medium tracking-[-0.02em] text-[#d4af37]">
+        {formatPrice(price)}
+      </p>
       {variants.length > 0 && (
         <label className="block max-w-xs text-sm">
-          <span className="mb-2 block font-semibold">{product.variantLabel ?? "Option"}</span>
+          <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] uppercase">
+            {product.variantLabel ?? "Option"}
+          </span>
           <select
             value={option}
             onChange={(e) => setOption(e.target.value)}
@@ -41,7 +45,7 @@ export function AddToCart({ product }: { product: Product }) {
           min={1}
           value={qty}
           onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-          className="field w-24"
+          className="field w-20"
         />
         <button
           type="button"

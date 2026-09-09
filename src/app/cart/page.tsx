@@ -9,11 +9,12 @@ export default function CartPage() {
   const { items, subtotal, updateQty, removeItem } = useCart();
 
   return (
-    <div className="mx-auto max-w-[980px] px-5 py-16">
-      <h1 className="font-bold mb-10 text-4xl font-medium tracking-tight">Cart</h1>
+    <div className="wrap max-w-[980px] py-16">
+      <p className="kicker mb-3">Order</p>
+      <h1 className="mb-10 text-[2.15rem] font-semibold tracking-[-0.03em] text-white">Cart</h1>
       {items.length === 0 ? (
-        <div className="border border-[rgba(212,175,55,0.14)] p-12 text-center">
-          <p className="mb-6 text-[#a7a193]">Your cart is empty.</p>
+        <div className="surface p-12 text-center">
+          <p className="mb-6 text-sm text-[#8f8c84]">Your cart is empty.</p>
           <Link href="/shop" className="btn">
             Return to catalogue
           </Link>
@@ -24,7 +25,7 @@ export default function CartPage() {
             {items.map((item) => (
               <li
                 key={itemKey(item)}
-                className="flex gap-4 border border-[rgba(212,175,55,0.14)] p-4"
+                className="surface flex gap-4 p-4"
               >
                 <Image
                   src={item.image}
@@ -34,9 +35,9 @@ export default function CartPage() {
                   className="h-[88px] w-[88px] object-cover"
                 />
                 <div className="flex-1">
-                  <p className="font-bold text-xl font-medium">{item.name}</p>
+                  <p className="text-[16px] font-medium text-white">{item.name}</p>
                   {item.option && (
-                    <p className="text-sm text-[#a7a193]">
+                    <p className="text-sm text-[#8f8c84]">
                       {item.variantLabel}: {item.option}
                     </p>
                   )}
@@ -53,7 +54,7 @@ export default function CartPage() {
                     />
                     <button
                       onClick={() => removeItem(itemKey(item))}
-                      className="text-sm text-[#a7a193] hover:text-white"
+                      className="text-sm text-[#8f8c84] hover:text-white"
                     >
                       Remove
                     </button>
@@ -62,12 +63,12 @@ export default function CartPage() {
               </li>
             ))}
           </ul>
-          <aside className="h-fit border border-[rgba(212,175,55,0.14)] p-6">
+          <aside className="surface h-fit p-6">
             <div className="mb-4 flex justify-between text-sm">
               <span>Subtotal</span>
               <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
             </div>
-            <p className="mb-4 text-xs leading-6 text-[#7d786c]">
+            <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
               Shipping is calculated at checkout. Australia-wide dispatch.
             </p>
             <Link href="/checkout" className="btn w-full">

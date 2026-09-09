@@ -18,17 +18,17 @@ export function CartDrawer() {
         onClick={() => setDrawerOpen(false)}
         aria-label="Close cart"
       />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[rgba(212,175,55,0.16)] bg-[#0a0a0a]">
-        <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.14)] px-6 py-5">
-          <h2 className="font-bold text-2xl font-medium">Cart</h2>
-          <button onClick={() => setDrawerOpen(false)} className="text-sm text-[#d4af37]">
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[rgba(212,175,55,0.16)] bg-[#080808]">
+        <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.16)] px-6 py-5">
+          <h2 className="text-[15px] font-medium tracking-[0.08em] uppercase">Cart</h2>
+          <button onClick={() => setDrawerOpen(false)} className="text-[12px] tracking-[0.08em] text-[#d4af37] uppercase">
             Close
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {items.length === 0 ? (
-            <div className="py-16 text-center text-[#a7a193]">
-              <p className="mb-6">Your cart is empty.</p>
+            <div className="py-16 text-center text-[#8f8c84]">
+              <p className="mb-6 text-sm">Your cart is empty.</p>
               <Link href="/shop" onClick={() => setDrawerOpen(false)} className="btn">
                 Return to catalogue
               </Link>
@@ -36,18 +36,18 @@ export function CartDrawer() {
           ) : (
             <ul className="space-y-5">
               {items.map((item) => (
-                <li key={itemKey(item)} className="flex gap-3 border-b border-white/5 pb-5">
+                <li key={itemKey(item)} className="flex gap-3 border-b border-white/8 pb-5">
                   <Image
                     src={item.image}
                     alt={item.name}
                     width={72}
                     height={72}
-                    className="h-[72px] w-[72px] object-cover"
+                    className="h-[72px] w-[72px] border border-[rgba(212,175,55,0.16)] object-cover"
                   />
                   <div className="flex-1">
-                    <p className="font-bold text-lg font-medium">{item.name}</p>
+                    <p className="text-[14px] font-medium text-white">{item.name}</p>
                     {item.option && (
-                      <p className="text-xs text-[#a7a193]">
+                      <p className="text-xs text-[#8f8c84]">
                         {item.variantLabel}: {item.option}
                       </p>
                     )}
@@ -64,7 +64,7 @@ export function CartDrawer() {
                       />
                       <button
                         onClick={() => removeItem(itemKey(item))}
-                        className="text-xs text-[#a7a193] hover:text-white"
+                        className="text-xs text-[#8f8c84] hover:text-white"
                       >
                         Remove
                       </button>
@@ -76,7 +76,7 @@ export function CartDrawer() {
           )}
         </div>
         {items.length > 0 && (
-          <div className="border-t border-[rgba(212,175,55,0.14)] p-6">
+          <div className="border-t border-[rgba(212,175,55,0.16)] p-6">
             <div className="mb-4 flex justify-between text-sm">
               <span>Subtotal</span>
               <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>

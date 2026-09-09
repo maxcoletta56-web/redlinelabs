@@ -26,8 +26,8 @@ const faqs = [
 
 export default function FaqPage() {
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-14">
-      <ResearchDisclaimer className="mb-8" />
+    <div className="wrap max-w-[860px] py-16">
+      <ResearchDisclaimer className="mb-10" />
       <PageIntro kicker="FAQ" title="Frequently asked questions">
         Research-use supply, documentation, and contact.
       </PageIntro>

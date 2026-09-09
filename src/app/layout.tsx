@@ -12,11 +12,11 @@ const sans = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Redline Labs | Research peptides Australia",
+    default: "Redline Labs | Research chemicals, Australia",
     template: "%s | Redline Labs",
   },
   description:
-    "Ultra-pure, lab-verified research peptides, shipped Australia-wide.",
+    "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
   icons: {
     icon: "/brand/icon.jpeg",
     apple: "/brand/icon.jpeg",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${sans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#f4f4f4]">
+      <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#f3f1ea]">
         <Providers>
           <Header />
           <main className="flex-1">{children}</main>

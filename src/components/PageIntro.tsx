@@ -10,8 +10,10 @@ export function PageIntro({
   return (
     <header className="mb-10 max-w-2xl">
       <p className="kicker mb-3">{kicker}</p>
-      <h1 className="text-4xl font-extrabold tracking-tight text-white">{title}</h1>
-      {children && <div className="mt-4 text-[16px] leading-7 text-[#9a9a9a]">{children}</div>}
+      <h1 className="text-[2.15rem] leading-tight font-semibold tracking-[-0.03em] text-white">
+        {title}
+      </h1>
+      {children && <div className="mt-4 text-[15px] leading-7 text-[#8f8c84]">{children}</div>}
     </header>
   );
 }

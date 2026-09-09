@@ -10,7 +10,7 @@ export function QuickAdd({ product }: { product: Product }) {
 
   if (hasChoices) {
     return (
-      <Link href={`/product/${product.slug}`} className="btn w-full text-[13px]">
+      <Link href={`/product/${product.slug}`} className="btn-outline w-full">
         Select options
       </Link>
     );
@@ -20,7 +20,7 @@ export function QuickAdd({ product }: { product: Product }) {
   return (
     <button
       type="button"
-      className="btn w-full text-[13px]"
+      className="btn-outline w-full"
       onClick={() =>
         addItem({
           slug: product.slug,

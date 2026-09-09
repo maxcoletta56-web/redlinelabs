@@ -12,11 +12,11 @@ export default function CheckoutPage() {
 
   if (items.length === 0 && !placed) {
     return (
-      <div className="mx-auto max-w-[700px] px-5 py-20 text-center">
-        <h1 className="mb-4 text-4xl font-bold">Checkout</h1>
-        <p className="mb-6 text-[#a7a193]">Your cart is empty.</p>
+      <div className="wrap max-w-[700px] py-20 text-center">
+        <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">Checkout</h1>
+        <p className="mb-6 text-sm text-[#8f8c84]">Your cart is empty.</p>
         <Link href="/shop" className="text-[#d4af37]">
-          Return to shop
+          Return to catalogue
         </Link>
       </div>
     );
@@ -24,10 +24,10 @@ export default function CheckoutPage() {
 
   if (placed) {
     return (
-      <div className="mx-auto max-w-[700px] px-5 py-20 text-center">
+      <div className="wrap max-w-[700px] py-20 text-center">
         <p className="kicker mb-3">Received</p>
-        <h1 className="mb-4 text-4xl font-bold">Thank you</h1>
-        <p className="mb-8 text-sm leading-7 text-[#a7a193]">
+        <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">Thank you</h1>
+        <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
           This checkout is a front-end demonstration. No payment was taken and
           no order was sent to fulfillment.
         </p>
@@ -39,9 +39,10 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-[1100px] gap-12 px-5 py-16 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="wrap grid max-w-[1100px] gap-12 py-16 lg:grid-cols-[1.1fr_0.9fr]">
       <div>
-        <h1 className="mb-6 text-4xl font-bold tracking-tight">Checkout</h1>
+        <p className="kicker mb-3">Order</p>
+        <h1 className="mb-6 text-[2.15rem] font-semibold tracking-[-0.03em]">Checkout</h1>
         <ResearchDisclaimer className="mb-8" />
         <form
           className="space-y-4"
@@ -62,11 +63,11 @@ export default function CheckoutPage() {
             <input required placeholder="State" className="field" />
             <input required placeholder="Postcode" className="field" />
           </div>
-          <label className="flex items-start gap-3 text-sm leading-6 text-[#cfcfcf]">
+          <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
             <input type="checkbox" required className="mt-1" />
             I confirm I am 18 years of age or older.
           </label>
-          <label className="flex items-start gap-3 text-sm leading-6 text-[#cfcfcf]">
+          <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
             <input type="checkbox" required className="mt-1" />
             I confirm I am purchasing this product for legitimate laboratory
             research purposes and am not purchasing it for human consumption.
@@ -74,8 +75,8 @@ export default function CheckoutPage() {
           <button className="btn">Place order</button>
         </form>
       </div>
-      <aside className="h-fit border border-[rgba(212,175,55,0.14)] p-6">
-        <h2 className="mb-4 text-2xl font-bold">Summary</h2>
+      <aside className="surface h-fit p-6">
+        <h2 className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase">Summary</h2>
         <ul className="mb-4 space-y-3 text-sm">
           {items.map((item) => (
             <li key={`${item.slug}-${item.option}`} className="flex justify-between gap-4">
@@ -87,7 +88,7 @@ export default function CheckoutPage() {
             </li>
           ))}
         </ul>
-        <div className="flex justify-between border-t border-[rgba(212,175,55,0.14)] pt-4">
+        <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
           <span>Subtotal</span>
           <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
         </div>
