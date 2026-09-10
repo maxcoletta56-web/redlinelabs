@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
-import { categories, products } from "@/lib/products";
+import { catalogItems, categories, listingPrice } from "@/lib/products";
 
 const sorts = [
   { value: "catalogue", label: "Catalogue order" },
@@ -23,20 +23,26 @@ export default function ShopPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = products.filter((p) => {
+    const list = catalogItems().filter((item) => {
+      const { product, variant } = item;
       const matchesQuery =
         !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.categories.some((c) => c.toLowerCase().includes(q));
-      const matchesCat = category === "All" || p.categories.includes(category);
+        product.name.toLowerCase().includes(q) ||
+        product.sku.toLowerCase().includes(q) ||
+        (variant?.sku ?? "").toLowerCase().includes(q) ||
+        (variant?.option ?? "").toLowerCase().includes(q) ||
+        `${variant?.option ?? ""}${product.variantLabel ?? ""}`.toLowerCase().includes(q) ||
+        product.categories.some((c) => c.toLowerCase().includes(q));
+      const matchesCat = category === "All" || product.categories.includes(category);
       return matchesQuery && matchesCat;
     });
 
     return [...list].sort((a, b) => {
-      if (sort === "name") return a.name.localeCompare(b.name);
-      if (sort === "price-asc") return a.minPrice - b.minPrice;
-      if (sort === "price-desc") return b.minPrice - a.minPrice;
+      if (sort === "name") {
+        return a.product.name.localeCompare(b.product.name) || listingPrice(a) - listingPrice(b);
+      }
+      if (sort === "price-asc") return listingPrice(a) - listingPrice(b);
+      if (sort === "price-desc") return listingPrice(b) - listingPrice(a);
       return 0;
     });
   }, [query, category, sort]);
@@ -119,8 +125,8 @@ export default function ShopPage() {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {filtered.map((product) => (
-            <ProductCard key={product.slug} product={product} />
+          {filtered.map((item) => (
+            <ProductCard key={item.listingKey} item={item} />
           ))}
         </div>
       )}

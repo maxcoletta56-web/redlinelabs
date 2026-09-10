@@ -96,8 +96,8 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {featured.map((product) => (
-              <ProductCard key={product.slug} product={product} />
+            {featured.map((item) => (
+              <ProductCard key={item.listingKey} item={item} />
             ))}
           </div>
         </div>
@@ -110,8 +110,8 @@ export default function Home() {
             <h2 className="section-title">More from the catalogue</h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {premium.map((product) => (
-              <ProductCard key={product.slug} product={product} />
+            {premium.map((item) => (
+              <ProductCard key={item.listingKey} item={item} />
             ))}
           </div>
         </div>

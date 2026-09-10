@@ -2,21 +2,20 @@
 
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
-import type { Product } from "@/lib/products";
+import { listingHref, type CatalogItem } from "@/lib/products";
 
-export function QuickAdd({ product }: { product: Product }) {
+export function QuickAdd({ item }: { item: CatalogItem }) {
   const { addItem } = useCart();
-  const hasChoices = product.variants.length > 1;
+  const { product, variant } = item;
 
-  if (hasChoices) {
+  if (!variant && product.variants.length > 1) {
     return (
-      <Link href={`/product/${product.slug}`} className="btn-outline w-full">
+      <Link href={listingHref(item)} className="btn-outline w-full">
         Select options
       </Link>
     );
   }
 
-  const variant = product.variants[0];
   return (
     <button
       type="button"

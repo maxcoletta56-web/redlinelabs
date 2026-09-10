@@ -4,10 +4,21 @@ import { useMemo, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { formatPrice, type Product } from "@/lib/products";
 
-export function AddToCart({ product }: { product: Product }) {
+export function AddToCart({
+  product,
+  initialOption = null,
+}: {
+  product: Product;
+  initialOption?: string | null;
+}) {
   const { addItem } = useCart();
   const variants = product.variants;
-  const [option, setOption] = useState(variants[0]?.option ?? "");
+  const resolvedOption =
+    (initialOption && variants.some((variant) => variant.option === initialOption)
+      ? initialOption
+      : variants[0]?.option) ?? "";
+
+  const [option, setOption] = useState(resolvedOption);
   const [qty, setQty] = useState(1);
 
   const selected = useMemo(
@@ -74,6 +85,9 @@ export function AddToCart({ product }: { product: Product }) {
           Add to cart
         </button>
       </div>
+      <p className="text-[12px] tracking-[0.04em] text-[#8f8c84]">
+        SKU {selected?.sku || product.sku || "not listed"} · Lot number not published
+      </p>
     </div>
   );
 }

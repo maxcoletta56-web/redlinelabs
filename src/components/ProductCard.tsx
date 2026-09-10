@@ -1,21 +1,29 @@
 import Image from "next/image";
 import Link from "next/link";
 import { QuickAdd } from "@/components/QuickAdd";
-import { displayName, formatPrice, priceLabel, type Product } from "@/lib/products";
+import {
+  displayName,
+  formatPrice,
+  listingHref,
+  listingPrice,
+  priceLabel,
+  type CatalogItem,
+} from "@/lib/products";
 
-export function ProductCard({ product }: { product: Product }) {
-  const hasRange = product.minPrice !== product.maxPrice;
-  const option = product.variants[0]?.option;
+export function ProductCard({ item }: { item: CatalogItem }) {
+  const { product, variant } = item;
   const unit = product.variantLabel;
   const category = product.categories[0]?.split("/")[0];
+  const option = variant?.option;
+  const price = variant ? formatPrice(listingPrice(item)) : priceLabel(product);
 
   return (
     <article className="group flex h-full flex-col">
-      <Link href={`/product/${product.slug}`} className="block">
+      <Link href={listingHref(item)} className="block">
         <div className="surface relative mb-4 aspect-square overflow-hidden">
           <Image
             src={product.image}
-            alt={product.name}
+            alt={displayName(product, variant)}
             fill
             sizes="(max-width: 768px) 50vw, 25vw"
             className="object-contain p-6 transition duration-300 group-hover:scale-[1.02]"
@@ -29,14 +37,12 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
         {category && <p className="kicker mb-2">{category}</p>}
         <h3 className="mb-1 text-[15px] leading-6 font-medium text-white group-hover:text-[#d4af37]">
-          {displayName(product)}
+          {displayName(product, variant)}
         </h3>
-        <p className="mb-4 text-[14px] text-[#d4af37]">
-          {hasRange ? priceLabel(product) : formatPrice(product.minPrice)}
-        </p>
+        <p className="mb-4 text-[14px] text-[#d4af37]">{price}</p>
       </Link>
       <div className="mt-auto">
-        <QuickAdd product={product} />
+        <QuickAdd item={item} />
       </div>
     </article>
   );
