@@ -28,8 +28,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${sans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#f3f1ea]">
         <Providers>
+          <a href="#main" className="skip-link">
+            Skip to content
+          </a>
           <Header />
-          <main className="flex-1">{children}</main>
+          <main id="main" className="flex-1">
+            {children}
+          </main>
           <Footer />
         </Providers>
       </body>

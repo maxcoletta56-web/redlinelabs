@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
-import {
-  displayName,
-  getProduct,
-  products,
-  relatedProducts,
-} from "@/lib/products";
+import { getProduct, products, relatedProducts } from "@/lib/products";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -37,17 +32,13 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="wrap py-12">
-      <p className="mb-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
-        <Link href="/" className="hover:text-[#d4af37]">
-          Home
-        </Link>
-        <span className="mx-2 text-white/20">/</span>
-        <Link href="/shop" className="hover:text-[#d4af37]">
-          Catalogue
-        </Link>
-        <span className="mx-2 text-white/20">/</span>
-        {product.name}
-      </p>
+      <Breadcrumbs
+        items={[
+          { href: "/", label: "Home" },
+          { href: "/shop", label: "Catalogue" },
+          { label: product.name },
+        ]}
+      />
       <ResearchDisclaimer className="mb-10" />
       <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div className="surface relative aspect-square overflow-hidden">
@@ -65,7 +56,7 @@ export default async function ProductPage({ params }: Props) {
             <p className="kicker mb-3">{product.categories[0]}</p>
           )}
           <h1 className="mb-6 text-[2.1rem] leading-tight font-semibold tracking-[-0.03em] text-white">
-            {displayName(product)}
+            {product.name}
           </h1>
           <AddToCart product={product} />
           <p className="mt-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">

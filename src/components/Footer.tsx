@@ -34,7 +34,7 @@ export function Footer() {
           <ul className="space-y-2.5 text-sm text-[#cfc8b8]">
             <li><Link href="/privacy-policy" className="hover:text-[#d4af37]">Privacy Policy</Link></li>
             <li><Link href="/terms-of-service" className="hover:text-[#d4af37]">Terms &amp; Conditions</Link></li>
-            <li><Link href="/shipping-policy" className="hover:text-[#d4af37]">Shipping &amp; Return Policy</Link></li>
+            <li><Link href="/shipping-policy" className="hover:text-[#d4af37]">Shipping Policy</Link></li>
             <li><Link href="/refund-policy" className="hover:text-[#d4af37]">Refund Policy</Link></li>
           </ul>
         </div>

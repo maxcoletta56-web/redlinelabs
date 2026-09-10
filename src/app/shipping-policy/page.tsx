@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
 
 export const metadata: Metadata = { title: "Shipping Policy" };
@@ -14,9 +15,10 @@ export default function ShippingPolicyPage() {
       </p>
       <h2>Shipping Timeframes</h2>
       <p>
-        Delivery times vary depending on the destination and shipping method
-        selected at checkout. Estimated delivery dates are provided for
-        reference only and are not guaranteed.
+        Delivery times vary depending on the destination. This demonstration
+        checkout does not offer shipping-method selection. Estimated delivery
+        dates, when given by support or a carrier, are for reference only and
+        are not guaranteed.
       </p>
       <h2>Shipping Confirmation</h2>
       <p>
@@ -45,14 +47,19 @@ export default function ShippingPolicyPage() {
       </p>
       <h2>International Shipping</h2>
       <p>
-        International shipments may be subject to customs inspections, duties,
-        taxes, and import regulations imposed by the destination country.
-        Customers are responsible for any applicable fees or requirements.
+        This storefront currently lists Australia-wide dispatch. International
+        shipping, if offered for a specific order, is confirmed by support and
+        may be subject to customs inspections, duties, taxes, and import
+        regulations. Customers are responsible for any applicable fees.
       </p>
       <h2>Contact Us</h2>
       <p>
         If you have questions regarding your shipment or delivery status,
-        please contact our support team through our Contact Us page.
+        please contact our support team through the{" "}
+        <Link href="/contact" className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3">
+          Contact
+        </Link>{" "}
+        page.
       </p>
     </PolicyLayout>
   );

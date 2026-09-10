@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
@@ -44,7 +45,10 @@ export default function PrivacyPolicyPage() {
       </p>
       <h2>Contact Information</h2>
       <p>
-        For privacy-related inquiries, please contact us through our Contact Us
+        For privacy-related inquiries, please contact us through the{" "}
+        <Link href="/contact" className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3">
+          Contact
+        </Link>{" "}
         page.
       </p>
     </PolicyLayout>
