@@ -13,17 +13,17 @@
     "variants": [
       {
         "option": "10",
-        "price": 120,
+        "price": 95,
         "sku": "Dsip10"
       },
       {
         "option": "15",
-        "price": 135,
+        "price": 110,
         "sku": "Dsip15"
       }
     ],
-    "minPrice": 120.0,
-    "maxPrice": 135.0,
+    "minPrice": 95,
+    "maxPrice": 110,
     "featured": false
   },
   {
@@ -40,17 +40,17 @@
     "variants": [
       {
         "option": "10",
-        "price": 130,
+        "price": 95,
         "sku": "Epi10"
       },
       {
         "option": "50",
-        "price": 190,
+        "price": 155,
         "sku": "Epi50"
       }
     ],
-    "minPrice": 130.0,
-    "maxPrice": 190.0,
+    "minPrice": 95,
+    "maxPrice": 155,
     "featured": false
   },
   {
@@ -65,8 +65,8 @@
     "description": "Bacteriostatic water is sterile water containing 0.9% benzyl alcohol as a bacteriostatic agent. It is supplied as a laboratory solvent for reconstituting lyophilised research compounds. Not a medicine and not for injection or other use in humans or animals.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 10.0,
-    "maxPrice": 10.0,
+    "minPrice": 10,
+    "maxPrice": 10,
     "featured": false
   },
   {
@@ -81,8 +81,8 @@
     "description": "Melanotan II is a synthetic cyclic analogue of \u03b1-melanocyte-stimulating hormone. In research literature it is described as an agonist at melanocortin receptors (including MC1R and MC4R) and is used to study pigmentation and melanocortin signalling in experimental systems. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 85.0,
-    "maxPrice": 85.0,
+    "minPrice": 70,
+    "maxPrice": 70,
     "featured": false
   },
   {
@@ -99,22 +99,22 @@
     "variants": [
       {
         "option": "10",
-        "price": 110,
+        "price": 89,
         "sku": "BPC157"
       },
       {
         "option": "13",
-        "price": 120,
+        "price": 99,
         "sku": "Bpc13"
       },
       {
         "option": "20",
-        "price": 150,
+        "price": 125,
         "sku": "Bpc20"
       }
     ],
-    "minPrice": 110.0,
-    "maxPrice": 150.0,
+    "minPrice": 89,
+    "maxPrice": 125,
     "featured": false
   },
   {
@@ -136,22 +136,22 @@
       },
       {
         "option": "13",
-        "price": 130,
+        "price": 125,
         "sku": "Ret1313"
       },
       {
         "option": "20",
-        "price": 200,
+        "price": 175,
         "sku": "Ret2020"
       },
       {
         "option": "30",
-        "price": 295,
+        "price": 245,
         "sku": "Ret30"
       }
     ],
-    "minPrice": 100.0,
-    "maxPrice": 295.0,
+    "minPrice": 100,
+    "maxPrice": 245,
     "featured": true
   },
   {
@@ -166,8 +166,8 @@
     "description": "GHK-Cu (glycyl-L-histidyl-L-lysine copper complex) is a copper-binding tripeptide first identified in human plasma and used in laboratory research. Experimental literature examines its interactions with copper-dependent and gene-expression pathways in cell and tissue models. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 90.0,
-    "maxPrice": 90.0,
+    "minPrice": 90,
+    "maxPrice": 90,
     "featured": true
   },
   {
@@ -185,17 +185,17 @@
     "variants": [
       {
         "option": "5/5",
-        "price": 150,
+        "price": 125,
         "sku": "Cjcipa55"
       },
       {
         "option": "10/5",
-        "price": 170,
+        "price": 145,
         "sku": "Cjcipa105"
       }
     ],
-    "minPrice": 150.0,
-    "maxPrice": 170.0,
+    "minPrice": 125,
+    "maxPrice": 145,
     "featured": true
   },
   {
@@ -210,8 +210,8 @@
     "description": "SLU-PP-332 is a small-molecule research compound described in published literature as an agonist of estrogen-related receptors (ERR\u03b1/\u03b2/\u03b3). Experimental work has examined mitochondrial and oxidative-metabolism pathways in laboratory models. Supplied for laboratory research only. (Catalogue name: SLU-PP-322.)",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 165.0,
-    "maxPrice": 165.0,
+    "minPrice": 165,
+    "maxPrice": 165,
     "featured": false
   },
   {
@@ -229,7 +229,7 @@
     "variants": [
       {
         "option": "500",
-        "price": 120,
+        "price": 110,
         "sku": "Nad500"
       },
       {
@@ -238,8 +238,8 @@
         "sku": "Nad1000"
       }
     ],
-    "minPrice": 120.0,
-    "maxPrice": 140.0,
+    "minPrice": 110,
+    "maxPrice": 140,
     "featured": false
   },
   {
@@ -254,8 +254,8 @@
     "description": "TB-1 is listed as a research peptide. Supplier naming for this designation is not standardised; the specific sequence and identity should be confirmed against the batch documentation before experimental use. No composition, purity, or activity claim is published on this page. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 200.0,
-    "maxPrice": 200.0,
+    "minPrice": 165,
+    "maxPrice": 165,
     "featured": false
   },
   {
@@ -271,8 +271,8 @@
     "description": "This item is a research blend of BPC-157 (a synthetic pentadecapeptide) and TB-500 (a synthetic fragment related to thymosin beta-4). Each peptide is studied in laboratory literature on cytoskeletal and tissue-response pathways in experimental models. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 190.0,
-    "maxPrice": 190.0,
+    "minPrice": 125,
+    "maxPrice": 125,
     "featured": false
   },
   {
@@ -288,8 +288,8 @@
     "description": "Kisspeptin (typically kisspeptin-10 or related fragments, depending on the batch) is a peptide ligand of the GPR54/KISS1R receptor. Laboratory research uses it to study GnRH-related and hypothalamic\u2013pituitary signalling in experimental systems. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 145.0,
-    "maxPrice": 145.0,
+    "minPrice": 110,
+    "maxPrice": 110,
     "featured": false
   },
   {
@@ -306,12 +306,12 @@
     "variants": [
       {
         "option": "10",
-        "price": 145,
+        "price": 85,
         "sku": "Ipaipa"
       }
     ],
-    "minPrice": 145.0,
-    "maxPrice": 145.0,
+    "minPrice": 85,
+    "maxPrice": 85,
     "featured": false
   },
   {
@@ -326,8 +326,8 @@
     "description": "Thymosin beta-4 (TB4) is a naturally occurring 43-amino-acid peptide. Laboratory literature describes its role in actin sequestration (G-actin binding) and related cytoskeletal pathways in experimental models. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 150.0,
-    "maxPrice": 150.0,
+    "minPrice": 125,
+    "maxPrice": 125,
     "featured": false
   },
   {
@@ -342,8 +342,8 @@
     "description": "This listing is a topical research formulation containing GHK (copper tripeptide chelate), sodium hyaluronate, panthenol, and astaxanthin as labelled by the supplier. It is presented for laboratory and formulation research. It is not a cosmetic medicine and is not offered as a treatment or skin-care outcome product.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 130.0,
-    "maxPrice": 130.0,
+    "minPrice": 110,
+    "maxPrice": 110,
     "featured": false
   },
   {
@@ -359,8 +359,8 @@
     "description": "CJC-1295 is a synthetic analogue of growth hormone-releasing hormone (GHRH). Research literature distinguishes DAC and non-DAC forms; confirm the form against the vial label and any available batch documentation. Used in laboratory studies of GHRH-receptor signalling. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 140.0,
-    "maxPrice": 140.0,
+    "minPrice": 115,
+    "maxPrice": 115,
     "featured": false
   },
   {
@@ -377,12 +377,12 @@
     "variants": [
       {
         "option": "1",
-        "price": 190,
+        "price": 165,
         "sku": "Igf1g"
       }
     ],
-    "minPrice": 190.0,
-    "maxPrice": 190.0,
+    "minPrice": 165,
+    "maxPrice": 165,
     "featured": false
   },
   {
@@ -397,8 +397,8 @@
     "description": "SS-31 (elamipretide) is a mitochondria-targeted tetrapeptide used in laboratory research. Published experimental work examines its association with cardiolipin and mitochondrial membranes in non-clinical models. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 160.0,
-    "maxPrice": 160.0,
+    "minPrice": 95,
+    "maxPrice": 95,
     "featured": false
   },
   {
@@ -413,8 +413,8 @@
     "description": "KPV is a tripeptide (Lys-Pro-Val) C-terminal fragment of \u03b1-MSH. Laboratory research has examined melanocortin-related and inflammatory-signalling pathways in cell and animal models. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 140.0,
-    "maxPrice": 140.0,
+    "minPrice": 85,
+    "maxPrice": 85,
     "featured": false
   },
   {
@@ -435,8 +435,8 @@
         "sku": "Glow70"
       }
     ],
-    "minPrice": 170.0,
-    "maxPrice": 170.0,
+    "minPrice": 170,
+    "maxPrice": 170,
     "featured": false
   },
   {
@@ -457,8 +457,8 @@
         "sku": "Klow80"
       }
     ],
-    "minPrice": 190.0,
-    "maxPrice": 190.0,
+    "minPrice": 190,
+    "maxPrice": 190,
     "featured": false
   },
   {
@@ -473,8 +473,8 @@
     "description": "PT-141 (bremelanotide) is a synthetic cyclic peptide and melanocortin-receptor agonist, with published research focused on MC3R/MC4R pharmacology. It is supplied as a research chemical for laboratory study of melanocortin signalling. It is not supplied as a medicine.",
     "variantLabel": null,
     "variants": [],
-    "minPrice": 135.0,
-    "maxPrice": 135.0,
+    "minPrice": 95,
+    "maxPrice": 95,
     "featured": false
   },
   {
@@ -491,12 +491,12 @@
     "variants": [
       {
         "option": "10",
-        "price": 140,
+        "price": 90,
         "sku": "Selank10"
       }
     ],
-    "minPrice": 140.0,
-    "maxPrice": 140.0,
+    "minPrice": 90,
+    "maxPrice": 90,
     "featured": false
   },
   {
@@ -513,17 +513,17 @@
     "variants": [
       {
         "option": "10",
-        "price": 135,
+        "price": 110,
         "sku": "Motc10"
       },
       {
         "option": "20",
-        "price": 160,
+        "price": 135,
         "sku": "Motc20"
       }
     ],
-    "minPrice": 135.0,
-    "maxPrice": 160.0,
+    "minPrice": 110,
+    "maxPrice": 135,
     "featured": false
   },
   {
@@ -540,17 +540,17 @@
     "variants": [
       {
         "option": "10",
-        "price": 120,
+        "price": 90,
         "sku": "Semax10"
       },
       {
         "option": "30",
-        "price": 150,
+        "price": 125,
         "sku": "Semax30"
       }
     ],
-    "minPrice": 120.0,
-    "maxPrice": 150.0,
+    "minPrice": 90,
+    "maxPrice": 125,
     "featured": false
   },
   {
@@ -567,12 +567,12 @@
     "variants": [
       {
         "option": "75",
-        "price": 140,
+        "price": 125,
         "sku": "HMG75"
       }
     ],
-    "minPrice": 140.0,
-    "maxPrice": 140.0,
+    "minPrice": 125,
+    "maxPrice": 125,
     "featured": false
   },
   {
@@ -589,17 +589,17 @@
     "variants": [
       {
         "option": "5000",
-        "price": 160,
+        "price": 140,
         "sku": "Hcg5k"
       },
       {
         "option": "10,000",
-        "price": 190,
+        "price": 170,
         "sku": "Hcg10k"
       }
     ],
-    "minPrice": 160.0,
-    "maxPrice": 190.0,
+    "minPrice": 140,
+    "maxPrice": 170,
     "featured": false
   },
   {
@@ -616,12 +616,12 @@
     "variants": [
       {
         "option": "10",
-        "price": 160,
+        "price": 125,
         "sku": "Tesa10"
       }
     ],
-    "minPrice": 160.0,
-    "maxPrice": 160.0,
+    "minPrice": 125,
+    "maxPrice": 125,
     "featured": true
   },
   {
@@ -638,17 +638,17 @@
     "variants": [
       {
         "option": "12",
-        "price": 140,
+        "price": 125,
         "sku": "Tb512"
       },
       {
         "option": "20",
-        "price": 185,
+        "price": 165,
         "sku": "Tb520"
       }
     ],
-    "minPrice": 140.0,
-    "maxPrice": 185.0,
+    "minPrice": 125,
+    "maxPrice": 165,
     "featured": false
   }
 ]
