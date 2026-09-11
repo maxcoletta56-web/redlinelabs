@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ProductImage } from "@/components/ProductImage";
 import Link from "next/link";
 import { useEffect } from "react";
 import { itemKey, useCart } from "@/lib/cart";
@@ -52,7 +52,7 @@ export function CartDrawer() {
             <ul className="space-y-5">
               {items.map((item) => (
                 <li key={itemKey(item)} className="flex gap-3 border-b border-white/8 pb-5">
-                  <Image
+                  <ProductImage
                     src={item.image}
                     alt={item.name}
                     width={72}

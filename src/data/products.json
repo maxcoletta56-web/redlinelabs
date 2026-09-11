@@ -14,7 +14,7 @@
       {
         "option": "10",
         "price": 120,
-        "sku": "Dsip15"
+        "sku": "Dsip10"
       },
       {
         "option": "15",
@@ -41,7 +41,7 @@
       {
         "option": "10",
         "price": 130,
-        "sku": "Epi50"
+        "sku": "Epi10"
       },
       {
         "option": "50",
@@ -147,7 +147,7 @@
       {
         "option": "30",
         "price": 295,
-        "sku": "Ret1010"
+        "sku": "Ret30"
       }
     ],
     "minPrice": 100.0,
@@ -186,12 +186,12 @@
       {
         "option": "5/5",
         "price": 150,
-        "sku": "Cjcipa"
+        "sku": "Cjcipa55"
       },
       {
         "option": "10/5",
         "price": 170,
-        "sku": "Cjcipa"
+        "sku": "Cjcipa105"
       }
     ],
     "minPrice": 150.0,
@@ -230,12 +230,12 @@
       {
         "option": "500",
         "price": 120,
-        "sku": "Nad5100"
+        "sku": "Nad500"
       },
       {
         "option": "1000",
         "price": 140,
-        "sku": "Nad5100"
+        "sku": "Nad1000"
       }
     ],
     "minPrice": 120.0,
@@ -334,7 +334,7 @@
     "id": 1242,
     "name": "GHK-1200",
     "slug": "ghk-1200",
-    "sku": "",
+    "sku": "Ghk1200",
     "categories": [
       "TISSUE RESEARCH"
     ],
@@ -350,7 +350,7 @@
     "id": 1149,
     "name": "CJC-1295",
     "slug": "cjc-1295",
-    "sku": "",
+    "sku": "Cjc1295",
     "categories": [
       "GHRH / GHRELIN RESEARCH",
       "TISSUE RESEARCH"
@@ -514,12 +514,12 @@
       {
         "option": "10",
         "price": 135,
-        "sku": "Mot-c"
+        "sku": "Motc10"
       },
       {
         "option": "20",
         "price": 160,
-        "sku": "Mot-c"
+        "sku": "Motc20"
       }
     ],
     "minPrice": 135.0,
@@ -541,12 +541,12 @@
       {
         "option": "10",
         "price": 120,
-        "sku": "Semax130"
+        "sku": "Semax10"
       },
       {
         "option": "30",
         "price": 150,
-        "sku": "Semax130"
+        "sku": "Semax30"
       }
     ],
     "minPrice": 120.0,
@@ -590,12 +590,12 @@
       {
         "option": "5000",
         "price": 160,
-        "sku": "HCGK"
+        "sku": "Hcg5k"
       },
       {
         "option": "10,000",
         "price": 190,
-        "sku": "HCGK"
+        "sku": "Hcg10k"
       }
     ],
     "minPrice": 160.0,

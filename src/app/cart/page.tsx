@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ProductImage } from "@/components/ProductImage";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { itemKey, useCart } from "@/lib/cart";
@@ -29,7 +29,7 @@ export default function CartPage() {
                 key={itemKey(item)}
                 className="surface flex gap-4 p-4"
               >
-                <Image
+                <ProductImage
                   src={item.image}
                   alt={item.name}
                   width={88}

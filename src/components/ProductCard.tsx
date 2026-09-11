@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { ProductImage } from "@/components/ProductImage";
 import Link from "next/link";
 import { QuickAdd } from "@/components/QuickAdd";
 import {
@@ -21,7 +21,7 @@ export function ProductCard({ item }: { item: CatalogItem }) {
     <article className="group flex h-full flex-col">
       <Link href={listingHref(item)} className="block">
         <div className="surface relative mb-4 aspect-square overflow-hidden">
-          <Image
+          <ProductImage
             src={product.image}
             alt={displayName(product, variant)}
             fill
