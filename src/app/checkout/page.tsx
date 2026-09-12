@@ -112,7 +112,7 @@ export default function CheckoutPage() {
               environment, then reload.
             </p>
           )}
-          <button type="submit" className="btn" disabled={pending || configured === false}>
+          <button type="submit" className="btn" disabled={pending || configured !== true}>
             {pending ? "Redirecting to Stripe…" : "Pay with Stripe"}
           </button>
         </form>
