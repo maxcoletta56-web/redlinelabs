@@ -77,8 +77,7 @@ export default function CartPage() {
               <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
             </div>
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              This demonstration does not calculate shipping. Live dispatch is
-              described on the{" "}
+              Checkout is charged through Stripe. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
               </Link>

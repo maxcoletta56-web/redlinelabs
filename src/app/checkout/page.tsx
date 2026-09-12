@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
@@ -9,10 +9,19 @@ import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/products";
 
 export default function CheckoutPage() {
-  const { items, subtotal, clear } = useCart();
-  const [placed, setPlaced] = useState(false);
+  const { items, subtotal } = useCart();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [configured, setConfigured] = useState<boolean | null>(null);
 
-  if (items.length === 0 && !placed) {
+  useEffect(() => {
+    fetch("/api/checkout")
+      .then((res) => res.json())
+      .then((data: { configured?: boolean }) => setConfigured(Boolean(data.configured)))
+      .catch(() => setConfigured(false));
+  }, []);
+
+  if (items.length === 0) {
     return (
       <div className="wrap max-w-[700px] py-20 text-center">
         <Breadcrumbs items={[{ href: "/", label: "Home" }, { href: "/cart", label: "Cart" }, { label: "Checkout" }]} />
@@ -20,22 +29,6 @@ export default function CheckoutPage() {
         <p className="mb-6 text-sm text-[#8f8c84]">Your cart is empty.</p>
         <Link href="/shop" className="text-[#d4af37]">
           Return to catalogue
-        </Link>
-      </div>
-    );
-  }
-
-  if (placed) {
-    return (
-      <div className="wrap max-w-[700px] py-20 text-center">
-        <p className="kicker mb-3">Received</p>
-        <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">Thank you</h1>
-        <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
-          This checkout is a front-end demonstration. No payment was taken and
-          no order was sent to fulfillment.
-        </p>
-        <Link href="/shop" className="btn">
-          Continue browsing
         </Link>
       </div>
     );
@@ -56,10 +49,37 @@ export default function CheckoutPage() {
         <ResearchDisclaimer className="mb-8" />
         <form
           className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            clear();
-            setPlaced(true);
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setError(null);
+            setPending(true);
+            const form = new FormData(event.currentTarget);
+            try {
+              const response = await fetch("/api/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  firstName: String(form.get("firstName") ?? ""),
+                  lastName: String(form.get("lastName") ?? ""),
+                  email: String(form.get("email") ?? ""),
+                  ageConfirmed: form.get("ageConfirmed") === "on",
+                  researchUse: form.get("researchUse") === "on",
+                  items: items.map((item) => ({
+                    slug: item.slug,
+                    option: item.option,
+                    qty: item.qty,
+                  })),
+                }),
+              });
+              const data = (await response.json()) as { url?: string; error?: string };
+              if (!response.ok || !data.url) {
+                throw new Error(data.error || "Stripe checkout could not start");
+              }
+              window.location.href = data.url;
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Stripe checkout could not start");
+              setPending(false);
+            }
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -67,22 +87,34 @@ export default function CheckoutPage() {
             <Field id="last-name" label="Last name" name="lastName" required autoComplete="family-name" />
           </div>
           <Field id="email" label="Email" name="email" type="email" required autoComplete="email" />
-          <Field id="address" label="Address" name="address" required autoComplete="street-address" />
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field id="city" label="City" name="city" required autoComplete="address-level2" />
-            <Field id="state" label="State" name="state" required autoComplete="address-level1" />
-            <Field id="postcode" label="Postcode" name="postcode" required autoComplete="postal-code" />
-          </div>
+          <p className="text-sm leading-6 text-[#8f8c84]">
+            Stripe collects billing and Australian shipping details on the next
+            page. Card data never touches this site.
+          </p>
           <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
-            <input type="checkbox" required className="mt-1" />
+            <input type="checkbox" name="ageConfirmed" required className="mt-1" />
             I confirm I am 18 years of age or older.
           </label>
           <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
-            <input type="checkbox" required className="mt-1" />
+            <input type="checkbox" name="researchUse" required className="mt-1" />
             I confirm I am purchasing this product for legitimate laboratory
             research purposes and am not purchasing it for human consumption.
           </label>
-          <button type="submit" className="btn">Place order</button>
+          {error && (
+            <p className="text-sm leading-6 text-[#e8b4b4]" role="alert">
+              {error}
+            </p>
+          )}
+          {configured === false && (
+            <p className="text-sm leading-6 text-[#e8b4b4]" role="status">
+              Stripe is not configured on this server yet. Add{" "}
+              <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code> to the
+              environment, then reload.
+            </p>
+          )}
+          <button type="submit" className="btn" disabled={pending || configured === false}>
+            {pending ? "Redirecting to Stripe…" : "Pay with Stripe"}
+          </button>
         </form>
       </div>
       <aside className="surface h-fit p-6">
@@ -103,7 +135,8 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Shipping is not calculated in this demonstration. See the{" "}
+          Prices charged by Stripe are taken from the catalogue, not from the
+          browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}
