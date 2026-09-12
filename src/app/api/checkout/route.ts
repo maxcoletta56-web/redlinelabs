@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
-import { checkoutOrigin, getStripe, stripeConfigured } from "@/lib/stripe";
+import { checkoutOrigin, stripe, stripeConfigured } from "@/lib/stripe";
 
 export async function GET() {
   return NextResponse.json({ configured: stripeConfigured() });
@@ -54,7 +54,6 @@ export async function POST(request: Request) {
   const name = [body.firstName, body.lastName].filter(Boolean).join(" ").trim();
 
   try {
-    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: email,
