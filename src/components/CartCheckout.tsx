@@ -7,7 +7,8 @@ import { loadStripe } from "@stripe/stripe-js";
 import { startCartCheckoutSession } from "@/app/actions/stripe";
 import type { CartLineInput } from "@/lib/order";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 function sessionIdFromClientSecret(secret: string) {
   const marker = "_secret_";
