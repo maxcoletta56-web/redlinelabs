@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CartCheckout } from "@/components/CartCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
@@ -11,8 +12,13 @@ import { formatPrice } from "@/lib/products";
 export default function CheckoutPage() {
   const { items, subtotal } = useCart();
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [ready, setReady] = useState(false);
+  const [customer, setCustomer] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
 
   useEffect(() => {
     fetch("/api/checkout")
@@ -20,6 +26,16 @@ export default function CheckoutPage() {
       .then((data: { configured?: boolean }) => setConfigured(Boolean(data.configured)))
       .catch(() => setConfigured(false));
   }, []);
+
+  const cartItems = useMemo(
+    () =>
+      items.map((item) => ({
+        slug: item.slug,
+        option: item.option,
+        qty: item.qty,
+      })),
+    [items],
+  );
 
   if (items.length === 0) {
     return (
@@ -47,75 +63,80 @@ export default function CheckoutPage() {
         <p className="kicker mb-3">Order</p>
         <h1 className="mb-6 text-[2.15rem] font-semibold tracking-[-0.03em]">Checkout</h1>
         <ResearchDisclaimer className="mb-8" />
-        <form
-          className="space-y-4"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setError(null);
-            setPending(true);
-            const form = new FormData(event.currentTarget);
-            try {
-              const response = await fetch("/api/checkout", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  firstName: String(form.get("firstName") ?? ""),
-                  lastName: String(form.get("lastName") ?? ""),
-                  email: String(form.get("email") ?? ""),
-                  ageConfirmed: form.get("ageConfirmed") === "on",
-                  researchUse: form.get("researchUse") === "on",
-                  items: items.map((item) => ({
-                    slug: item.slug,
-                    option: item.option,
-                    qty: item.qty,
-                  })),
-                }),
-              });
-              const data = (await response.json()) as { url?: string; error?: string };
-              if (!response.ok || !data.url) {
-                throw new Error(data.error || "Stripe checkout could not start");
+
+        {!ready ? (
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setError(null);
+              const form = new FormData(event.currentTarget);
+              if (form.get("ageConfirmed") !== "on" || form.get("researchUse") !== "on") {
+                setError("Age and research-use confirmation are required");
+                return;
               }
-              window.location.href = data.url;
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Stripe checkout could not start");
-              setPending(false);
-            }
-          }}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="first-name" label="First name" name="firstName" required autoComplete="given-name" />
-            <Field id="last-name" label="Last name" name="lastName" required autoComplete="family-name" />
+              setCustomer({
+                firstName: String(form.get("firstName") ?? ""),
+                lastName: String(form.get("lastName") ?? ""),
+                email: String(form.get("email") ?? ""),
+              });
+              setReady(true);
+            }}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="first-name" label="First name" name="firstName" required autoComplete="given-name" />
+              <Field id="last-name" label="Last name" name="lastName" required autoComplete="family-name" />
+            </div>
+            <Field id="email" label="Email" name="email" type="email" required autoComplete="email" />
+            <p className="text-sm leading-6 text-[#8f8c84]">
+              Payment stays on this page. Stripe collects the card and Australian
+              shipping address inside the embedded checkout. After a card payment
+              it does not redirect away.
+            </p>
+            <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
+              <input type="checkbox" name="ageConfirmed" required className="mt-1" />
+              I confirm I am 18 years of age or older.
+            </label>
+            <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
+              <input type="checkbox" name="researchUse" required className="mt-1" />
+              I confirm I am purchasing this product for legitimate laboratory
+              research purposes and am not purchasing it for human consumption.
+            </label>
+            {error && (
+              <p className="text-sm leading-6 text-[#e8b4b4]" role="alert">
+                {error}
+              </p>
+            )}
+            {configured === false && (
+              <p className="text-sm leading-6 text-[#e8b4b4]" role="status">
+                Stripe is not configured yet. Add{" "}
+                <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code> and{" "}
+                <code className="text-[#d4af37]">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
+                to the environment, then reload.
+              </p>
+            )}
+            <button type="submit" className="btn" disabled={configured !== true}>
+              Continue to payment
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-[#8f8c84]">
+              Paying as {customer.email}. Card details are handled by Stripe.
+            </p>
+            <div className="surface overflow-hidden p-3">
+              <CartCheckout
+                items={cartItems}
+                email={customer.email}
+                firstName={customer.firstName}
+                lastName={customer.lastName}
+              />
+            </div>
+            <button type="button" className="btn-outline" onClick={() => setReady(false)}>
+              Edit details
+            </button>
           </div>
-          <Field id="email" label="Email" name="email" type="email" required autoComplete="email" />
-          <p className="text-sm leading-6 text-[#8f8c84]">
-            Stripe collects billing and Australian shipping details on the next
-            page. Card data never touches this site.
-          </p>
-          <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
-            <input type="checkbox" name="ageConfirmed" required className="mt-1" />
-            I confirm I am 18 years of age or older.
-          </label>
-          <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
-            <input type="checkbox" name="researchUse" required className="mt-1" />
-            I confirm I am purchasing this product for legitimate laboratory
-            research purposes and am not purchasing it for human consumption.
-          </label>
-          {error && (
-            <p className="text-sm leading-6 text-[#e8b4b4]" role="alert">
-              {error}
-            </p>
-          )}
-          {configured === false && (
-            <p className="text-sm leading-6 text-[#e8b4b4]" role="status">
-              Stripe is not configured on this server yet. Add{" "}
-              <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code> to the
-              environment, then reload.
-            </p>
-          )}
-          <button type="submit" className="btn" disabled={pending || configured !== true}>
-            {pending ? "Redirecting to Stripe…" : "Pay with Stripe"}
-          </button>
-        </form>
+        )}
       </div>
       <aside className="surface h-fit p-6">
         <h2 className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase">Summary</h2>
