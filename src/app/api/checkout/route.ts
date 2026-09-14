@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
-import { checkoutOrigin, getStripe, stripeConfigured } from "@/lib/stripe";
+import { createEmbeddedCheckoutSession } from "@/lib/checkout-session";
+import { type CartLineInput } from "@/lib/order";
+import { stripeConfigured } from "@/lib/stripe";
 
 export async function GET() {
   return NextResponse.json({ configured: stripeConfigured() });
@@ -9,7 +10,7 @@ export async function GET() {
 export async function POST(request: Request) {
   if (!stripeConfigured()) {
     return NextResponse.json(
-      { error: "Stripe is not configured. Add STRIPE_SECRET_KEY on the server." },
+      { error: "Stripe is not configured. Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY." },
       { status: 503 },
     );
   }
@@ -40,57 +41,14 @@ export async function POST(request: Request) {
     );
   }
 
-  let lines;
   try {
-    lines = resolveCartLines(body.items ?? []);
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Cart could not be priced" },
-      { status: 400 },
-    );
-  }
-
-  const origin = checkoutOrigin(request);
-  const name = [body.firstName, body.lastName].filter(Boolean).join(" ").trim();
-
-  try {
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: email,
-      client_reference_id: email,
-      billing_address_collection: "required",
-      shipping_address_collection: { allowed_countries: ["AU"] },
-      submit_type: "pay",
-      line_items: lines.map((line) => ({
-        quantity: line.qty,
-        price_data: {
-          currency: "aud",
-          unit_amount: line.unitAmountCents,
-          product_data: {
-            name: lineLabel(line),
-            metadata: {
-              slug: line.slug,
-              sku: line.sku,
-              option: line.option ?? "",
-            },
-          },
-        },
-      })),
-      metadata: {
-        customer_name: name,
-        age_confirmed: "true",
-        research_use: "true",
-      },
-      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout`,
+    const clientSecret = await createEmbeddedCheckoutSession({
+      items: body.items ?? [],
+      email,
+      firstName: body.firstName,
+      lastName: body.lastName,
     });
-
-    if (!session.url) {
-      return NextResponse.json({ error: "Stripe did not return a checkout URL" }, { status: 502 });
-    }
-
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ clientSecret });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Stripe checkout failed";
     return NextResponse.json({ error: message }, { status: 502 });

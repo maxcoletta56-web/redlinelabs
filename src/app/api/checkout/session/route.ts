@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe, stripeConfigured } from "@/lib/stripe";
+import { stripe, stripeConfigured } from "@/lib/stripe";
 
 export async function GET(request: NextRequest) {
   if (!stripeConfigured()) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const session = await getStripe().checkout.sessions.retrieve(sessionId, {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items"],
     });
     return NextResponse.json({

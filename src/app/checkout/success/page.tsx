@@ -3,7 +3,7 @@ import Link from "next/link";
 import Stripe from "stripe";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { formatPrice } from "@/lib/products";
-import { getStripe, stripeConfigured } from "@/lib/stripe";
+import { stripe, stripeConfigured } from "@/lib/stripe";
 
 export const metadata: Metadata = { title: "Order received" };
 
@@ -15,7 +15,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
 
   if (sessionId && stripeConfigured()) {
     try {
-      session = await getStripe().checkout.sessions.retrieve(sessionId);
+      session = await stripe.checkout.sessions.retrieve(sessionId);
     } catch {
       session = null;
     }
