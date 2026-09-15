@@ -6,6 +6,10 @@ export function stripeConfigured() {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 }
 
+export function webhookSecret() {
+  return process.env.STRIPE_WEBHOOK_SECRET;
+}
+
 let client: Stripe | undefined;
 
 function getStripe() {
