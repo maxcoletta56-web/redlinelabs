@@ -100,8 +100,8 @@ export default function AboutPage() {
                 longer during high demand, holidays, or promotions. This
                 storefront lists Australia-wide dispatch. Tracking may be sent
                 once an order is processed, when the carrier provides it.
-                Delivery dates are not guaranteed. This demonstration checkout
-                does not offer shipping-method selection.
+                Delivery dates are not guaranteed. Checkout does not offer
+                shipping-method selection.
               </p>
             </article>
           </div>

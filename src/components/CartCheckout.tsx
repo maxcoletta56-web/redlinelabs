@@ -21,20 +21,31 @@ export function CartCheckout({
   email,
   firstName,
   lastName,
+  ageConfirmed,
+  researchUse,
 }: {
   items: CartLineInput[];
   email: string;
   firstName: string;
   lastName: string;
+  ageConfirmed: boolean;
+  researchUse: boolean;
 }) {
   const router = useRouter();
   const sessionIdRef = useRef<string | null>(null);
 
   const fetchClientSecret = useCallback(async () => {
-    const secret = await startCartCheckoutSession({ items, email, firstName, lastName });
+    const secret = await startCartCheckoutSession({
+      items,
+      email,
+      firstName,
+      lastName,
+      ageConfirmed,
+      researchUse,
+    });
     sessionIdRef.current = sessionIdFromClientSecret(secret);
     return secret;
-  }, [items, email, firstName, lastName]);
+  }, [items, email, firstName, lastName, ageConfirmed, researchUse]);
 
   const onComplete = useCallback(() => {
     const sessionId = sessionIdRef.current;

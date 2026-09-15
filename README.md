@@ -1,6 +1,6 @@
 # Redline Labs storefront
 
-Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and a demo checkout.
+Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and Stripe checkout.
 
 ## Run locally
 
@@ -14,11 +14,19 @@ Open [http://localhost:3000](http://localhost:3000).
 ## What’s included
 
 - Home, shop (search / category / sort), product pages with MG/IU options
-- Persistent cart (localStorage), drawer, cart page, checkout form
+- Persistent cart (localStorage), drawer, cart page, checkout form, Stripe Embedded Checkout
 - About, contact, FAQ, shipping, refund, privacy, and terms pages
 - Research-use-only notices throughout
 
-Checkout is a front-end demo only — no payment processor is connected.
+## Stripe setup
+
+Create a local `.env.local` from `env.example` and set:
+
+- `STRIPE_SECRET_KEY`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SITE_URL` (recommended for local development and previews)
+
+The checkout page creates Stripe Checkout Sessions server-side, recalculates prices from the catalogue, and embeds card collection on-page.
 
 ## Stack
 

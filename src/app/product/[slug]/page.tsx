@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
-import Checkout from "@/components/Checkout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
 import { ProductCard } from "@/components/ProductCard";
@@ -60,14 +59,6 @@ export default async function ProductPage({ params }: Props) {
             {product.name}
           </h1>
           <AddToCart product={product} />
-          {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
-            <div className="mt-8">
-              <p className="mb-3 text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">
-                Pay now
-              </p>
-              <Checkout productId={product.slug} />
-            </div>
-          )}
           <p className="mt-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
             SKU {product.sku || "not listed"} · Lot number not published
           </p>

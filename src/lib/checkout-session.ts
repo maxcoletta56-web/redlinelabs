@@ -1,4 +1,5 @@
 import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
+import { getSiteUrl } from "@/lib/site-url";
 import { stripe, stripeConfigured } from "@/lib/stripe";
 
 export async function createEmbeddedCheckoutSession(input: {
@@ -6,6 +7,8 @@ export async function createEmbeddedCheckoutSession(input: {
   email?: string;
   firstName?: string;
   lastName?: string;
+  ageConfirmed?: boolean;
+  researchUse?: boolean;
 }) {
   if (!stripeConfigured()) {
     throw new Error("Stripe is not configured");
@@ -14,10 +17,13 @@ export async function createEmbeddedCheckoutSession(input: {
   const lines = resolveCartLines(input.items);
   const name = [input.firstName, input.lastName].filter(Boolean).join(" ").trim();
   const email = input.email?.trim();
+  const siteUrl = await getSiteUrl();
 
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded_page",
     redirect_on_completion: "never",
+    return_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    payment_method_types: ["card"],
     line_items: lines.map((line) => ({
       price_data: {
         currency: "aud",
@@ -39,8 +45,8 @@ export async function createEmbeddedCheckoutSession(input: {
     shipping_address_collection: { allowed_countries: ["AU"] },
     metadata: {
       customer_name: name,
-      age_confirmed: "true",
-      research_use: "true",
+      ...(input.ageConfirmed ? { age_confirmed: "true" } : {}),
+      ...(input.researchUse ? { research_use: "true" } : {}),
     },
   });
 

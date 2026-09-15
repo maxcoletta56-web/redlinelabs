@@ -18,6 +18,8 @@ export default function CheckoutPage() {
     firstName: "",
     lastName: "",
     email: "",
+    ageConfirmed: false,
+    researchUse: false,
   });
 
   useEffect(() => {
@@ -79,6 +81,8 @@ export default function CheckoutPage() {
                 firstName: String(form.get("firstName") ?? ""),
                 lastName: String(form.get("lastName") ?? ""),
                 email: String(form.get("email") ?? ""),
+                ageConfirmed: true,
+                researchUse: true,
               });
               setReady(true);
             }}
@@ -130,6 +134,8 @@ export default function CheckoutPage() {
                 email={customer.email}
                 firstName={customer.firstName}
                 lastName={customer.lastName}
+                ageConfirmed={customer.ageConfirmed}
+                researchUse={customer.researchUse}
               />
             </div>
             <button type="button" className="btn-outline" onClick={() => setReady(false)}>

@@ -15,10 +15,10 @@ export default function ShippingPolicyPage() {
       </p>
       <h2>Shipping Timeframes</h2>
       <p>
-        Delivery times vary depending on the destination. This demonstration
-        checkout does not offer shipping-method selection. Estimated delivery
-        dates, when given by support or a carrier, are for reference only and
-        are not guaranteed.
+        Delivery times vary depending on the destination. Checkout does not
+        offer shipping-method selection. Estimated delivery dates, when given
+        by support or a carrier, are for reference only and are not
+        guaranteed.
       </p>
       <h2>Shipping Confirmation</h2>
       <p>
