@@ -103,12 +103,12 @@ export default function CheckoutPage() {
               research purposes and am not purchasing it for human consumption.
             </label>
             {error && (
-              <p className="text-sm leading-6 text-[#e8b4b4]" role="alert">
+              <p className="text-sm leading-6 text-[#e11d2e]" role="alert">
                 {error}
               </p>
             )}
             {configured === false && (
-              <p className="text-sm leading-6 text-[#e8b4b4]" role="status">
+              <p className="text-sm leading-6 text-[#e11d2e]" role="status">
                 Stripe is not configured yet. Add{" "}
                 <code className="text-[#e11d2e]">STRIPE_SECRET_KEY</code> and{" "}
                 <code className="text-[#e11d2e]">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
