@@ -1,6 +1,6 @@
 # Redline Labs storefront
 
-Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and a demo checkout.
+Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and Stripe Checkout.
 
 ## Run locally
 
@@ -18,7 +18,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - About, contact, FAQ, shipping, refund, privacy, and terms pages
 - Research-use-only notices throughout
 
-Checkout is a front-end demo only — no payment processor is connected.
+Checkout charges through Stripe. Production uses live keys (`sk_live_` / `pk_live_`); test keys are ignored on the live site. Contact and newsletter forms are still front-end demonstrations.
 
 ## Stack
 
