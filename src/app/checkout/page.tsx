@@ -13,6 +13,7 @@ export default function CheckoutPage() {
   const { items, subtotal } = useCart();
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState({
     firstName: "",
@@ -23,8 +24,18 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => setConfigured(Boolean(data.configured)))
-      .catch(() => setConfigured(false));
+      .then((data: { configured?: boolean; publishableKey?: string | null }) => {
+        const key =
+          typeof data.publishableKey === "string" && data.publishableKey.startsWith("pk_")
+            ? data.publishableKey
+            : null;
+        setPublishableKey(key);
+        setConfigured(Boolean(data.configured) && Boolean(key));
+      })
+      .catch(() => {
+        setConfigured(false);
+        setPublishableKey(null);
+      });
   }, []);
 
   const cartItems = useMemo(
@@ -109,10 +120,12 @@ export default function CheckoutPage() {
             )}
             {configured === false && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
-                Stripe is not configured yet. Add{" "}
-                <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code> and{" "}
+                Stripe live checkout is not configured. Add{" "}
+                <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code>{" "}
+                (<code className="text-[#d4af37]">sk_live_...</code>) and{" "}
                 <code className="text-[#d4af37]">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
-                to the environment, then reload.
+                (<code className="text-[#d4af37]">pk_live_...</code>). Test keys
+                are ignored on the live site.
               </p>
             )}
             <button type="submit" className="btn" disabled={configured !== true}>
@@ -125,12 +138,19 @@ export default function CheckoutPage() {
               Paying as {customer.email}. Card details are handled by Stripe.
             </p>
             <div className="surface overflow-hidden p-3">
-              <CartCheckout
-                items={cartItems}
-                email={customer.email}
-                firstName={customer.firstName}
-                lastName={customer.lastName}
-              />
+              {publishableKey ? (
+                <CartCheckout
+                  items={cartItems}
+                  email={customer.email}
+                  firstName={customer.firstName}
+                  lastName={customer.lastName}
+                  publishableKey={publishableKey}
+                />
+              ) : (
+                <p className="text-sm leading-6 text-[#d4af37]" role="status">
+                  Stripe checkout is not available.
+                </p>
+              )}
             </div>
             <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details

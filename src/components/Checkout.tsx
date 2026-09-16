@@ -1,21 +1,22 @@
-'use client'
+"use client";
 
-import { useCallback } from 'react'
-import {
-  EmbeddedCheckout,
-  EmbeddedCheckoutProvider
-} from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
-import { startCheckoutSession } from '@/app/actions/stripe'
+import { useCallback, useMemo } from "react";
+import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import { startCheckoutSession } from "@/app/actions/stripe";
 
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null
-
-export default function Checkout({ productId }: { productId: string }) {
+export default function Checkout({
+  productId,
+  publishableKey,
+}: {
+  productId: string;
+  publishableKey: string;
+}) {
+  const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
   const startCheckoutSessionForProduct = useCallback(
     () => startCheckoutSession(productId),
-    [productId]
-  )
+    [productId],
+  );
 
   return (
     <div id="checkout">
@@ -26,5 +27,5 @@ export default function Checkout({ productId }: { productId: string }) {
         <EmbeddedCheckout />
       </EmbeddedCheckoutProvider>
     </div>
-  )
+  );
 }

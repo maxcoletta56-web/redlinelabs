@@ -1,14 +1,11 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { startCartCheckoutSession } from "@/app/actions/stripe";
 import type { CartLineInput } from "@/lib/order";
-
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 function sessionIdFromClientSecret(secret: string) {
   const marker = "_secret_";
@@ -21,14 +18,17 @@ export function CartCheckout({
   email,
   firstName,
   lastName,
+  publishableKey,
 }: {
   items: CartLineInput[];
   email: string;
   firstName: string;
   lastName: string;
+  publishableKey: string;
 }) {
   const router = useRouter();
   const sessionIdRef = useRef<string | null>(null);
+  const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   const fetchClientSecret = useCallback(async () => {
     const secret = await startCartCheckoutSession({ items, email, firstName, lastName });

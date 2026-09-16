@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
 import { createEmbeddedCheckoutSession } from "@/lib/checkout-session";
 import { type CartLineInput } from "@/lib/order";
-import { stripeConfigured } from "@/lib/stripe";
+import { stripeResolved } from "@/lib/stripe";
 
 export async function GET() {
-  return NextResponse.json({ configured: stripeConfigured() });
+  const resolved = stripeResolved();
+  return NextResponse.json({
+    configured: Boolean(resolved),
+    mode: resolved?.mode ?? null,
+    publishableKey: resolved?.publishable ?? null,
+  });
 }
 
 export async function POST(request: Request) {
-  if (!stripeConfigured()) {
+  const resolved = stripeResolved();
+  if (!resolved) {
     return NextResponse.json(
-      { error: "Stripe is not configured. Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY." },
+      {
+        error:
+          "Stripe is not configured with matching live keys. Add STRIPE_SECRET_KEY (sk_live_...) and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (pk_live_...).",
+      },
       { status: 503 },
     );
   }
@@ -48,7 +57,7 @@ export async function POST(request: Request) {
       firstName: body.firstName,
       lastName: body.lastName,
     });
-    return NextResponse.json({ clientSecret });
+    return NextResponse.json({ clientSecret, mode: resolved.mode });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Stripe checkout failed";
     return NextResponse.json({ error: message }, { status: 502 });

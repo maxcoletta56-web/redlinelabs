@@ -8,6 +8,7 @@ import { CoaSection } from "@/components/CoaSection";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { getProduct, products, relatedProducts } from "@/lib/products";
+import { stripeResolved } from "@/lib/stripe";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -30,6 +31,7 @@ export default async function ProductPage({ params }: Props) {
   const product = getProduct(slug);
   if (!product) notFound();
   const related = relatedProducts(product);
+  const publishableKey = stripeResolved()?.publishable;
 
   return (
     <div className="wrap py-12">
@@ -60,12 +62,12 @@ export default async function ProductPage({ params }: Props) {
             {product.name}
           </h1>
           <AddToCart product={product} />
-          {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
+          {publishableKey && (
             <div className="mt-8">
               <p className="mb-3 text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">
                 Pay now
               </p>
-              <Checkout productId={product.slug} />
+              <Checkout productId={product.slug} publishableKey={publishableKey} />
             </div>
           )}
           <p className="mt-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
