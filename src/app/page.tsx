@@ -18,7 +18,7 @@ import {
   productsBySlugs,
 } from "@/lib/products";
 
-const heroSlugs = ["ghk-cu", "tb-500", "bpc-157"] as const;
+const heroSlugs = ["ghk-cu", "bpc-157", "retatrutide"] as const;
 
 const steps = [
   {
@@ -53,7 +53,7 @@ const categoryCopy: Record<string, string> = {
 export default function Home() {
   const featured = featuredProducts().slice(0, 3);
   const hero = productsBySlugs([...heroSlugs]);
-  const activeHero = getProduct("tb-500") ?? hero[0];
+  const activeHero = getProduct("bpc-157") ?? hero[0];
   const shopCategories = categories.filter((c) => c !== "All").slice(0, 6);
   const ticker = [...products.map((p) => p.name), ...products.map((p) => p.name)];
 

@@ -65,7 +65,7 @@ export function Header() {
                 </span>
               )}
             </button>
-            <Link href="/shop" className="btn ml-2 hidden h-10 px-5 py-0 text-[11px] lg:inline-flex">
+            <Link href="/shop" className="btn ml-2 h-10 px-5 py-0 text-[11px] max-lg:!hidden lg:!inline-flex">
               Shop
             </Link>
             <button
