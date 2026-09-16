@@ -26,9 +26,9 @@ export function Header() {
         Research use only — not for human or animal consumption
       </div>
       <div className="border-b border-[#ececef] bg-white">
-        <div className="wrap flex h-[68px] items-center justify-between gap-4">
+        <div className="wrap grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-4">
           <BrandMark className="text-[22px] sm:text-[26px]" />
-          <nav className="hidden items-center gap-6 text-[14px] font-medium text-[#111] lg:flex">
+          <nav className="hidden items-center justify-center gap-7 text-[14px] font-medium text-[#111] lg:flex">
             {links.map((link) => {
               const active =
                 link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -43,7 +43,7 @@ export function Header() {
               );
             })}
           </nav>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-end gap-1">
             <button
               type="button"
               className="flex h-10 w-10 items-center justify-center text-[#111]"
@@ -65,6 +65,9 @@ export function Header() {
                 </span>
               )}
             </button>
+            <Link href="/shop" className="btn ml-2 hidden h-10 px-5 py-0 text-[11px] lg:inline-flex">
+              Shop
+            </Link>
             <button
               type="button"
               className="flex h-10 w-10 items-center justify-center text-[#111] lg:hidden"
@@ -107,6 +110,13 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/shop"
+              onClick={() => setOpen(false)}
+              className="btn mt-2 mb-3 w-full"
+            >
+              Shop catalogue
+            </Link>
           </div>
         )}
       </div>

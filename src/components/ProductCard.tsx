@@ -10,9 +10,9 @@ export function ProductCard({ product }: { product: Product }) {
   const category = product.categories[0];
 
   return (
-    <article className="surface group flex h-full flex-col p-4">
+    <article className="surface group flex h-full flex-col p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
       <Link href={`/product/${product.slug}`} className="block">
-        <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-[#f6f6f7]">
+        <div className="relative mb-5 aspect-square overflow-hidden rounded-xl bg-[#f6f6f7]">
           <Image
             src={product.image}
             alt={product.name}
@@ -28,27 +28,27 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         {category && (
-          <p className="mb-2 text-[11px] font-semibold tracking-[0.12em] text-[#e11d2e] uppercase">
+          <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[#e11d2e] uppercase">
             {category}
           </p>
         )}
-        <h3 className="mb-1 text-[18px] leading-6 font-semibold tracking-[-0.02em] group-hover:text-[#e11d2e]">
+        <h3 className="mb-1 text-[20px] leading-6 font-semibold tracking-[-0.03em] group-hover:text-[#e11d2e]">
           {displayName(product)}
         </h3>
-        <p className="mb-1 text-[12px] tracking-[0.04em] text-[#71717a] uppercase">
+        <p className="mb-3 text-[12px] tracking-[0.04em] text-[#71717a] uppercase">
           Research use only · COA on request
         </p>
-        <p className="mb-4 text-[22px] font-bold tracking-[-0.03em]">
+        <p className="mb-5 text-[22px] font-bold tracking-[-0.03em]">
           {hasRange ? priceLabel(product) : formatPrice(product.minPrice)}
         </p>
       </Link>
       <div className="mt-auto flex gap-2">
-        <Link href={`/product/${product.slug}`} className="btn-dark flex-1 text-[11px]">
-          View →
-        </Link>
-        <div className="hidden flex-1 sm:block">
+        <div className="flex-1">
           <QuickAdd product={product} />
         </div>
+        <Link href={`/product/${product.slug}`} className="btn-ghost hidden flex-1 sm:inline-flex">
+          View
+        </Link>
       </div>
     </article>
   );

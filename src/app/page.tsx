@@ -77,7 +77,7 @@ export default function Home() {
             </p>
             <h1 className="mb-6 max-w-xl text-[3rem] leading-[0.95] font-extrabold tracking-[-0.05em] sm:text-6xl lg:text-[4.25rem]">
               Research-Grade
-              <span className="mt-1 block text-[#e11d2e]">Peptides &amp; Compounds</span>
+              <span className="mt-1 block text-[#e11d2e]">Peptides & Compounds</span>
             </h1>
             <p className="mb-8 max-w-lg text-[16px] leading-7 text-[#d4d4d8]">
               Redline Labs lists laboratory research chemicals for purchase in
@@ -86,14 +86,14 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Link href="/shop" className="btn">
-                Explore research peptides →
+                Explore research peptides
               </Link>
               <Link href="/about" className="btn-outline">
                 About / documentation
               </Link>
             </div>
           </div>
-          <div className="relative hidden min-h-[380px] lg:block">
+          <div className="relative mx-auto hidden min-h-[340px] w-full max-w-[520px] md:block lg:min-h-[380px] lg:max-w-none">
             {hero.map((product, i) => (
               <div
                 key={product.slug}
@@ -230,7 +230,7 @@ export default function Home() {
               const extra =
                 products.filter((p) => p.categories.includes(cat)).length - names.length;
               return (
-                <article key={cat} className="surface flex flex-col p-6">
+                <article key={cat} className="surface flex flex-col p-6 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-[20px] font-semibold tracking-[-0.03em]">{cat.split(" / ")[0]}</h3>
@@ -238,7 +238,7 @@ export default function Home() {
                         {cat}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[#f4f4f5] px-2.5 py-1 text-[12px] text-[#71717a]">
+                    <span className="rounded-full bg-[#f4f4f5] px-3 py-1 text-[13px] font-semibold tracking-[0.08em] text-[#71717a]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   </div>
@@ -345,8 +345,8 @@ export default function Home() {
           <div className="overflow-hidden rounded-[28px] bg-[#070607] px-6 py-16 text-center text-white sm:px-12">
             <p className="kicker mb-3">Get started</p>
             <h2 className="mx-auto mb-4 max-w-2xl text-[2.2rem] leading-tight font-bold tracking-[-0.04em] sm:text-5xl">
-              Choose a compound.{" "}
-              <span className="text-[#e11d2e]">We&apos;ll handle dispatch.</span>
+              Explore the Redline{" "}
+              <span className="text-[#e11d2e]">research catalogue.</span>
             </h2>
             <p className="mx-auto mb-8 max-w-lg text-[15px] leading-7 text-[#d4d4d8]">
               Browse the catalogue, or read how documentation is handled on this

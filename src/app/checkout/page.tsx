@@ -132,7 +132,7 @@ export default function CheckoutPage() {
                 lastName={customer.lastName}
               />
             </div>
-            <button type="button" className="btn-outline" onClick={() => setReady(false)}>
+            <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
             </button>
           </div>
