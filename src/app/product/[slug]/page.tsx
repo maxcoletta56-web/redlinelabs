@@ -84,7 +84,7 @@ export default async function ProductPage({ params }: Props) {
       <section className="mt-20 border-t border-[rgba(212,175,55,0.16)] pt-14">
         <p className="kicker mb-3">Catalogue</p>
         <h2 className="section-title mb-10">Related listings</h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {related.map((item) => (
             <ProductCard key={item.slug} product={item} />
           ))}
