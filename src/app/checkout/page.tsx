@@ -93,22 +93,22 @@ export default function CheckoutPage() {
               shipping address inside the embedded checkout. After a card payment
               it does not redirect away.
             </p>
-            <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
+            <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
               I confirm I am 18 years of age or older.
             </label>
-            <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
+            <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="researchUse" required className="mt-1" />
               I confirm I am purchasing this product for legitimate laboratory
               research purposes and am not purchasing it for human consumption.
             </label>
             {error && (
-              <p className="text-sm leading-6 text-[#e8b4b4]" role="alert">
+              <p className="text-sm leading-6 text-[#d4af37]" role="alert">
                 {error}
               </p>
             )}
             {configured === false && (
-              <p className="text-sm leading-6 text-[#e8b4b4]" role="status">
+              <p className="text-sm leading-6 text-[#d4af37]" role="status">
                 Stripe is not configured yet. Add{" "}
                 <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code> and{" "}
                 <code className="text-[#d4af37]">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
@@ -132,7 +132,7 @@ export default function CheckoutPage() {
                 lastName={customer.lastName}
               />
             </div>
-            <button type="button" className="btn-outline" onClick={() => setReady(false)}>
+            <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
             </button>
           </div>

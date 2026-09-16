@@ -6,7 +6,7 @@ export function CoaSection({ sku }: { sku: string }) {
       <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
         Certificate of Analysis
       </h2>
-      <p className="text-[15px] leading-7 text-[#cfc8b8]">
+      <p className="text-[15px] leading-7 text-[#8f8c84]">
         A batch-specific Certificate of Analysis is not published on this page.
         COA available on request: email{" "}
         <a href="mailto:redlinelabsltd@pm.me" className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3">

@@ -75,7 +75,7 @@ export default async function ProductPage({ params }: Props) {
             <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
               Description
             </h2>
-            <p className="text-[15px] leading-8 text-[#cfc8b8]">{product.description}</p>
+            <p className="text-[15px] leading-8 text-[#8f8c84]">{product.description}</p>
           </div>
           <CoaSection sku={product.sku} />
         </div>

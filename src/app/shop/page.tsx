@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
 import { ProductCard } from "@/components/ProductCard";
@@ -17,7 +18,8 @@ const sorts = [
 type Sort = (typeof sorts)[number]["value"];
 
 export default function ShopPage() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [category, setCategory] = useState<(typeof categories)[number]>("All");
   const [sort, setSort] = useState<Sort>("catalogue");
 
@@ -87,10 +89,10 @@ export default function ShopPage() {
             type="button"
             onClick={() => setCategory(cat)}
             aria-pressed={category === cat}
-            className={`border px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] uppercase ${
+            className={`rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] uppercase ${
               category === cat
                 ? "border-[#d4af37] bg-[#d4af37] text-black"
-                : "border-white/12 text-[#cfc8b8] hover:border-[#d4af37] hover:text-[#d4af37]"
+                : "border-[rgba(212,175,55,0.16)] bg-[#0b0b0b] text-[#cfc8b8] hover:border-[#d4af37] hover:text-[#d4af37]"
             }`}
           >
             {cat}

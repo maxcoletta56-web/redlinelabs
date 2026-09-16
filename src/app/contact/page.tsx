@@ -37,7 +37,7 @@ export default function ContactPage() {
               <item.icon className="h-5 w-5" />
             </div>
             <h2 className="mb-1 text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">{item.title}</h2>
-            <p className="text-sm text-[#cfc8b8]">{item.text}</p>
+            <p className="text-sm text-[#8f8c84]">{item.text}</p>
           </div>
         ))}
       </div>
@@ -54,7 +54,7 @@ export default function ContactPage() {
           . The form below is a demonstration and does not send a message.
         </p>
         {sent ? (
-          <p className="surface p-8 text-sm leading-7 text-[#cfc8b8]">
+          <p className="surface p-8 text-sm leading-7 text-[#8f8c84]">
             This contact form is a front-end demonstration. No message was sent.
             Email{" "}
             <a

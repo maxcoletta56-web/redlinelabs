@@ -1,14 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { BrandMark } from "@/components/BrandMark";
 import { useCart } from "@/lib/cart";
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/shop", label: "Catalogue" },
+  { href: "/shop", label: "Shop" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
@@ -17,6 +17,7 @@ const links = [
 export function Header() {
   const { count, setDrawerOpen } = useCart();
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
 
   return (
@@ -25,23 +26,12 @@ export function Header() {
         For laboratory research use only. Not for human or veterinary consumption.
       </div>
       <div className="border-b border-[rgba(212,175,55,0.16)] bg-[#050505]/92 backdrop-blur-md">
-        <div className="wrap flex h-16 items-center justify-between gap-6">
-          <Link href="/" className="shrink-0">
-            <Image
-              src="/brand/logo.png"
-              alt="Redline Labs"
-              width={170}
-              height={44}
-              className="h-8 w-auto"
-              priority
-            />
-          </Link>
-          <nav className="hidden items-center gap-8 text-[13px] font-medium tracking-[0.04em] text-[#cfc8b8] lg:flex">
+        <div className="wrap grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-4">
+          <BrandMark priority />
+          <nav className="hidden items-center justify-center gap-7 text-[13px] font-medium tracking-[0.04em] text-[#cfc8b8] lg:flex">
             {links.map((link) => {
               const active =
-                link.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(link.href);
+                link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
               return (
                 <Link
                   key={link.href}
@@ -58,7 +48,15 @@ export function Header() {
               );
             })}
           </nav>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-end gap-1">
+            <button
+              type="button"
+              className="flex h-10 w-10 items-center justify-center text-[#f3f1ea] hover:text-[#d4af37]"
+              aria-label="Search catalogue"
+              onClick={() => setSearchOpen((v) => !v)}
+            >
+              <SearchIcon />
+            </button>
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
@@ -72,6 +70,12 @@ export function Header() {
                 </span>
               )}
             </button>
+            <Link
+              href="/shop"
+              className="btn ml-2 h-10 px-5 py-0 text-[11px] max-lg:!hidden lg:!inline-flex"
+            >
+              Shop
+            </Link>
             <button
               type="button"
               className="flex h-10 w-10 items-center justify-center text-white lg:hidden"
@@ -84,6 +88,21 @@ export function Header() {
             </button>
           </div>
         </div>
+        {searchOpen && (
+          <form action="/shop" className="wrap pb-4">
+            <label htmlFor="header-search" className="sr-only">
+              Search catalogue
+            </label>
+            <input
+              id="header-search"
+              name="q"
+              type="search"
+              placeholder="Search name, SKU, or category"
+              className="field"
+              autoFocus
+            />
+          </form>
+        )}
         {open && (
           <div
             id="mobile-nav"
@@ -99,10 +118,26 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/shop"
+              onClick={() => setOpen(false)}
+              className="btn mt-2 mb-3 w-full"
+            >
+              Shop catalogue
+            </Link>
           </div>
         )}
       </div>
     </header>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }
 

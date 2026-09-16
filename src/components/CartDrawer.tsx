@@ -51,7 +51,7 @@ export function CartDrawer() {
           ) : (
             <ul className="space-y-5">
               {items.map((item) => (
-                <li key={itemKey(item)} className="flex gap-3 border-b border-white/8 pb-5">
+                <li key={itemKey(item)} className="flex gap-3 border-b border-[rgba(212,175,55,0.16)] pb-5">
                   <Image
                     src={item.image}
                     alt={item.name}
@@ -82,7 +82,7 @@ export function CartDrawer() {
                       <button
                         type="button"
                         onClick={() => removeItem(itemKey(item))}
-                        className="text-xs text-[#8f8c84] hover:text-white"
+                        className="text-xs text-[#8f8c84] hover:text-[#d4af37]"
                       >
                         Remove
                       </button>
@@ -109,7 +109,7 @@ export function CartDrawer() {
             <Link
               href="/cart"
               onClick={() => setDrawerOpen(false)}
-              className="btn-outline w-full"
+              className="btn-ghost w-full"
             >
               View cart
             </Link>

@@ -12,7 +12,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
         {items.map((item, i) => (
           <li key={`${item.label}-${i}`} className="flex items-center">
             {i > 0 && (
-              <span className="mx-2 text-white/20" aria-hidden>
+              <span className="mx-2 text-[#cfc8b8]" aria-hidden>
                 /
               </span>
             )}

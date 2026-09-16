@@ -68,10 +68,22 @@ a {
   top: 1rem;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .wrap {
   margin-inline: auto;
   width: 100%;
-  max-width: 1120px;
+  max-width: 1240px;
   padding-inline: 1.25rem;
 }
 
@@ -87,6 +99,7 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   background: var(--gold);
   color: #111;
   padding: 12px 20px;
@@ -106,6 +119,7 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   border: 1px solid var(--gold);
   color: var(--gold);
   padding: 11px 20px;
@@ -120,6 +134,28 @@ a {
 
 .btn-outline:hover {
   background: rgba(212, 175, 55, 0.1);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  padding: 11px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  background: transparent;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .field {
@@ -148,10 +184,30 @@ a {
 }
 
 .section-title {
-  font-size: 1.75rem;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
   font-weight: 600;
   letter-spacing: -0.03em;
   color: #fff;
+}
+
+.marquee {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.marquee-track {
+  display: inline-flex;
+  gap: 1.75rem;
+  animation: marquee 42s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 input,

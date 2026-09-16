@@ -14,7 +14,7 @@ type FieldLabelProps = {
 function FieldLabel({ id, label, children }: FieldLabelProps) {
   return (
     <label htmlFor={id} className="block">
-      <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#cfc8b8] uppercase">
+      <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
         {label}
       </span>
       {children}
