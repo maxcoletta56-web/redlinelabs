@@ -279,9 +279,10 @@ export default function Home() {
               <h3 className="mb-3 text-[1.5rem] font-semibold">COAs are not on product pages.</h3>
               <p className="mb-6 text-[15px] leading-7 text-[#cfc8b8]">
                 A Certificate of Analysis is a batch document. On this site, batch
-                COAs are available on request by email. Lot numbers are not
-                currently displayed. Third-party lab names and test methods are
-                not published here.
+                COAs are available on request by email for relevant products.
+                Lot numbers are not currently displayed. Where applicable,
+                selected batches are independently tested through Janoshik
+                Analytical.
               </p>
               <Link href="/about" className="btn">
                 Read the documentation notes →
@@ -292,7 +293,7 @@ export default function Home() {
                 { title: "Request by SKU", text: "Email redlinelabsltd@pm.me with the product name and SKU." },
                 { title: "Not a clinical claim", text: "A COA is not a licence, approval, or use instruction." },
                 { title: "Identity on the vial", text: "Confirm sequence and form against the label you receive." },
-                { title: "Unpublished methods", text: "The issuing lab and test method are not named on this site." },
+                { title: "Selected batches", text: "Where applicable, selected batches are tested through Janoshik Analytical." },
               ].map((item) => (
                 <article key={item.title} className="rounded-2xl border border-white/10 bg-white/5 p-5">
                   <h3 className="mb-2 text-[15px] font-semibold">{item.title}</h3>
