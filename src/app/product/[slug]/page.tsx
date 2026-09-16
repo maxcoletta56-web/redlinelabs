@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
-import Checkout from "@/components/Checkout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { getProduct, products, relatedProducts } from "@/lib/products";
-import { stripeResolved } from "@/lib/stripe";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -31,7 +29,6 @@ export default async function ProductPage({ params }: Props) {
   const product = getProduct(slug);
   if (!product) notFound();
   const related = relatedProducts(product);
-  const publishableKey = stripeResolved()?.publishable;
 
   return (
     <div className="wrap py-12">
@@ -62,14 +59,6 @@ export default async function ProductPage({ params }: Props) {
             {product.name}
           </h1>
           <AddToCart product={product} />
-          {publishableKey && (
-            <div className="mt-8">
-              <p className="mb-3 text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">
-                Pay now
-              </p>
-              <Checkout productId={product.slug} publishableKey={publishableKey} />
-            </div>
-          )}
           <p className="mt-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
             SKU {product.sku || "not listed"} · Lot number not published
           </p>
@@ -83,15 +72,17 @@ export default async function ProductPage({ params }: Props) {
         </div>
       </div>
 
-      <section className="mt-20 border-t border-[rgba(212,175,55,0.16)] pt-14">
-        <p className="kicker mb-3">Catalogue</p>
-        <h2 className="section-title mb-10">Related listings</h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {related.map((item) => (
-            <ProductCard key={item.slug} product={item} />
-          ))}
-        </div>
-      </section>
+      {related.length > 0 && (
+        <section className="mt-20 border-t border-[rgba(212,175,55,0.16)] pt-14">
+          <p className="kicker mb-3">Catalogue</p>
+          <h2 className="section-title mb-10">Related listings</h2>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {related.map((item) => (
+              <ProductCard key={item.slug} product={item} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

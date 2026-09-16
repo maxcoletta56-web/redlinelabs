@@ -53,6 +53,8 @@ export function Header() {
               type="button"
               className="flex h-10 w-10 items-center justify-center text-[#f3f1ea] hover:text-[#d4af37]"
               aria-label="Search catalogue"
+              aria-expanded={searchOpen}
+              aria-controls={searchOpen ? "header-search" : undefined}
               onClick={() => setSearchOpen((v) => !v)}
             >
               <SearchIcon />
@@ -89,7 +91,14 @@ export function Header() {
           </div>
         </div>
         {searchOpen && (
-          <form action="/shop" className="wrap pb-4">
+          <form
+            action="/shop"
+            className="wrap pb-4"
+            onSubmit={() => {
+              setSearchOpen(false);
+              setOpen(false);
+            }}
+          >
             <label htmlFor="header-search" className="sr-only">
               Search catalogue
             </label>

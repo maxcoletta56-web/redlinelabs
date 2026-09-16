@@ -15,8 +15,13 @@ export function CartDrawer() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setDrawerOpen(false);
     };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [drawerOpen, setDrawerOpen]);
 
   if (!drawerOpen) return null;

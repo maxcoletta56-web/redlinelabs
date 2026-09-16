@@ -2,14 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useCart } from "@/lib/cart";
-import { formatPrice, type Product } from "@/lib/products";
-
-function optionLabel(product: Product, option: string) {
-  const unit = product.variantLabel;
-  if (unit === "MG") return `${option} MG`;
-  if (unit === "IU" || unit === "Iu") return `${option} IU`;
-  return unit ? `${option} ${unit}` : option;
-}
+import { formatPrice, optionLabel, type Product } from "@/lib/products";
 
 export function AddToCart({ product }: { product: Product }) {
   const { addItem } = useCart();

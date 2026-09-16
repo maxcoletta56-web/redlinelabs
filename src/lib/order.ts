@@ -1,4 +1,4 @@
-import { displayName, getProduct, type Product, type Variant } from "@/lib/products";
+import { getProduct, optionLabel, type Product, type Variant } from "@/lib/products";
 
 export type CartLineInput = {
   slug: string;
@@ -10,6 +10,7 @@ export type ResolvedLine = {
   slug: string;
   name: string;
   option: string | null;
+  variantLabel: string | null;
   sku: string;
   qty: number;
   unitAmountCents: number;
@@ -52,8 +53,9 @@ export function resolveCartLines(input: CartLineInput[]): ResolvedLine[] {
 
     return {
       slug: product.slug,
-      name: displayName(product),
+      name: product.name,
       option: variant?.option ?? null,
+      variantLabel: product.variantLabel,
       sku: variant?.sku || product.sku,
       qty,
       unitAmountCents: Math.round(dollars * 100),
@@ -63,5 +65,5 @@ export function resolveCartLines(input: CartLineInput[]): ResolvedLine[] {
 
 export function lineLabel(line: ResolvedLine) {
   if (!line.option) return line.name;
-  return `${line.name} (${line.option})`;
+  return `${line.name} (${optionLabel(line, line.option)})`;
 }

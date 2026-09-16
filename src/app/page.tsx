@@ -13,6 +13,7 @@ import { faqs } from "@/lib/faqs";
 import {
   categories,
   featuredProducts,
+  formatPrice,
   getProduct,
   products,
   productsBySlugs,
@@ -51,10 +52,10 @@ const categoryCopy: Record<string, string> = {
 };
 
 export default function Home() {
-  const featured = featuredProducts().slice(0, 3);
+  const featured = featuredProducts();
   const hero = productsBySlugs([...heroSlugs]);
   const activeHero = getProduct("bpc-157") ?? hero[0];
-  const shopCategories = categories.filter((c) => c !== "All").slice(0, 6);
+  const shopCategories = categories.filter((c) => c !== "All");
   const ticker = [...products.map((p) => p.name), ...products.map((p) => p.name)];
 
   return (
@@ -117,7 +118,7 @@ export default function Home() {
             ))}
             {activeHero && (
               <div className="absolute right-0 bottom-0 left-0 rounded-xl border border-white/10 bg-black/70 px-4 py-3 text-[11px] tracking-[0.08em] text-[#cfc8b8] uppercase backdrop-blur-sm">
-                {activeHero.name} · from {activeHero.minPrice.toFixed(0)} AUD · COA on request
+                {activeHero.name} · from {formatPrice(activeHero.minPrice)} · COA on request
               </div>
             )}
           </div>
@@ -198,7 +199,7 @@ export default function Home() {
               the vial label and any documentation you hold.
             </p>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((product) => (
               <ProductCard key={product.slug} product={product} />
             ))}
@@ -254,7 +255,7 @@ export default function Home() {
                     )}
                   </ul>
                   <Link
-                    href="/shop"
+                    href={`/shop?category=${encodeURIComponent(cat)}`}
                     className="mt-auto text-[12px] font-semibold tracking-[0.08em] text-[#d4af37] uppercase"
                   >
                     Browse {cat.split(" ")[0].toLowerCase()} →
