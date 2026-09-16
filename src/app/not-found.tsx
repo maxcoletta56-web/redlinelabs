@@ -8,7 +8,7 @@ export default function NotFound() {
     <div className="wrap max-w-[700px] py-24 text-center">
       <p className="kicker mb-3">404</p>
       <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">Page not found</h1>
-      <p className="mb-8 text-sm leading-7 text-[#5c5c64]">
+      <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         That address is not in this storefront. The catalogue and policy pages
         are linked below.
       </p>

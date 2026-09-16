@@ -10,9 +10,9 @@ export function ProductCard({ product }: { product: Product }) {
   const category = product.categories[0];
 
   return (
-    <article className="surface group flex h-full flex-col p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
+    <article className="surface group flex h-full flex-col p-5 transition duration-200 hover:-translate-y-0.5 hover:border-[#d4af37]/50">
       <Link href={`/product/${product.slug}`} className="block">
-        <div className="relative mb-5 aspect-square overflow-hidden rounded-xl bg-[#f6f6f7]">
+        <div className="relative mb-5 aspect-square overflow-hidden rounded-xl bg-[#0b0b0b]">
           <Image
             src={product.image}
             alt={product.name}
@@ -21,24 +21,24 @@ export function ProductCard({ product }: { product: Product }) {
             className="object-contain p-6 transition duration-300 group-hover:scale-[1.03]"
           />
           {option && (
-            <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[10px] tracking-[0.06em] text-[#3f3f46] uppercase shadow-sm">
+            <span className="absolute right-3 top-3 border border-white/10 bg-black/70 px-2.5 py-1 text-[10px] tracking-[0.06em] text-[#cfc8b8] uppercase">
               {option}
               {unit === "MG" ? " MG" : unit ? ` ${unit}` : ""}
             </span>
           )}
         </div>
         {category && (
-          <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[#e11d2e] uppercase">
+          <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
             {category}
           </p>
         )}
-        <h3 className="mb-1 text-[20px] leading-6 font-semibold tracking-[-0.03em] group-hover:text-[#e11d2e]">
+        <h3 className="mb-1 text-[20px] leading-6 font-semibold tracking-[-0.03em] group-hover:text-[#d4af37]">
           {displayName(product)}
         </h3>
-        <p className="mb-3 text-[12px] tracking-[0.04em] text-[#71717a] uppercase">
+        <p className="mb-3 text-[12px] tracking-[0.04em] text-[#8f8c84] uppercase">
           Research use only · COA on request
         </p>
-        <p className="mb-5 text-[22px] font-bold tracking-[-0.03em]">
+        <p className="mb-5 text-[22px] font-bold tracking-[-0.03em] text-[#d4af37]">
           {hasRange ? priceLabel(product) : formatPrice(product.minPrice)}
         </p>
       </Link>

@@ -8,12 +8,12 @@ export function NewsletterForm() {
 
   if (submitted) {
     return (
-      <p className="mx-auto max-w-md text-sm leading-7 text-[#5c5c64]">
+      <p className="mx-auto max-w-md text-sm leading-7 text-[#8f8c84]">
         This form is a front-end demonstration and does not start a mailing list.
         For catalogue updates, email{" "}
         <a
           href="mailto:redlinelabsltd@pm.me"
-          className="text-[#e11d2e] underline decoration-[#e11d2e]/40 underline-offset-3"
+          className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
         >
           redlinelabsltd@pm.me
         </a>

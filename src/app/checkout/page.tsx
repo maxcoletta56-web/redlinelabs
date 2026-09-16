@@ -42,8 +42,8 @@ export default function CheckoutPage() {
       <div className="wrap max-w-[700px] py-20 text-center">
         <Breadcrumbs items={[{ href: "/", label: "Home" }, { href: "/cart", label: "Cart" }, { label: "Checkout" }]} />
         <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">Checkout</h1>
-        <p className="mb-6 text-sm text-[#5c5c64]">Your cart is empty.</p>
-        <Link href="/shop" className="text-[#e11d2e]">
+        <p className="mb-6 text-sm text-[#8f8c84]">Your cart is empty.</p>
+        <Link href="/shop" className="text-[#d4af37]">
           Return to catalogue
         </Link>
       </div>
@@ -88,30 +88,30 @@ export default function CheckoutPage() {
               <Field id="last-name" label="Last name" name="lastName" required autoComplete="family-name" />
             </div>
             <Field id="email" label="Email" name="email" type="email" required autoComplete="email" />
-            <p className="text-sm leading-6 text-[#5c5c64]">
+            <p className="text-sm leading-6 text-[#8f8c84]">
               Payment stays on this page. Stripe collects the card and Australian
               shipping address inside the embedded checkout. After a card payment
               it does not redirect away.
             </p>
-            <label className="flex items-start gap-3 text-sm leading-6 text-[#5c5c64]">
+            <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
               I confirm I am 18 years of age or older.
             </label>
-            <label className="flex items-start gap-3 text-sm leading-6 text-[#5c5c64]">
+            <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="researchUse" required className="mt-1" />
               I confirm I am purchasing this product for legitimate laboratory
               research purposes and am not purchasing it for human consumption.
             </label>
             {error && (
-              <p className="text-sm leading-6 text-[#e11d2e]" role="alert">
+              <p className="text-sm leading-6 text-[#d4af37]" role="alert">
                 {error}
               </p>
             )}
             {configured === false && (
-              <p className="text-sm leading-6 text-[#e11d2e]" role="status">
+              <p className="text-sm leading-6 text-[#d4af37]" role="status">
                 Stripe is not configured yet. Add{" "}
-                <code className="text-[#e11d2e]">STRIPE_SECRET_KEY</code> and{" "}
-                <code className="text-[#e11d2e]">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
+                <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code> and{" "}
+                <code className="text-[#d4af37]">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
                 to the environment, then reload.
               </p>
             )}
@@ -121,7 +121,7 @@ export default function CheckoutPage() {
           </form>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm leading-6 text-[#5c5c64]">
+            <p className="text-sm leading-6 text-[#8f8c84]">
               Paying as {customer.email}. Card details are handled by Stripe.
             </p>
             <div className="surface overflow-hidden p-3">
@@ -147,18 +147,18 @@ export default function CheckoutPage() {
                 {item.name}
                 {item.option ? ` (${item.option})` : ""} × {item.qty}
               </span>
-              <span className="text-[#e11d2e]">{formatPrice(item.price * item.qty)}</span>
+              <span className="text-[#d4af37]">{formatPrice(item.price * item.qty)}</span>
             </li>
           ))}
         </ul>
-        <div className="flex justify-between border-t border-[#ececef] pt-4">
+        <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
           <span>Subtotal</span>
-          <span className="text-[#e11d2e]">{formatPrice(subtotal)}</span>
+          <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
         </div>
-        <p className="mt-4 text-xs leading-6 text-[#5c5c64]">
+        <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
           Prices charged by Stripe are taken from the catalogue, not from the
           browser cart. See the{" "}
-          <Link href="/shipping-policy" className="text-[#e11d2e]">
+          <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}
           for dispatch notes.

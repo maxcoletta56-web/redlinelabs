@@ -26,7 +26,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       <div className="wrap max-w-[700px] py-20 text-center">
         <p className="kicker mb-3">Checkout</p>
         <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">Payment not confirmed</h1>
-        <p className="mb-8 text-sm leading-7 text-[#5c5c64]">
+        <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
           Stripe could not confirm this checkout session. If you paid, use the
           receipt email or contact support.
         </p>
@@ -48,13 +48,13 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">
         {paid ? "Thank you" : "Payment pending"}
       </h1>
-      <p className="mb-4 text-sm leading-7 text-[#5c5c64]">
+      <p className="mb-4 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? "Stripe accepted this payment. A receipt is sent by Stripe to the email used at checkout."
           : "Stripe has not marked this session as paid yet. Refresh this page or check your email."}
       </p>
       {total && (
-        <p className="mb-8 text-[15px] text-[#e11d2e]">
+        <p className="mb-8 text-[15px] text-[#d4af37]">
           Amount {total} {session.currency?.toUpperCase()}
         </p>
       )}

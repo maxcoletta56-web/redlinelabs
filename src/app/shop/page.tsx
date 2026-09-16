@@ -47,13 +47,13 @@ export default function ShopPage() {
     <div className="wrap py-12">
       <Breadcrumbs items={[{ href: "/", label: "Home" }, { label: "Catalogue" }]} />
       <ResearchDisclaimer className="mb-10" />
-      <div className="mb-10 flex flex-col justify-between gap-6 border-b border-[#ececef] pb-8 lg:flex-row lg:items-end">
+      <div className="mb-10 flex flex-col justify-between gap-6 border-b border-[rgba(212,175,55,0.16)] pb-8 lg:flex-row lg:items-end">
         <div>
           <p className="kicker mb-3">Catalogue</p>
-          <h1 className="text-[2.15rem] font-semibold tracking-[-0.03em] text-[#0b0b0c]">
+          <h1 className="text-[2.15rem] font-semibold tracking-[-0.03em] text-white">
             Research chemicals
           </h1>
-          <p className="mt-3 max-w-xl text-[15px] leading-7 text-[#5c5c64]">
+          <p className="mt-3 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
             Laboratory research chemicals. Confirm identity against vial labels
             and any documentation you hold for the batch.
           </p>
@@ -91,26 +91,26 @@ export default function ShopPage() {
             aria-pressed={category === cat}
             className={`rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] uppercase ${
               category === cat
-                ? "border-[#e11d2e] bg-[#e11d2e] text-white"
-                : "border-[#ececef] bg-white text-[#3f3f46] hover:border-[#e11d2e] hover:text-[#e11d2e]"
+                ? "border-[#d4af37] bg-[#d4af37] text-black"
+                : "border-[rgba(212,175,55,0.16)] bg-[#0b0b0b] text-[#cfc8b8] hover:border-[#d4af37] hover:text-[#d4af37]"
             }`}
           >
             {cat}
           </button>
         ))}
       </div>
-      <p className="mb-8 text-[12px] text-[#5c5c64]" aria-live="polite">
+      <p className="mb-8 text-[12px] text-[#8f8c84]" aria-live="polite">
         {filtered.length} listing{filtered.length === 1 ? "" : "s"}
       </p>
 
       {filtered.length === 0 ? (
         <div className="surface p-12 text-center">
-          <p className="mb-3 text-sm text-[#5c5c64]">
+          <p className="mb-3 text-sm text-[#8f8c84]">
             No listings match this search or category.
           </p>
           <button
             type="button"
-            className="text-[#e11d2e]"
+            className="text-[#d4af37]"
             onClick={() => {
               setQuery("");
               setCategory("All");

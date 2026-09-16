@@ -59,27 +59,27 @@ export default function Home() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-[#070607] text-white">
+      <section className="relative overflow-hidden bg-[#050505] text-white">
         <Image
           src="/brand/hero-lab.jpg"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover opacity-45"
+          className="object-cover opacity-25"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/35" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
         <div className="wrap relative z-10 grid items-center gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
           <div>
-            <p className="mb-5 text-[11px] font-semibold tracking-[0.18em] text-[#e11d2e] uppercase">
+            <p className="mb-5 text-[11px] font-semibold tracking-[0.18em] text-[#d4af37] uppercase">
               — Research catalogue · Australia
             </p>
             <h1 className="mb-6 max-w-xl text-[3rem] leading-[0.95] font-extrabold tracking-[-0.05em] sm:text-6xl lg:text-[4.25rem]">
               Research-Grade
-              <span className="mt-1 block text-[#e11d2e]">Peptides & Compounds</span>
+              <span className="mt-1 block text-[#d4af37]">Peptides & Compounds</span>
             </h1>
-            <p className="mb-8 max-w-lg text-[16px] leading-7 text-[#d4d4d8]">
+            <p className="mb-8 max-w-lg text-[16px] leading-7 text-[#cfc8b8]">
               Redline Labs lists laboratory research chemicals for purchase in
               Australia. Certificates of Analysis are available on request. This
               is not a pharmacy.
@@ -116,7 +116,7 @@ export default function Home() {
               </div>
             ))}
             {activeHero && (
-              <div className="absolute right-0 bottom-0 left-0 rounded-xl border border-white/10 bg-black/70 px-4 py-3 text-[11px] tracking-[0.08em] text-[#d4d4d8] uppercase backdrop-blur-sm">
+              <div className="absolute right-0 bottom-0 left-0 rounded-xl border border-white/10 bg-black/70 px-4 py-3 text-[11px] tracking-[0.08em] text-[#cfc8b8] uppercase backdrop-blur-sm">
                 {activeHero.name} · from {activeHero.minPrice.toFixed(0)} AUD · COA on request
               </div>
             )}
@@ -132,16 +132,16 @@ export default function Home() {
             ].map((item) => (
               <div key={item.label}>
                 <p className="text-[15px] font-semibold tracking-[-0.02em]">{item.label}</p>
-                <p className="text-[11px] tracking-[0.12em] text-[#a1a1aa] uppercase">{item.detail}</p>
+                <p className="text-[11px] tracking-[0.12em] text-[#8f8c84] uppercase">{item.detail}</p>
               </div>
             ))}
           </div>
           <div className="border-t border-white/10 py-3">
-            <div className="marquee text-[12px] tracking-[0.12em] text-[#a1a1aa] uppercase">
+            <div className="marquee text-[12px] tracking-[0.12em] text-[#8f8c84] uppercase">
               <div className="marquee-track">
                 {ticker.map((name, i) => (
                   <span key={`${name}-${i}`}>
-                    <span className="mr-2 text-[#e11d2e]">•</span>
+                    <span className="mr-2 text-[#d4af37]">•</span>
                     {name}
                   </span>
                 ))}
@@ -151,7 +151,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-white">
+      <section className="bg-[#050505]">
         <div className="wrap grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: IconTruck, title: "Australia-wide dispatch", text: "Typical processing within 1–3 business days after payment." },
@@ -160,25 +160,25 @@ export default function Home() {
             { icon: IconPin, title: "Email support", text: "redlinelabsltd@pm.me" },
           ].map((item) => (
             <div key={item.title}>
-              <div className="mb-3 text-[#e11d2e]">
+              <div className="mb-3 text-[#d4af37]">
                 <item.icon className="h-7 w-7" />
               </div>
               <h2 className="mb-1 text-[16px] font-semibold">{item.title}</h2>
-              <p className="text-[14px] leading-6 text-[#5c5c64]">{item.text}</p>
+              <p className="text-[14px] leading-6 text-[#8f8c84]">{item.text}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="bg-[#f6f6f7] py-8">
+      <section className="bg-[#0b0b0b] py-8">
         <div className="wrap">
-          <aside className="flex gap-4 rounded-2xl border border-[#ececef] bg-white p-5" role="note">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e11d2e]/10 text-[#e11d2e]">
+          <aside className="flex gap-4 rounded-2xl border border-[rgba(212,175,55,0.16)] bg-[#0b0b0b] p-5" role="note">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#d4af37]/10 text-[#d4af37]">
               <IconLock className="h-5 w-5" />
             </div>
             <div>
               <p className="font-semibold">Research use only</p>
-              <p className="mt-1 text-[14px] leading-6 text-[#5c5c64]">
+              <p className="mt-1 text-[14px] leading-6 text-[#8f8c84]">
                 All listings are laboratory research chemicals. They are not
                 medicines, not for human or animal consumption, and are not sold
                 for personal use.
@@ -188,12 +188,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-[#f6f6f7] py-16 lg:py-20">
+      <section className="bg-[#0b0b0b] py-16 lg:py-20">
         <div className="wrap">
           <div className="mb-12 text-center">
             <p className="kicker mb-3">Featured</p>
             <h2 className="section-title">Selected research compounds</h2>
-            <p className="mx-auto mt-3 max-w-xl text-[15px] text-[#5c5c64]">
+            <p className="mx-auto mt-3 max-w-xl text-[15px] text-[#8f8c84]">
               A short list from the current catalogue. Confirm identity against
               the vial label and any documentation you hold.
             </p>
@@ -211,12 +211,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-white py-16 lg:py-20">
+      <section className="bg-[#050505] py-16 lg:py-20">
         <div className="wrap">
           <div className="mb-12 text-center">
             <p className="kicker mb-3">Catalogue</p>
             <h2 className="section-title">Research domains in this shop</h2>
-            <p className="mx-auto mt-3 max-w-xl text-[15px] text-[#5c5c64]">
+            <p className="mx-auto mt-3 max-w-xl text-[15px] text-[#8f8c84]">
               Listings are grouped by the categories published on this site. No
               purity standard is claimed here.
             </p>
@@ -230,32 +230,32 @@ export default function Home() {
               const extra =
                 products.filter((p) => p.categories.includes(cat)).length - names.length;
               return (
-                <article key={cat} className="surface flex flex-col p-6 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(0,0,0,0.06)]">
+                <article key={cat} className="surface flex flex-col p-6 transition duration-200 hover:-translate-y-0.5 hover:border-[#d4af37]/50">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-[20px] font-semibold tracking-[-0.03em]">{cat.split(" / ")[0]}</h3>
-                      <p className="mt-1 text-[11px] tracking-[0.12em] text-[#e11d2e] uppercase">
+                      <p className="mt-1 text-[11px] tracking-[0.12em] text-[#d4af37] uppercase">
                         {cat}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[#f4f4f5] px-3 py-1 text-[13px] font-semibold tracking-[0.08em] text-[#71717a]">
+                    <span className="rounded-full border border-[rgba(212,175,55,0.34)] px-3 py-1 text-[13px] font-semibold tracking-[0.08em] text-[#d4af37]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   </div>
-                  <p className="mb-5 text-[14px] leading-6 text-[#5c5c64]">
+                  <p className="mb-5 text-[14px] leading-6 text-[#8f8c84]">
                     {categoryCopy[cat]}
                   </p>
-                  <ul className="mb-5 space-y-1.5 text-[14px] text-[#3f3f46]">
+                  <ul className="mb-5 space-y-1.5 text-[14px] text-[#cfc8b8]">
                     {names.map((name) => (
                       <li key={name}>{name}</li>
                     ))}
                     {extra > 0 && (
-                      <li className="text-[#a1a1aa]">+{extra} more</li>
+                      <li className="text-[#8f8c84]">+{extra} more</li>
                     )}
                   </ul>
                   <Link
                     href="/shop"
-                    className="mt-auto text-[12px] font-semibold tracking-[0.08em] text-[#e11d2e] uppercase"
+                    className="mt-auto text-[12px] font-semibold tracking-[0.08em] text-[#d4af37] uppercase"
                   >
                     Browse {cat.split(" ")[0].toLowerCase()} →
                   </Link>
@@ -266,7 +266,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-[#070607] py-16 text-white lg:py-20">
+      <section className="bg-[#050505] py-16 text-white lg:py-20">
         <div className="wrap">
           <div className="mb-10 text-center">
             <p className="kicker mb-3">Documentation</p>
@@ -277,7 +277,7 @@ export default function Home() {
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <article className="rounded-2xl border border-white/10 bg-white/5 p-8">
               <h3 className="mb-3 text-[1.5rem] font-semibold">COAs are not on product pages.</h3>
-              <p className="mb-6 text-[15px] leading-7 text-[#d4d4d8]">
+              <p className="mb-6 text-[15px] leading-7 text-[#cfc8b8]">
                 A Certificate of Analysis is a batch document. On this site, batch
                 COAs are available on request by email. Lot numbers are not
                 currently displayed. Third-party lab names and test methods are
@@ -296,7 +296,7 @@ export default function Home() {
               ].map((item) => (
                 <article key={item.title} className="rounded-2xl border border-white/10 bg-white/5 p-5">
                   <h3 className="mb-2 text-[15px] font-semibold">{item.title}</h3>
-                  <p className="text-[13px] leading-6 text-[#a1a1aa]">{item.text}</p>
+                  <p className="text-[13px] leading-6 text-[#8f8c84]">{item.text}</p>
                 </article>
               ))}
             </div>
@@ -304,7 +304,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-white py-16 lg:py-20">
+      <section className="bg-[#050505] py-16 lg:py-20">
         <div className="wrap">
           <div className="mb-12 text-center">
             <p className="kicker mb-3">How it works</p>
@@ -313,19 +313,19 @@ export default function Home() {
           <div className="grid gap-8 md:grid-cols-3">
             {steps.map((step) => (
               <article key={step.n}>
-                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-black text-white">
+                <div className="mb-5 flex h-16 w-16 items-center justify-center bg-[#d4af37] text-black">
                   <span className="text-lg font-semibold">{step.n}</span>
                 </div>
-                <p className="mb-2 text-[12px] tracking-[0.14em] text-[#e11d2e]">{step.n}</p>
+                <p className="mb-2 text-[12px] tracking-[0.14em] text-[#d4af37]">{step.n}</p>
                 <h3 className="mb-2 text-[20px] font-semibold">{step.title}</h3>
-                <p className="text-[14px] leading-6 text-[#5c5c64]">{step.text}</p>
+                <p className="text-[14px] leading-6 text-[#8f8c84]">{step.text}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-[#f6f6f7] py-16 lg:py-20">
+      <section className="bg-[#0b0b0b] py-16 lg:py-20">
         <div className="wrap max-w-[760px]">
           <div className="mb-10 text-center">
             <p className="kicker mb-3">FAQ</p>
@@ -333,22 +333,22 @@ export default function Home() {
           </div>
           <FaqList items={faqs} />
           <p className="mt-6 text-center">
-            <Link href="/faq" className="text-[14px] font-medium text-[#e11d2e]">
+            <Link href="/faq" className="text-[14px] font-medium text-[#d4af37]">
               View all frequently asked questions →
             </Link>
           </p>
         </div>
       </section>
 
-      <section className="bg-white py-10">
+      <section className="bg-[#050505] py-10">
         <div className="wrap">
-          <div className="overflow-hidden rounded-[28px] bg-[#070607] px-6 py-16 text-center text-white sm:px-12">
+          <div className="overflow-hidden border border-[rgba(212,175,55,0.16)] bg-[#0b0b0b] px-6 py-16 text-center text-white sm:px-12">
             <p className="kicker mb-3">Get started</p>
             <h2 className="mx-auto mb-4 max-w-2xl text-[2.2rem] leading-tight font-bold tracking-[-0.04em] sm:text-5xl">
               Explore the Redline{" "}
-              <span className="text-[#e11d2e]">research catalogue.</span>
+              <span className="text-[#d4af37]">research catalogue.</span>
             </h2>
-            <p className="mx-auto mb-8 max-w-lg text-[15px] leading-7 text-[#d4d4d8]">
+            <p className="mx-auto mb-8 max-w-lg text-[15px] leading-7 text-[#cfc8b8]">
               Browse the catalogue, or read how documentation is handled on this
               site. Research use only.
             </p>

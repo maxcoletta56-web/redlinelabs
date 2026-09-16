@@ -11,7 +11,7 @@ export const faqs: { q: string; a: ReactNode }[] = [
     a: (
       <>
         This storefront lists Australia-wide dispatch. See the{" "}
-        <Link href="/shipping-policy" className="text-[#e11d2e] underline underline-offset-2">
+        <Link href="/shipping-policy" className="text-[#d4af37] underline underline-offset-2">
           shipping policy
         </Link>{" "}
         for processing notes.
@@ -24,7 +24,7 @@ export const faqs: { q: string; a: ReactNode }[] = [
       <>
         COAs are not currently published on product pages. Request a COA by
         emailing{" "}
-        <a href="mailto:redlinelabsltd@pm.me" className="text-[#e11d2e] underline underline-offset-2">
+        <a href="mailto:redlinelabsltd@pm.me" className="text-[#d4af37] underline underline-offset-2">
           redlinelabsltd@pm.me
         </a>{" "}
         with the product name and SKU.
@@ -46,11 +46,11 @@ export const faqs: { q: string; a: ReactNode }[] = [
     a: (
       <>
         Email{" "}
-        <a href="mailto:redlinelabsltd@pm.me" className="text-[#e11d2e] underline underline-offset-2">
+        <a href="mailto:redlinelabsltd@pm.me" className="text-[#d4af37] underline underline-offset-2">
           redlinelabsltd@pm.me
         </a>{" "}
         or use the{" "}
-        <Link href="/contact" className="text-[#e11d2e] underline underline-offset-2">
+        <Link href="/contact" className="text-[#d4af37] underline underline-offset-2">
           Contact
         </Link>{" "}
         page.

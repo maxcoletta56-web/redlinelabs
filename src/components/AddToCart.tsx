@@ -18,7 +18,7 @@ export function AddToCart({ product }: { product: Product }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-[1.65rem] font-medium tracking-[-0.02em] text-[#e11d2e]">
+      <p className="text-[1.65rem] font-medium tracking-[-0.02em] text-[#d4af37]">
         {formatPrice(price)}
       </p>
       {variants.length > 0 && (

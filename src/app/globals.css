@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --red: #e11d2e;
-  --red-soft: #ff3b4b;
-  --ink: #0b0b0c;
-  --muted: #5c5c64;
-  --bg: #f6f6f7;
-  --card: #ffffff;
-  --line: #ececef;
-  --dark: #070607;
-  --dark-2: #12080a;
+  --gold: #d4af37;
+  --gold-soft: #e6c35c;
+  --bg: #050505;
+  --bg-2: #0b0b0b;
+  --bg-3: #111111;
+  --line: rgba(212, 175, 55, 0.16);
+  --line-strong: rgba(212, 175, 55, 0.34);
+  --text: #f3f1ea;
+  --muted: #8f8c84;
 }
 
 @theme inline {
-  --color-redline: var(--red);
+  --color-gold: var(--gold);
   --color-background: var(--bg);
-  --color-foreground: var(--ink);
+  --color-foreground: var(--text);
   --font-sans: var(--font-inter);
 }
 
@@ -26,7 +26,7 @@
 html,
 body {
   background: var(--bg);
-  color: var(--ink);
+  color: var(--text);
 }
 
 body {
@@ -41,12 +41,12 @@ a {
 }
 
 ::selection {
-  background: rgba(225, 29, 46, 0.18);
-  color: #111;
+  background: rgba(212, 175, 55, 0.28);
+  color: #fff;
 }
 
 :focus-visible {
-  outline: 1px solid var(--red);
+  outline: 1px solid var(--gold);
   outline-offset: 3px;
 }
 
@@ -55,8 +55,8 @@ a {
   left: 1rem;
   top: -3rem;
   z-index: 80;
-  background: var(--red);
-  color: #fff;
+  background: var(--gold);
+  color: #111;
   padding: 0.6rem 0.9rem;
   font-size: 12px;
   font-weight: 600;
@@ -88,7 +88,7 @@ a {
 }
 
 .kicker {
-  color: var(--red);
+  color: var(--gold);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.16em;
@@ -100,38 +100,19 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  background: var(--red);
-  color: #fff;
-  padding: 13px 22px;
+  background: var(--gold);
+  color: #111;
+  padding: 12px 20px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  border-radius: 999px;
-  transition: background 0.2s ease;
+  border-radius: 2px;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .btn:hover {
-  background: var(--red-soft);
-}
-
-.btn-dark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  background: #111;
-  color: #fff;
-  padding: 13px 22px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border-radius: 999px;
-}
-
-.btn-dark:hover {
-  background: #2a2a2a;
+  background: var(--gold-soft);
 }
 
 .btn-outline {
@@ -139,20 +120,20 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #fff;
-  padding: 12px 22px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 11px 20px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  transition: background 0.2s ease;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .btn-outline:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(212, 175, 55, 0.1);
 }
 
 .btn-ghost {
@@ -160,48 +141,53 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  border: 1px solid var(--line);
-  color: var(--ink);
-  padding: 12px 22px;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  padding: 11px 20px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  border-radius: 999px;
-  background: #fff;
+  border-radius: 2px;
+  background: transparent;
+  transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 .btn-ghost:hover {
-  border-color: #d4d4d8;
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .field {
   width: 100%;
-  border: 1px solid var(--line);
-  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-2);
   padding: 12px 14px;
   font-size: 14px;
-  color: var(--ink);
-  border-radius: 10px;
+  color: var(--text);
+  border-radius: 2px;
   outline: none;
   transition: border-color 0.15s ease;
 }
 
 .field:focus {
-  border-color: var(--red);
+  border-color: var(--gold);
 }
 
 .surface {
-  background: var(--card);
+  background: var(--bg-2);
   border: 1px solid var(--line);
-  border-radius: 16px;
+}
+
+.pill {
+  border-radius: 999px;
 }
 
 .section-title {
   font-size: clamp(1.75rem, 3vw, 2.35rem);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #fff;
 }
 
 .marquee {

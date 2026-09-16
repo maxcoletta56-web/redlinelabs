@@ -22,13 +22,13 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40">
-      <div className="bg-black py-2 text-center text-[11px] font-medium tracking-[0.08em] text-white uppercase">
-        Research use only — not for human or animal consumption
+      <div className="bg-[#d4af37] py-2 text-center text-[11px] font-medium tracking-[0.06em] text-black">
+        For laboratory research use only. Not for human or veterinary consumption.
       </div>
-      <div className="border-b border-[#ececef] bg-white">
+      <div className="border-b border-[rgba(212,175,55,0.16)] bg-[#050505]/92 backdrop-blur-md">
         <div className="wrap grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-4">
-          <BrandMark className="text-[22px] sm:text-[26px]" />
-          <nav className="hidden items-center justify-center gap-7 text-[14px] font-medium text-[#111] lg:flex">
+          <BrandMark priority />
+          <nav className="hidden items-center justify-center gap-7 text-[13px] font-medium tracking-[0.04em] text-[#cfc8b8] lg:flex">
             {links.map((link) => {
               const active =
                 link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -36,9 +36,14 @@ export function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={active ? "text-[#e11d2e]" : "hover:text-[#e11d2e]"}
+                  className={`relative py-1 transition-colors ${
+                    active ? "text-[#d4af37]" : "hover:text-white"
+                  }`}
                 >
                   {link.label}
+                  {active && (
+                    <span className="absolute inset-x-0 -bottom-1 h-px bg-[#d4af37]" />
+                  )}
                 </Link>
               );
             })}
@@ -46,7 +51,7 @@ export function Header() {
           <div className="flex items-center justify-end gap-1">
             <button
               type="button"
-              className="flex h-10 w-10 items-center justify-center text-[#111]"
+              className="flex h-10 w-10 items-center justify-center text-[#f3f1ea] hover:text-[#d4af37]"
               aria-label="Search catalogue"
               onClick={() => setSearchOpen((v) => !v)}
             >
@@ -55,22 +60,25 @@ export function Header() {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="relative flex h-10 w-10 items-center justify-center text-[#111]"
+              className="relative flex h-10 w-10 items-center justify-center text-[#f3f1ea] hover:text-[#d4af37]"
               aria-label="Open cart"
             >
               <CartIcon />
               {count > 0 && (
-                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e11d2e] px-1 text-[10px] font-semibold text-white">
+                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d4af37] px-1 text-[10px] font-semibold text-black">
                   {count}
                 </span>
               )}
             </button>
-            <Link href="/shop" className="btn ml-2 h-10 px-5 py-0 text-[11px] max-lg:!hidden lg:!inline-flex">
+            <Link
+              href="/shop"
+              className="btn ml-2 h-10 px-5 py-0 text-[11px] max-lg:!hidden lg:!inline-flex"
+            >
               Shop
             </Link>
             <button
               type="button"
-              className="flex h-10 w-10 items-center justify-center text-[#111] lg:hidden"
+              className="flex h-10 w-10 items-center justify-center text-white lg:hidden"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
@@ -98,14 +106,14 @@ export function Header() {
         {open && (
           <div
             id="mobile-nav"
-            className="border-t border-[#ececef] bg-white px-5 py-3 lg:hidden"
+            className="border-t border-[rgba(212,175,55,0.16)] bg-[#050505] px-5 py-3 lg:hidden"
           >
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="block py-2.5 text-[15px] text-[#111] hover:text-[#e11d2e]"
+                className="block py-2.5 text-[15px] text-[#cfc8b8] hover:text-[#d4af37]"
               >
                 {link.label}
               </Link>

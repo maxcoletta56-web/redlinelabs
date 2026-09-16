@@ -7,17 +7,17 @@ export type Crumb = {
 
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-6 text-[12px] tracking-[0.04em] text-[#71717a]">
+    <nav aria-label="Breadcrumb" className="mb-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
       <ol className="flex flex-wrap items-center">
         {items.map((item, i) => (
           <li key={`${item.label}-${i}`} className="flex items-center">
             {i > 0 && (
-              <span className="mx-2 text-[#d4d4d8]" aria-hidden>
+              <span className="mx-2 text-[#cfc8b8]" aria-hidden>
                 /
               </span>
             )}
             {item.href ? (
-              <Link href={item.href} className="hover:text-[#e11d2e]">
+              <Link href={item.href} className="hover:text-[#d4af37]">
                 {item.label}
               </Link>
             ) : (

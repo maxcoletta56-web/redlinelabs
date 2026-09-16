@@ -1,22 +1,23 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function BrandMark({
-  tone = "light",
   className = "",
+  priority = false,
 }: {
-  tone?: "light" | "dark";
   className?: string;
+  priority?: boolean;
 }) {
-  const color = tone === "light" ? "text-black" : "text-white";
   return (
-    <Link
-      href="/"
-      className={`inline-flex items-baseline gap-1.5 font-black italic tracking-[-0.04em] ${color} ${className}`}
-    >
-      <span>
-        Red<span className="text-[#e11d2e]">line</span>
-      </span>
-      <span className="not-italic text-[0.42em] font-semibold tracking-[0.22em]">LABS</span>
+    <Link href="/" className={`inline-flex shrink-0 items-center ${className}`}>
+      <Image
+        src="/brand/logo.png"
+        alt="Redline Labs"
+        width={170}
+        height={44}
+        className="h-8 w-auto"
+        priority={priority}
+      />
     </Link>
   );
 }
