@@ -7,7 +7,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { useCart } from "@/lib/cart";
-import { formatPrice } from "@/lib/products";
+import { formatPrice, optionLabel } from "@/lib/products";
 
 export default function CheckoutPage() {
   const { items, subtotal } = useCart();
@@ -165,7 +165,7 @@ export default function CheckoutPage() {
             <li key={`${item.slug}-${item.option}`} className="flex justify-between gap-4">
               <span>
                 {item.name}
-                {item.option ? ` (${item.option})` : ""} × {item.qty}
+                {item.option ? ` (${optionLabel(item, item.option)})` : ""} × {item.qty}
               </span>
               <span className="text-[#d4af37]">{formatPrice(item.price * item.qty)}</span>
             </li>
