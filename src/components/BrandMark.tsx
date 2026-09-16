@@ -11,7 +11,7 @@ export function BrandMark({
   return (
     <Link href="/" className={`inline-flex shrink-0 items-center ${className}`}>
       <Image
-        src="/brand/logo.png"
+        src="/brand/logo-mark.png"
         alt="Redline Labs"
         width={170}
         height={44}
