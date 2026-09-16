@@ -22,8 +22,10 @@ export const faqs: { q: string; a: ReactNode }[] = [
     q: "Are certificates of analysis available?",
     a: (
       <>
-        COAs are not currently published on product pages. Request a COA by
-        emailing{" "}
+        COAs are not currently published on product pages. Where applicable,
+        selected batches are independently tested through Janoshik Analytical,
+        with testing documentation available for relevant products. Request
+        available batch documentation by emailing{" "}
         <a href="mailto:redlinelabsltd@pm.me" className="text-[#d4af37] underline underline-offset-2">
           redlinelabsltd@pm.me
         </a>{" "}

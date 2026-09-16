@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Placeholder } from "@/components/Placeholder";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Redline Labs lists laboratory research chemicals for purchase in Australia. Research use only. Not a pharmacy.",
+    "Redline Labs was established in 2026 to supply research-use laboratory products with clear product information and batch documentation. Research use only. Not a pharmacy.",
 };
 
 export default function AboutPage() {
@@ -19,90 +18,60 @@ export default function AboutPage() {
           <Breadcrumbs items={[{ href: "/", label: "Home" }, { label: "About" }]} />
           <p className="kicker mb-3">About</p>
           <h1 className="mb-5 max-w-3xl text-[2.35rem] leading-[1.12] font-semibold tracking-[-0.03em] text-white sm:text-5xl">
-            Laboratory research chemicals, listed for research use.
+            Research-use laboratory products, listed with clear information.
           </h1>
           <p className="max-w-2xl text-[16px] leading-8 text-[#8f8c84]">
-            Redline Labs is an Australian catalogue of research chemicals for
-            laboratory purchase. It is not a pharmacy and does not offer medical
-            advice or treatment products.
+            Redline Labs was established in 2026 with a focus on supplying
+            research-use laboratory products with clear product information and
+            batch documentation.
           </p>
         </div>
       </section>
 
       <section className="border-b border-[rgba(212,175,55,0.16)]">
         <div className="wrap max-w-[860px] py-16 lg:py-20">
-          <p className="kicker mb-3">Our story</p>
-          <h2 className="section-title mb-6">How this catalogue started</h2>
-          <div className="space-y-5 text-[15px] leading-8 text-[#8f8c84]">
-            <p>
-              Redline Labs began in <Placeholder name="FOUNDING YEAR" /> as a
-              supplier of laboratory research chemicals within Australia.{" "}
-              <Placeholder name="WHY STARTED" />
-            </p>
-            <p>
-              <Placeholder name="FOUNDER BACKGROUND" />
-            </p>
-            <p>
-              The catalogue on this site is for laboratory research only.
-              Customers confirm research use at checkout. Product pages describe
-              chemical identity and research-context pharmacology. They are not
-              instructions for use in humans or animals.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-[rgba(212,175,55,0.16)]">
-        <div className="wrap max-w-[860px] py-16 lg:py-20">
-          <p className="kicker mb-3">Handling</p>
-          <h2 className="section-title mb-4">How we handle product</h2>
-          <p className="mb-8 max-w-2xl text-[15px] leading-7 text-[#8f8c84]">
-            Storage and packing methods are not fully published here. The notes
-            below separate what this site already states from fields still to
-            be filled in.
-          </p>
           <div className="grid gap-4">
             <article className="surface p-6">
-              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
-                Cold-chain and storage
-              </h3>
+              <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+                Quality & Testing
+              </h2>
               <p className="text-[15px] leading-8 text-[#8f8c84]">
-                Specific storage temperatures, hold times, and cold-chain
-                practice are not described on this site. Replace with verified
-                handling notes: <Placeholder name="STORAGE CONDITIONS" />{" "}
-                <Placeholder name="COLD CHAIN" />
+                Where applicable, selected batches are independently tested
+                through Janoshik Analytical, with testing documentation
+                available for relevant products. Testing documentation may
+                include information such as product identification, purity and
+                measured content.
               </p>
             </article>
             <article className="surface p-6">
-              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
-                Packaging
-              </h3>
+              <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+                Transparency
+              </h2>
               <p className="text-[15px] leading-8 text-[#8f8c84]">
-                Pack-out materials and vial presentation are not specified on
-                this page. Replace with the packing method actually used:{" "}
-                <Placeholder name="PACKAGING" />
-              </p>
-            </article>
-            <article className="surface p-6">
-              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
-                Dispatch timing
-              </h3>
-              <p className="text-[15px] leading-8 text-[#8f8c84]">
-                The{" "}
-                <Link
-                  href="/shipping-policy"
+                We aim to provide clear product specifications and supporting
+                documentation wherever available. Customers can contact us
+                regarding available batch documentation for individual products
+                at{" "}
+                <a
+                  href="mailto:redlinelabsltd@pm.me"
                   className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
                 >
-                  shipping policy
-                </Link>{" "}
-                states that orders are typically processed within 1–3 business
-                days after payment confirmation, and that processing can take
-                longer during high demand, holidays, or promotions. This
-                storefront lists Australia-wide dispatch. Tracking may be sent
-                once an order is processed, when the carrier provides it.
-                Delivery dates are not guaranteed. Checkout collects an
-                Australian shipping address through Stripe and does not offer
-                shipping-method selection.
+                  redlinelabsltd@pm.me
+                </a>
+                . Certificates of Analysis are not published on product pages.
+                Lot numbers are not currently displayed on this site.
+              </p>
+            </article>
+            <article className="surface p-6">
+              <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+                Research Use Only
+              </h2>
+              <p className="text-[15px] leading-8 text-[#8f8c84]">
+                All products supplied by Redline Labs are intended strictly for
+                legitimate laboratory research and analytical purposes. They are
+                not intended for human or veterinary consumption, diagnosis,
+                treatment, or prevention of disease. This catalogue is not a
+                pharmacy and does not offer medical advice.
               </p>
             </article>
           </div>
@@ -111,47 +80,24 @@ export default function AboutPage() {
 
       <section>
         <div className="wrap max-w-[860px] py-16 lg:py-20">
-          <p className="kicker mb-3">Documentation</p>
-          <h2 className="section-title mb-4">Testing and documentation</h2>
-          <div className="space-y-5 text-[15px] leading-8 text-[#8f8c84]">
-            <p>
-              A Certificate of Analysis (COA) is a batch document that reports
-              analytical results for a specific lot — typically identity and
-              related measurements. It is not a licence, a clinical approval, or
-              a use instruction.
-            </p>
-            <p>
-              Batch COAs are not published on product pages. Lot numbers are not
-              currently displayed on this site. To request a COA for a batch,
-              email{" "}
-              <a
-                href="mailto:redlinelabsltd@pm.me"
-                className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
-              >
-                redlinelabsltd@pm.me
-              </a>{" "}
-              with the product name and SKU (see the product page). The lab that
-              issued the document, and the method used, are not named on this
-              site: <Placeholder name="TEST METHOD" />{" "}
-              <Placeholder name="COA PROVIDER" />
-            </p>
-          </div>
-
-          <aside
-            className="surface mt-8 border-dashed border-[#d4af37]/45 p-6"
-            role="note"
-          >
-            <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
-              Placeholder — third-party testing
-            </p>
-            <p className="text-[15px] leading-8 text-[#8f8c84]">
-              Third-party testing is not described on this site. Do not treat
-              the copy above as a claim that an independent lab is named or
-              that a method is published. Fill in whether testing exists and
-              under what terms:{" "}
-              <Placeholder name="THIRD PARTY TESTING STATUS" />
-            </p>
-          </aside>
+          <p className="kicker mb-3">Orders</p>
+          <h2 className="section-title mb-4">Dispatch</h2>
+          <p className="max-w-2xl text-[15px] leading-8 text-[#8f8c84]">
+            The{" "}
+            <Link
+              href="/shipping-policy"
+              className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+            >
+              shipping policy
+            </Link>{" "}
+            states that orders are typically processed within 1–3 business days
+            after payment confirmation, and that processing can take longer
+            during high demand, holidays, or promotions. This storefront lists
+            Australia-wide dispatch. Tracking may be sent once an order is
+            processed, when the carrier provides it. Delivery dates are not
+            guaranteed. Checkout collects an Australian shipping address through
+            Stripe and does not offer shipping-method selection.
+          </p>
         </div>
       </section>
     </div>
