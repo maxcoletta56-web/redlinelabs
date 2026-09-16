@@ -21,7 +21,7 @@ export default function ContactPage() {
             icon: IconMail,
             title: "Email",
             text: (
-              <a href="mailto:redlinelabsltd@pm.me" className="hover:text-[#d4af37]">
+              <a href="mailto:redlinelabsltd@pm.me" className="hover:text-[#e11d2e]">
                 redlinelabsltd@pm.me
               </a>
             ),
@@ -31,35 +31,35 @@ export default function ContactPage() {
         ].map((item, i) => (
           <div
             key={item.title}
-            className={`p-6 ${i > 0 ? "border-t border-[rgba(212,175,55,0.16)] md:border-t-0 md:border-l" : ""}`}
+            className={`p-6 ${i > 0 ? "border-t border-[#ececef] md:border-t-0 md:border-l" : ""}`}
           >
-            <div className="mb-3 text-[#d4af37]">
+            <div className="mb-3 text-[#e11d2e]">
               <item.icon className="h-5 w-5" />
             </div>
-            <h2 className="mb-1 text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">{item.title}</h2>
-            <p className="text-sm text-[#cfc8b8]">{item.text}</p>
+            <h2 className="mb-1 text-[11px] font-semibold tracking-[0.12em] text-[#e11d2e] uppercase">{item.title}</h2>
+            <p className="text-sm text-[#5c5c64]">{item.text}</p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-10 lg:grid-cols-2">
-        <p className="text-[15px] leading-8 text-[#8f8c84]">
+        <p className="text-[15px] leading-8 text-[#5c5c64]">
           For order assistance, product information, or general inquiries, email{" "}
           <a
             href="mailto:redlinelabsltd@pm.me"
-            className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+            className="text-[#e11d2e] underline decoration-[#e11d2e]/40 underline-offset-3"
           >
             redlinelabsltd@pm.me
           </a>
           . The form below is a demonstration and does not send a message.
         </p>
         {sent ? (
-          <p className="surface p-8 text-sm leading-7 text-[#cfc8b8]">
+          <p className="surface p-8 text-sm leading-7 text-[#5c5c64]">
             This contact form is a front-end demonstration. No message was sent.
             Email{" "}
             <a
               href="mailto:redlinelabsltd@pm.me"
-              className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+              className="text-[#e11d2e] underline decoration-[#e11d2e]/40 underline-offset-3"
             >
               redlinelabsltd@pm.me
             </a>{" "}

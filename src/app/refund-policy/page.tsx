@@ -28,7 +28,7 @@ export default function RefundPolicyPage() {
       <h2>Damaged Orders</h2>
       <p>
         If your order arrives damaged, please contact us promptly through the{" "}
-        <Link href="/contact" className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3">
+        <Link href="/contact" className="text-[#e11d2e] underline decoration-[#e11d2e]/40 underline-offset-3">
           Contact
         </Link>{" "}
         page and provide relevant information, including photographs of the

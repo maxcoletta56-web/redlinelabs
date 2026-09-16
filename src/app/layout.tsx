@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${sans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#f3f1ea]">
+      <body className="flex min-h-full flex-col bg-[#f6f6f7] font-sans text-[#0b0b0c]">
         <Providers>
           <a href="#main" className="skip-link">
             Skip to content

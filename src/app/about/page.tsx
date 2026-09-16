@@ -13,15 +13,15 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div>
-      <section className="border-b border-[rgba(212,175,55,0.16)]">
+      <section className="border-b border-[#ececef]">
         <div className="wrap max-w-[860px] py-16 lg:py-20">
           <ResearchDisclaimer className="mb-10" />
           <Breadcrumbs items={[{ href: "/", label: "Home" }, { label: "About" }]} />
           <p className="kicker mb-3">About</p>
-          <h1 className="mb-5 max-w-3xl text-[2.35rem] leading-[1.12] font-semibold tracking-[-0.03em] text-white sm:text-5xl">
+          <h1 className="mb-5 max-w-3xl text-[2.35rem] leading-[1.12] font-semibold tracking-[-0.03em] text-[#0b0b0c] sm:text-5xl">
             Laboratory research chemicals, listed for research use.
           </h1>
-          <p className="max-w-2xl text-[16px] leading-8 text-[#cfc8b8]">
+          <p className="max-w-2xl text-[16px] leading-8 text-[#5c5c64]">
             Redline Labs is an Australian catalogue of research chemicals for
             laboratory purchase. It is not a pharmacy and does not offer medical
             advice or treatment products.
@@ -29,11 +29,11 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="border-b border-[rgba(212,175,55,0.16)]">
+      <section className="border-b border-[#ececef]">
         <div className="wrap max-w-[860px] py-16 lg:py-20">
           <p className="kicker mb-3">Our story</p>
           <h2 className="section-title mb-6">How this catalogue started</h2>
-          <div className="space-y-5 text-[15px] leading-8 text-[#cfc8b8]">
+          <div className="space-y-5 text-[15px] leading-8 text-[#5c5c64]">
             <p>
               Redline Labs began in <Placeholder name="FOUNDING YEAR" /> as a
               supplier of laboratory research chemicals within Australia.{" "}
@@ -52,21 +52,21 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="border-b border-[rgba(212,175,55,0.16)] bg-[#0b0b0b]">
+      <section className="border-b border-[#ececef] bg-white">
         <div className="wrap max-w-[860px] py-16 lg:py-20">
           <p className="kicker mb-3">Handling</p>
           <h2 className="section-title mb-4">How we handle product</h2>
-          <p className="mb-8 max-w-2xl text-[15px] leading-7 text-[#8f8c84]">
+          <p className="mb-8 max-w-2xl text-[15px] leading-7 text-[#5c5c64]">
             Storage and packing methods are not fully published here. The notes
             below separate what this site already states from fields still to
             be filled in.
           </p>
           <div className="grid gap-4">
             <article className="surface p-6">
-              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-[#0b0b0c] uppercase">
                 Cold-chain and storage
               </h3>
-              <p className="text-[15px] leading-8 text-[#cfc8b8]">
+              <p className="text-[15px] leading-8 text-[#5c5c64]">
                 Specific storage temperatures, hold times, and cold-chain
                 practice are not described on this site. Replace with verified
                 handling notes: <Placeholder name="STORAGE CONDITIONS" />{" "}
@@ -74,24 +74,24 @@ export default function AboutPage() {
               </p>
             </article>
             <article className="surface p-6">
-              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-[#0b0b0c] uppercase">
                 Packaging
               </h3>
-              <p className="text-[15px] leading-8 text-[#cfc8b8]">
+              <p className="text-[15px] leading-8 text-[#5c5c64]">
                 Pack-out materials and vial presentation are not specified on
                 this page. Replace with the packing method actually used:{" "}
                 <Placeholder name="PACKAGING" />
               </p>
             </article>
             <article className="surface p-6">
-              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+              <h3 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-[#0b0b0c] uppercase">
                 Dispatch timing
               </h3>
-              <p className="text-[15px] leading-8 text-[#cfc8b8]">
+              <p className="text-[15px] leading-8 text-[#5c5c64]">
                 The{" "}
                 <Link
                   href="/shipping-policy"
-                  className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+                  className="text-[#e11d2e] underline decoration-[#e11d2e]/40 underline-offset-3"
                 >
                   shipping policy
                 </Link>{" "}
@@ -112,7 +112,7 @@ export default function AboutPage() {
         <div className="wrap max-w-[860px] py-16 lg:py-20">
           <p className="kicker mb-3">Documentation</p>
           <h2 className="section-title mb-4">Testing and documentation</h2>
-          <div className="space-y-5 text-[15px] leading-8 text-[#cfc8b8]">
+          <div className="space-y-5 text-[15px] leading-8 text-[#5c5c64]">
             <p>
               A Certificate of Analysis (COA) is a batch document that reports
               analytical results for a specific lot — typically identity and
@@ -125,7 +125,7 @@ export default function AboutPage() {
               email{" "}
               <a
                 href="mailto:redlinelabsltd@pm.me"
-                className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+                className="text-[#e11d2e] underline decoration-[#e11d2e]/40 underline-offset-3"
               >
                 redlinelabsltd@pm.me
               </a>{" "}
@@ -137,13 +137,13 @@ export default function AboutPage() {
           </div>
 
           <aside
-            className="surface mt-8 border-dashed border-[#d4af37]/45 p-6"
+            className="surface mt-8 border-dashed border-[#e11d2e]/45 p-6"
             role="note"
           >
-            <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
+            <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[#e11d2e] uppercase">
               Placeholder — third-party testing
             </p>
-            <p className="text-[15px] leading-8 text-[#cfc8b8]">
+            <p className="text-[15px] leading-8 text-[#5c5c64]">
               Third-party testing is not described on this site. Do not treat
               the copy above as a claim that an independent lab is named or
               that a method is published. Fill in whether testing exists and

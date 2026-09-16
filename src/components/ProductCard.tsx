@@ -7,36 +7,48 @@ export function ProductCard({ product }: { product: Product }) {
   const hasRange = product.minPrice !== product.maxPrice;
   const option = product.variants[0]?.option;
   const unit = product.variantLabel;
-  const category = product.categories[0]?.split("/")[0];
+  const category = product.categories[0];
 
   return (
-    <article className="group flex h-full flex-col">
+    <article className="surface group flex h-full flex-col p-4">
       <Link href={`/product/${product.slug}`} className="block">
-        <div className="surface relative mb-4 aspect-square overflow-hidden">
+        <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-[#f6f6f7]">
           <Image
             src={product.image}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, 25vw"
-            className="object-contain p-6 transition duration-300 group-hover:scale-[1.02]"
+            className="object-contain p-6 transition duration-300 group-hover:scale-[1.03]"
           />
           {option && (
-            <span className="absolute right-3 top-3 border border-white/10 bg-black/70 px-2 py-1 text-[10px] tracking-[0.06em] text-[#cfc8b8] uppercase">
+            <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[10px] tracking-[0.06em] text-[#3f3f46] uppercase shadow-sm">
               {option}
               {unit === "MG" ? " MG" : unit ? ` ${unit}` : ""}
             </span>
           )}
         </div>
-        {category && <p className="kicker mb-2">{category}</p>}
-        <h3 className="mb-1 text-[15px] leading-6 font-medium text-white group-hover:text-[#d4af37]">
+        {category && (
+          <p className="mb-2 text-[11px] font-semibold tracking-[0.12em] text-[#e11d2e] uppercase">
+            {category}
+          </p>
+        )}
+        <h3 className="mb-1 text-[18px] leading-6 font-semibold tracking-[-0.02em] group-hover:text-[#e11d2e]">
           {displayName(product)}
         </h3>
-        <p className="mb-4 text-[14px] text-[#d4af37]">
+        <p className="mb-1 text-[12px] tracking-[0.04em] text-[#71717a] uppercase">
+          Research use only · COA on request
+        </p>
+        <p className="mb-4 text-[22px] font-bold tracking-[-0.03em]">
           {hasRange ? priceLabel(product) : formatPrice(product.minPrice)}
         </p>
       </Link>
-      <div className="mt-auto">
-        <QuickAdd product={product} />
+      <div className="mt-auto flex gap-2">
+        <Link href={`/product/${product.slug}`} className="btn-dark flex-1 text-[11px]">
+          View →
+        </Link>
+        <div className="hidden flex-1 sm:block">
+          <QuickAdd product={product} />
+        </div>
       </div>
     </article>
   );

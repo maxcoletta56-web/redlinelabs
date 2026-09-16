@@ -1,0 +1,60 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
+
+export const faqs: { q: string; a: ReactNode }[] = [
+  {
+    q: "What are these products for?",
+    a: "They are sold for laboratory research only. They are not for human or veterinary consumption and are not evaluated or approved for the diagnosis, treatment, cure, or prevention of any disease.",
+  },
+  {
+    q: "Do you ship Australia-wide?",
+    a: (
+      <>
+        This storefront lists Australia-wide dispatch. See the{" "}
+        <Link href="/shipping-policy" className="text-[#e11d2e] underline underline-offset-2">
+          shipping policy
+        </Link>{" "}
+        for processing notes.
+      </>
+    ),
+  },
+  {
+    q: "Are certificates of analysis available?",
+    a: (
+      <>
+        COAs are not currently published on product pages. Request a COA by
+        emailing{" "}
+        <a href="mailto:redlinelabsltd@pm.me" className="text-[#e11d2e] underline underline-offset-2">
+          redlinelabsltd@pm.me
+        </a>{" "}
+        with the product name and SKU.
+      </>
+    ),
+  },
+  {
+    q: "How quickly are orders processed?",
+    a: (
+      <>
+        The shipping policy states that orders are typically processed within
+        1–3 business days after payment confirmation. Delivery dates are not
+        guaranteed.
+      </>
+    ),
+  },
+  {
+    q: "How can I contact Redline Labs?",
+    a: (
+      <>
+        Email{" "}
+        <a href="mailto:redlinelabsltd@pm.me" className="text-[#e11d2e] underline underline-offset-2">
+          redlinelabsltd@pm.me
+        </a>{" "}
+        or use the{" "}
+        <Link href="/contact" className="text-[#e11d2e] underline underline-offset-2">
+          Contact
+        </Link>{" "}
+        page.
+      </>
+    ),
+  },
+];

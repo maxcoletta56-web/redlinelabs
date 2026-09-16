@@ -56,32 +56,32 @@ export default async function ProductPage({ params }: Props) {
           {product.categories[0] && (
             <p className="kicker mb-3">{product.categories[0]}</p>
           )}
-          <h1 className="mb-6 text-[2.1rem] leading-tight font-semibold tracking-[-0.03em] text-white">
+          <h1 className="mb-6 text-[2.1rem] leading-tight font-semibold tracking-[-0.03em] text-[#0b0b0c]">
             {product.name}
           </h1>
           <AddToCart product={product} />
           {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
             <div className="mt-8">
-              <p className="mb-3 text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">
+              <p className="mb-3 text-[11px] font-semibold tracking-[0.12em] text-[#e11d2e] uppercase">
                 Pay now
               </p>
               <Checkout productId={product.slug} />
             </div>
           )}
-          <p className="mt-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
+          <p className="mt-6 text-[12px] tracking-[0.04em] text-[#5c5c64]">
             SKU {product.sku || "not listed"} · Lot number not published
           </p>
-          <div className="mt-10 border-t border-[rgba(212,175,55,0.16)] pt-8">
-            <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+          <div className="mt-10 border-t border-[#ececef] pt-8">
+            <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-[#0b0b0c] uppercase">
               Description
             </h2>
-            <p className="text-[15px] leading-8 text-[#cfc8b8]">{product.description}</p>
+            <p className="text-[15px] leading-8 text-[#5c5c64]">{product.description}</p>
           </div>
           <CoaSection sku={product.sku} />
         </div>
       </div>
 
-      <section className="mt-20 border-t border-[rgba(212,175,55,0.16)] pt-14">
+      <section className="mt-20 border-t border-[#ececef] pt-14">
         <p className="kicker mb-3">Catalogue</p>
         <h2 className="section-title mb-10">Related listings</h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

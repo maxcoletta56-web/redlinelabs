@@ -8,12 +8,12 @@ export function NewsletterForm() {
 
   if (submitted) {
     return (
-      <p className="mx-auto max-w-md text-sm leading-7 text-[#cfc8b8]">
+      <p className="mx-auto max-w-md text-sm leading-7 text-[#5c5c64]">
         This form is a front-end demonstration and does not start a mailing list.
         For catalogue updates, email{" "}
         <a
           href="mailto:redlinelabsltd@pm.me"
-          className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+          className="text-[#e11d2e] underline decoration-[#e11d2e]/40 underline-offset-3"
         >
           redlinelabsltd@pm.me
         </a>
@@ -40,7 +40,7 @@ export function NewsletterForm() {
           placeholder="you@example.com"
         />
       </div>
-      <button type="submit" className="bg-[#d4af37] px-5 py-3 text-[11px] font-semibold tracking-[0.08em] text-black uppercase sm:mb-px">
+      <button type="submit" className="btn sm:mb-px">
         Submit
       </button>
     </form>

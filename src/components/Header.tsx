@@ -1,14 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { BrandMark } from "@/components/BrandMark";
 import { useCart } from "@/lib/cart";
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/shop", label: "Catalogue" },
+  { href: "/shop", label: "Shop" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
@@ -17,43 +17,28 @@ const links = [
 export function Header() {
   const { count, setDrawerOpen } = useCart();
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-40">
-      <div className="bg-[#d4af37] py-2 text-center text-[11px] font-medium tracking-[0.06em] text-black">
-        For laboratory research use only. Not for human or veterinary consumption.
+      <div className="bg-black py-2 text-center text-[11px] font-medium tracking-[0.08em] text-white uppercase">
+        Research use only — not for human or animal consumption
       </div>
-      <div className="border-b border-[rgba(212,175,55,0.16)] bg-[#050505]/92 backdrop-blur-md">
-        <div className="wrap flex h-16 items-center justify-between gap-6">
-          <Link href="/" className="shrink-0">
-            <Image
-              src="/brand/logo.png"
-              alt="Redline Labs"
-              width={170}
-              height={44}
-              className="h-8 w-auto"
-              priority
-            />
-          </Link>
-          <nav className="hidden items-center gap-8 text-[13px] font-medium tracking-[0.04em] text-[#cfc8b8] lg:flex">
+      <div className="border-b border-[#ececef] bg-white">
+        <div className="wrap flex h-[68px] items-center justify-between gap-4">
+          <BrandMark className="text-[22px] sm:text-[26px]" />
+          <nav className="hidden items-center gap-6 text-[14px] font-medium text-[#111] lg:flex">
             {links.map((link) => {
               const active =
-                link.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(link.href);
+                link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`relative py-1 transition-colors ${
-                    active ? "text-[#d4af37]" : "hover:text-white"
-                  }`}
+                  className={active ? "text-[#e11d2e]" : "hover:text-[#e11d2e]"}
                 >
                   {link.label}
-                  {active && (
-                    <span className="absolute inset-x-0 -bottom-1 h-px bg-[#d4af37]" />
-                  )}
                 </Link>
               );
             })}
@@ -61,20 +46,28 @@ export function Header() {
           <div className="flex items-center gap-1">
             <button
               type="button"
+              className="flex h-10 w-10 items-center justify-center text-[#111]"
+              aria-label="Search catalogue"
+              onClick={() => setSearchOpen((v) => !v)}
+            >
+              <SearchIcon />
+            </button>
+            <button
+              type="button"
               onClick={() => setDrawerOpen(true)}
-              className="relative flex h-10 w-10 items-center justify-center text-[#f3f1ea] hover:text-[#d4af37]"
+              className="relative flex h-10 w-10 items-center justify-center text-[#111]"
               aria-label="Open cart"
             >
               <CartIcon />
               {count > 0 && (
-                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d4af37] px-1 text-[10px] font-semibold text-black">
+                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e11d2e] px-1 text-[10px] font-semibold text-white">
                   {count}
                 </span>
               )}
             </button>
             <button
               type="button"
-              className="flex h-10 w-10 items-center justify-center text-white lg:hidden"
+              className="flex h-10 w-10 items-center justify-center text-[#111] lg:hidden"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
@@ -84,17 +77,32 @@ export function Header() {
             </button>
           </div>
         </div>
+        {searchOpen && (
+          <form action="/shop" className="wrap pb-4">
+            <label htmlFor="header-search" className="sr-only">
+              Search catalogue
+            </label>
+            <input
+              id="header-search"
+              name="q"
+              type="search"
+              placeholder="Search name, SKU, or category"
+              className="field"
+              autoFocus
+            />
+          </form>
+        )}
         {open && (
           <div
             id="mobile-nav"
-            className="border-t border-[rgba(212,175,55,0.16)] bg-[#050505] px-5 py-3 lg:hidden"
+            className="border-t border-[#ececef] bg-white px-5 py-3 lg:hidden"
           >
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="block py-2.5 text-[15px] text-[#cfc8b8] hover:text-[#d4af37]"
+                className="block py-2.5 text-[15px] text-[#111] hover:text-[#e11d2e]"
               >
                 {link.label}
               </Link>
@@ -103,6 +111,15 @@ export function Header() {
         )}
       </div>
     </header>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }
 
