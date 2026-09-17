@@ -17,8 +17,9 @@ export default function PrivacyPolicyPage() {
       <h2>Information We Collect</h2>
       <p>
         We may collect information provided directly by you, including your
-        name, email address, billing information, shipping details, and
-        communications submitted through our website.
+        name, email address, billing information, shipping details, account
+        profile data (order history, saved addresses, store credit movements,
+        and stock alerts), and communications submitted through our website.
       </p>
       <h2>How Information Is Used</h2>
       <p>

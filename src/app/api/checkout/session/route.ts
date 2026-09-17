@@ -13,7 +13,23 @@ export async function GET(request: NextRequest) {
 
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items"],
+      expand: ["line_items", "line_items.data.price.product"],
+    });
+    const shipping = session.collected_information?.shipping_details ?? null;
+    const lineItems = (session.line_items?.data ?? []).map((item) => {
+      const product = item.price?.product;
+      const metadata =
+        product && typeof product !== "string" && "metadata" in product
+          ? product.metadata
+          : {};
+      return {
+        slug: metadata.slug ?? null,
+        name: item.description,
+        option: metadata.option || null,
+        sku: metadata.sku ?? null,
+        qty: item.quantity,
+        unit_amount: item.price?.unit_amount ?? item.amount_total,
+      };
     });
     return NextResponse.json({
       id: session.id,
@@ -21,7 +37,17 @@ export async function GET(request: NextRequest) {
       payment_status: session.payment_status,
       email: session.customer_details?.email ?? session.customer_email,
       amount_total: session.amount_total,
+      amount_subtotal: session.amount_subtotal,
       currency: session.currency,
+      store_credit_cents: Number(session.metadata?.store_credit_cents ?? 0),
+      line_items: lineItems,
+      shipping: shipping
+        ? {
+            name: shipping.name,
+            phone: session.customer_details?.phone ?? null,
+            address: shipping.address,
+          }
+        : null,
     });
   } catch {
     return NextResponse.json({ error: "Checkout session was not found" }, { status: 404 });

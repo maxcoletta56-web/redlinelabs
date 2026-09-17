@@ -59,4 +59,20 @@ export const faqs: { q: string; a: ReactNode }[] = [
       </>
     ),
   },
+  {
+    q: "How do I view orders, COAs, and tracking?",
+    a: (
+      <>
+        Create an account to open your profile. Full history lists every paid
+        order, a COA request for each line, and the tracking number once the
+        order is dispatched. Store credit applies automatically at checkout,
+        saved addresses auto-fill, and stock alerts ping you when batches
+        restock. Start at the{" "}
+        <Link href="/account" className="text-[#d4af37] underline underline-offset-2">
+          Account
+        </Link>{" "}
+        page.
+      </>
+    ),
+  },
 ];

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
+import { IconUser } from "@/components/Icons";
+import { useAccount } from "@/lib/account";
 import { useCart } from "@/lib/cart";
 
 const links = [
@@ -16,6 +18,7 @@ const links = [
 
 export function Header() {
   const { count, setDrawerOpen } = useCart();
+  const { user } = useAccount();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
@@ -59,6 +62,15 @@ export function Header() {
             >
               <SearchIcon />
             </button>
+            <Link
+              href="/account"
+              className={`relative flex h-10 w-10 items-center justify-center hover:text-[#d4af37] ${
+                pathname.startsWith("/account") ? "text-[#d4af37]" : "text-[#f3f1ea]"
+              }`}
+              aria-label={user ? "Open account" : "Sign in or create account"}
+            >
+              <IconUser className="h-5 w-5" />
+            </Link>
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
@@ -127,6 +139,13 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className="block py-2.5 text-[15px] text-[#cfc8b8] hover:text-[#d4af37]"
+            >
+              {user ? "Account" : "Sign in"}
+            </Link>
             <Link
               href="/shop"
               onClick={() => setOpen(false)}

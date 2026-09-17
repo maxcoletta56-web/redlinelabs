@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { startCartCheckoutSession } from "@/app/actions/stripe";
+import type { ShippingAddressInput } from "@/lib/checkout-session";
 import type { CartLineInput } from "@/lib/order";
 
 function sessionIdFromClientSecret(secret: string) {
@@ -19,22 +20,33 @@ export function CartCheckout({
   firstName,
   lastName,
   publishableKey,
+  shipping,
+  storeCreditCents,
 }: {
   items: CartLineInput[];
   email: string;
   firstName: string;
   lastName: string;
   publishableKey: string;
+  shipping?: ShippingAddressInput | null;
+  storeCreditCents?: number;
 }) {
   const router = useRouter();
   const sessionIdRef = useRef<string | null>(null);
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   const fetchClientSecret = useCallback(async () => {
-    const secret = await startCartCheckoutSession({ items, email, firstName, lastName });
+    const secret = await startCartCheckoutSession({
+      items,
+      email,
+      firstName,
+      lastName,
+      shipping,
+      storeCreditCents,
+    });
     sessionIdRef.current = sessionIdFromClientSecret(secret);
     return secret;
-  }, [items, email, firstName, lastName]);
+  }, [items, email, firstName, lastName, shipping, storeCreditCents]);
 
   const onComplete = useCallback(() => {
     const sessionId = sessionIdRef.current;
