@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Stripe from "stripe";
+import { CapturePaidOrder } from "@/components/CapturePaidOrder";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { formatPrice } from "@/lib/products";
 import { stripe, stripeConfigured } from "@/lib/stripe";
@@ -44,13 +45,14 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   return (
     <div className="wrap max-w-[700px] py-20 text-center">
       {paid && <ClearCartOnSuccess />}
+      {paid && <CapturePaidOrder sessionId={session.id} />}
       <p className="kicker mb-3">{paid ? "Paid" : "Checkout"}</p>
       <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">
         {paid ? "Thank you" : "Payment pending"}
       </h1>
       <p className="mb-4 text-sm leading-7 text-[#8f8c84]">
         {paid
-          ? "Stripe accepted this payment. A receipt is sent by Stripe to the email used at checkout."
+          ? "Stripe accepted this payment. A receipt is sent by Stripe to the email used at checkout. Signed-in orders, COA requests, and tracking appear on your account."
           : "Stripe has not marked this session as paid yet. Refresh this page or check your email."}
       </p>
       {total && (
@@ -58,9 +60,14 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
           Amount {total} {session.currency?.toUpperCase()}
         </p>
       )}
-      <Link href="/shop" className="btn">
-        Continue browsing
-      </Link>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Link href="/account" className="btn">
+          View account
+        </Link>
+        <Link href="/shop" className="btn-ghost">
+          Continue browsing
+        </Link>
+      </div>
     </div>
   );
 }

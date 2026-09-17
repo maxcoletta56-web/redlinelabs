@@ -1,6 +1,6 @@
 "use server";
 
-import { createEmbeddedCheckoutSession } from "@/lib/checkout-session";
+import { createEmbeddedCheckoutSession, type ShippingAddressInput } from "@/lib/checkout-session";
 import { type CartLineInput } from "@/lib/order";
 
 export async function startCartCheckoutSession(input: {
@@ -8,6 +8,8 @@ export async function startCartCheckoutSession(input: {
   email: string;
   firstName: string;
   lastName: string;
+  shipping?: ShippingAddressInput | null;
+  storeCreditCents?: number;
 }) {
   const email = input.email.trim();
   if (!email.includes("@")) {
@@ -19,5 +21,7 @@ export async function startCartCheckoutSession(input: {
     email,
     firstName: input.firstName,
     lastName: input.lastName,
+    shipping: input.shipping,
+    storeCreditCents: input.storeCreditCents,
   });
 }

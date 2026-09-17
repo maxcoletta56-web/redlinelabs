@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
+import { StockAlertButton } from "@/components/StockAlertButton";
 import { getProduct, products, relatedProducts } from "@/lib/products";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -59,6 +60,9 @@ export default async function ProductPage({ params }: Props) {
             {product.name}
           </h1>
           <AddToCart product={product} />
+          <div className="mt-5">
+            <StockAlertButton slug={product.slug} name={product.name} sku={product.sku} />
+          </div>
           <p className="mt-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
             SKU {product.sku || "not listed"} · Lot number not published
           </p>

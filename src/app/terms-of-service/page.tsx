@@ -24,6 +24,14 @@ export default function TermsPage() {
         not medicines, food, or cosmetics, and are not intended for human or
         veterinary use, diagnosis, or treatment.
       </p>
+      <h2>Accounts</h2>
+      <p>
+        Access to full order history, certificates of analysis requests,
+        tracking numbers, store credit, saved addresses, and stock alerts
+        requires an account. You are responsible for keeping your sign-in
+        details confidential. Redline Labs may suspend accounts used in
+        breach of these terms.
+      </p>
       <h2>Orders & Payments</h2>
       <p>
         All orders are subject to acceptance and availability. Redline Labs

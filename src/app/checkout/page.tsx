@@ -6,20 +6,38 @@ import { CartCheckout } from "@/components/CartCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
+import { useAccount } from "@/lib/account";
+import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
+import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { formatPrice, optionLabel } from "@/lib/products";
+import { creditToApplyCents, dollarsToCents, centsToDollars } from "@/lib/store-credit";
+
+function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
+  return {
+    name: `${address.firstName} ${address.lastName}`.trim(),
+    line1: address.line1,
+    line2: address.line2 || undefined,
+    city: address.city,
+    state: address.state,
+    postal_code: address.postcode,
+    country: "AU",
+  };
+}
 
 export default function CheckoutPage() {
   const { items, subtotal } = useCart();
+  const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [customer, setCustomer] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-  });
+  const [customer, setCustomer] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }>({});
+  const [addressId, setAddressId] = useState<string>("");
 
   useEffect(() => {
     fetch("/api/checkout")
@@ -37,6 +55,18 @@ export default function CheckoutPage() {
         setPublishableKey(null);
       });
   }, []);
+
+  const firstName = customer.firstName ?? user?.firstName ?? "";
+  const lastName = customer.lastName ?? user?.lastName ?? "";
+  const email = customer.email ?? user?.email ?? "";
+  const selectedAddress =
+    user?.addresses.find((address) => address.id === addressId) ??
+    (user ? defaultAddress(user) : null);
+  const creditCents = creditToApplyCents(
+    user?.storeCreditCents ?? 0,
+    dollarsToCents(subtotal),
+  );
+  const payable = Math.max(0, subtotal - centsToDollars(creditCents));
 
   const cartItems = useMemo(
     () =>
@@ -75,6 +105,21 @@ export default function CheckoutPage() {
         <h1 className="mb-6 text-[2.15rem] font-semibold tracking-[-0.03em]">Checkout</h1>
         <ResearchDisclaimer className="mb-8" />
 
+        {hydrated && !user && (
+          <aside className="surface mb-8 p-5" role="note">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
+              Account required for profile benefits
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[#8f8c84]">
+              Sign in to apply store credit automatically, auto-fill saved
+              addresses, and keep full order history with COAs and tracking.
+            </p>
+            <Link href="/account?next=/checkout" className="btn mt-4">
+              Sign in or create account
+            </Link>
+          </aside>
+        )}
+
         {!ready ? (
           <form
             className="space-y-4"
@@ -87,18 +132,85 @@ export default function CheckoutPage() {
                 return;
               }
               setCustomer({
-                firstName: String(form.get("firstName") ?? ""),
-                lastName: String(form.get("lastName") ?? ""),
-                email: String(form.get("email") ?? ""),
+                firstName,
+                lastName,
+                email,
               });
               setReady(true);
             }}
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="first-name" label="First name" name="firstName" required autoComplete="given-name" />
-              <Field id="last-name" label="Last name" name="lastName" required autoComplete="family-name" />
+              <Field
+                id="first-name"
+                label="First name"
+                name="firstName"
+                required
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(event) =>
+                  setCustomer((current) => ({ ...current, firstName: event.target.value }))
+                }
+              />
+              <Field
+                id="last-name"
+                label="Last name"
+                name="lastName"
+                required
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(event) =>
+                  setCustomer((current) => ({ ...current, lastName: event.target.value }))
+                }
+              />
             </div>
-            <Field id="email" label="Email" name="email" type="email" required autoComplete="email" />
+            <Field
+              id="email"
+              label="Email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(event) =>
+                setCustomer((current) => ({ ...current, email: event.target.value }))
+              }
+            />
+            {user && user.addresses.length > 0 && (
+              <fieldset>
+                <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                  Saved address
+                </legend>
+                <div className="space-y-2">
+                  {user.addresses.map((address) => (
+                    <label
+                      key={address.id}
+                      className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6"
+                    >
+                      <input
+                        type="radio"
+                        name="savedAddress"
+                        className="mt-1"
+                        checked={(addressId || selectedAddress?.id) === address.id}
+                        onChange={() => setAddressId(address.id)}
+                      />
+                      <span>
+                        <span className="block font-medium text-white">
+                          {address.label}
+                          {address.isDefault ? " · default" : ""}
+                        </span>
+                        <span className="text-[#8f8c84]">{formatAddress(address)}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-[#8f8c84]">
+                  Stripe will auto-fill this Australian shipping address.{" "}
+                  <Link href="/account#addresses" className="text-[#d4af37]">
+                    Edit addresses
+                  </Link>
+                </p>
+              </fieldset>
+            )}
             <p className="text-sm leading-6 text-[#8f8c84]">
               Payment stays on this page. Stripe collects the card and Australian
               shipping address inside the embedded checkout. After a card payment
@@ -135,16 +247,21 @@ export default function CheckoutPage() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm leading-6 text-[#8f8c84]">
-              Paying as {customer.email}. Card details are handled by Stripe.
+              Paying as {email}. Card details are handled by Stripe.
+              {creditCents > 0
+                ? ` ${formatPrice(centsToDollars(creditCents))} store credit will be applied automatically.`
+                : ""}
             </p>
             <div className="surface overflow-hidden p-3">
               {publishableKey ? (
                 <CartCheckout
                   items={cartItems}
-                  email={customer.email}
-                  firstName={customer.firstName}
-                  lastName={customer.lastName}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
                   publishableKey={publishableKey}
+                  shipping={selectedAddress ? shippingFromAddress(selectedAddress) : null}
+                  storeCreditCents={creditCents}
                 />
               ) : (
                 <p className="text-sm leading-6 text-[#d4af37]" role="status">
@@ -171,13 +288,23 @@ export default function CheckoutPage() {
             </li>
           ))}
         </ul>
-        <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
+        <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4 text-sm">
           <span>Subtotal</span>
           <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
         </div>
+        <div className="mt-3 flex justify-between text-sm">
+          <span>Store credit</span>
+          <span className="text-[#d4af37]">
+            {creditCents > 0 ? `−${formatPrice(centsToDollars(creditCents))}` : formatPrice(0)}
+          </span>
+        </div>
+        <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
+          <span>Due now</span>
+          <span className="text-[#d4af37]">{formatPrice(payable)}</span>
+        </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Prices charged by Stripe are taken from the catalogue, not from the
-          browser cart. See the{" "}
+          Signed-in store credit is applied automatically. Prices charged by
+          Stripe are taken from the catalogue, not from the browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}

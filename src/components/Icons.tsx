@@ -129,3 +129,17 @@ export function IconCard({ className = "h-5 w-5" }: { className?: string }) {
     </svg>
   );
 }
+
+export function IconBell({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 4a5 5 0 0 1 5 5v3.2l1.4 2.6H5.6L7 12.2V9a5 5 0 0 1 5-5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M9.5 18.5a2.5 2.5 0 0 0 5 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
