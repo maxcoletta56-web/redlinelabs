@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { itemKey, useCart } from "@/lib/cart";
-import { formatPrice } from "@/lib/products";
+import { formatPrice, optionLabel } from "@/lib/products";
 
 export default function CartPage() {
   const { items, subtotal, updateQty, removeItem } = useCart();
@@ -40,7 +40,7 @@ export default function CartPage() {
                   <p className="text-[16px] font-medium text-white">{item.name}</p>
                   {item.option && (
                     <p className="text-sm text-[#8f8c84]">
-                      {item.variantLabel}: {item.option}
+                      {optionLabel(item, item.option)}
                     </p>
                   )}
                   <p className="mt-1 text-[#d4af37]">{formatPrice(item.price)}</p>

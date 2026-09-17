@@ -38,13 +38,17 @@ export function productsBySlugs(slugs: string[]) {
     .filter((p): p is Product => Boolean(p));
 }
 
-export function displayName(product: Product) {
-  const option = product.variants[0]?.option;
+export function optionLabel(product: Pick<Product, "variantLabel">, option: string) {
   const unit = product.variantLabel;
+  if (unit === "MG") return `${option} MG`;
+  if (unit === "IU" || unit === "Iu") return `${option} IU`;
+  return unit ? `${option} ${unit}` : option;
+}
+
+export function displayName(product: Product, selectedOption?: string) {
+  const option = selectedOption ?? product.variants[0]?.option;
   if (!option) return product.name;
-  if (unit === "MG") return `${product.name} (${option}mg)`;
-  if (unit === "IU" || unit === "Iu") return `${product.name} (${option} IU)`;
-  return `${product.name} (${option})`;
+  return `${product.name} (${optionLabel(product, option)})`;
 }
 
 export const categories = [
@@ -60,6 +64,12 @@ export const categories = [
   "LAB SUPPLIES",
 ] as const;
 
+export function isShopCategory(
+  value: string | null | undefined,
+): value is (typeof categories)[number] {
+  return Boolean(value && (categories as readonly string[]).includes(value));
+}
+
 export function getProduct(slug: string) {
   return products.find((p) => p.slug === slug);
 }
@@ -72,16 +82,14 @@ export function premiumProducts() {
   return productsBySlugs(premiumSlugs);
 }
 
-export function relatedProducts(product: Product, limit = 4) {
-  const same = products.filter(
-    (p) =>
-      p.slug !== product.slug &&
-      p.categories.some((c) => product.categories.includes(c)),
-  );
-  const rest = products.filter(
-    (p) => p.slug !== product.slug && !same.includes(p),
-  );
-  return [...same, ...rest].slice(0, limit);
+export function relatedProducts(product: Product, limit = 3) {
+  return products
+    .filter(
+      (p) =>
+        p.slug !== product.slug &&
+        p.categories.some((c) => product.categories.includes(c)),
+    )
+    .slice(0, limit);
 }
 
 export function formatPrice(amount: number) {

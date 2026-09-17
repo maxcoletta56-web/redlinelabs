@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
-import { categories, products } from "@/lib/products";
+import { categories, isShopCategory, products } from "@/lib/products";
 
 const sorts = [
   { value: "catalogue", label: "Catalogue order" },
@@ -17,11 +17,40 @@ const sorts = [
 
 type Sort = (typeof sorts)[number]["value"];
 
+function isSort(value: string | null): value is Sort {
+  return Boolean(value && sorts.some((option) => option.value === value));
+}
+
 export default function ShopPage() {
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
-  const [category, setCategory] = useState<(typeof categories)[number]>("All");
-  const [sort, setSort] = useState<Sort>("catalogue");
+  const router = useRouter();
+  const pathname = usePathname();
+  const query = searchParams.get("q") ?? "";
+  const categoryParam = searchParams.get("category");
+  const sortParam = searchParams.get("sort");
+  const category = isShopCategory(categoryParam) ? categoryParam : "All";
+  const sort: Sort = isSort(sortParam) ? sortParam : "catalogue";
+  const setParams = useCallback(
+    (patch: { q?: string; category?: string; sort?: string }) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if ("q" in patch) {
+        const q = (patch.q ?? "").trim();
+        if (q) next.set("q", q);
+        else next.delete("q");
+      }
+      if ("category" in patch) {
+        if (!patch.category || patch.category === "All") next.delete("category");
+        else next.set("category", patch.category);
+      }
+      if ("sort" in patch) {
+        if (!patch.sort || patch.sort === "catalogue") next.delete("sort");
+        else next.set("sort", patch.sort);
+      }
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -63,7 +92,7 @@ export default function ShopPage() {
             id="catalogue-search"
             label="Search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => setParams({ q: e.target.value })}
             placeholder="Name, SKU, or category"
             className="field"
           />
@@ -71,7 +100,7 @@ export default function ShopPage() {
             id="catalogue-sort"
             label="Sort"
             value={sort}
-            onChange={(e) => setSort(e.target.value as Sort)}
+            onChange={(e) => setParams({ sort: e.target.value })}
           >
             {sorts.map((option) => (
               <option key={option.value} value={option.value}>
@@ -87,7 +116,7 @@ export default function ShopPage() {
           <button
             key={cat}
             type="button"
-            onClick={() => setCategory(cat)}
+            onClick={() => setParams({ category: cat })}
             aria-pressed={category === cat}
             className={`rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] uppercase ${
               category === cat
@@ -101,6 +130,7 @@ export default function ShopPage() {
       </div>
       <p className="mb-8 text-[12px] text-[#8f8c84]" aria-live="polite">
         {filtered.length} listing{filtered.length === 1 ? "" : "s"}
+        {category !== "All" ? ` in ${category}` : ""}
       </p>
 
       {filtered.length === 0 ? (
@@ -112,8 +142,7 @@ export default function ShopPage() {
             type="button"
             className="text-[#d4af37]"
             onClick={() => {
-              setQuery("");
-              setCategory("All");
+              setParams({ q: "", category: "All" });
             }}
           >
             Clear filters

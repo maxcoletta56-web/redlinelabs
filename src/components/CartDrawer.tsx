@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 import { itemKey, useCart } from "@/lib/cart";
-import { formatPrice } from "@/lib/products";
+import { formatPrice, optionLabel } from "@/lib/products";
 
 export function CartDrawer() {
   const { items, subtotal, drawerOpen, setDrawerOpen, updateQty, removeItem } =
@@ -15,8 +15,13 @@ export function CartDrawer() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setDrawerOpen(false);
     };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [drawerOpen, setDrawerOpen]);
 
   if (!drawerOpen) return null;
@@ -63,7 +68,7 @@ export function CartDrawer() {
                     <p className="text-[14px] font-medium text-white">{item.name}</p>
                     {item.option && (
                       <p className="text-xs text-[#8f8c84]">
-                        {item.variantLabel}: {item.option}
+                        {optionLabel(item, item.option)}
                       </p>
                     )}
                     <p className="mt-1 text-sm text-[#d4af37]">{formatPrice(item.price)}</p>
