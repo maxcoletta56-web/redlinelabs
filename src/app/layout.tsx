@@ -11,6 +11,9 @@ const sans = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://redlinelabs.shop",
+  ),
   title: {
     default: "Redline Labs | Research chemicals, Australia",
     template: "%s | Redline Labs",
@@ -20,6 +23,20 @@ export const metadata: Metadata = {
   icons: {
     icon: "/brand/icon.jpeg",
     apple: "/brand/icon.jpeg",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_AU",
+    siteName: "Redline Labs",
+    title: "Redline Labs | Research chemicals, Australia",
+    description:
+      "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Redline Labs | Research chemicals, Australia",
+    description:
+      "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
   },
 };
 
