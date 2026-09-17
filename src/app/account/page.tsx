@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AddressForm } from "@/components/AddressForm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -11,14 +11,17 @@ import {
   IconCard,
   IconClock,
   IconPin,
+  IconUser,
 } from "@/components/Icons";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
-import { useAccount } from "@/lib/account";
+import { pendingReferralCode, rememberReferralCode, useAccount } from "@/lib/account";
 import {
   auspostTrackingUrl,
   coaMailto,
   formatAddress,
   lineDisplayName,
+  MATE_REFERRAL_REWARD_CENTS,
+  normalizeReferralCode,
   trackingMailto,
   type OrderRecord,
   type PublicAccount,
@@ -67,6 +70,14 @@ export default function AccountPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const referralFromLink = searchParams.get("ref");
+
+  useEffect(() => {
+    rememberReferralCode(referralFromLink);
+  }, [referralFromLink]);
+
+  const mateReferral =
+    normalizeReferralCode(referralFromLink) ?? pendingReferralCode();
 
   if (!hydrated) {
     return (
@@ -91,8 +102,17 @@ export default function AccountPage() {
             </h1>
             <p className="mb-8 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
               An account is required to view full history, store credit, saved
-              addresses, and stock alerts.
+              addresses, and stock alerts. Refer a mate and you automatically
+              receive {formatPrice(centsToDollars(MATE_REFERRAL_REWARD_CENTS))}{" "}
+              store credit when they create an account.
             </p>
+            {mateReferral && (
+              <p className="mb-8 text-sm leading-6 text-[#d4af37]">
+                A mate referred you with code {mateReferral}. Create an account
+                to continue — they receive {formatPrice(centsToDollars(MATE_REFERRAL_REWARD_CENTS))}{" "}
+                store credit automatically.
+              </p>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {benefits.map((item) => (
                 <article key={item.title} className="surface p-5">
@@ -155,6 +175,7 @@ export default function AccountPage() {
                       lastName: String(form.get("lastName") ?? ""),
                       email: String(form.get("email") ?? ""),
                       password: String(form.get("password") ?? ""),
+                      referralCode: mateReferral,
                     });
                   } else {
                     await login(
@@ -265,6 +286,14 @@ function AccountDashboard({
         value: `${user.stockAlerts.length} watching`,
         text: "Get pinged when batches restock.",
       },
+      {
+        icon: IconUser,
+        title: "Refer a mate",
+        value: formatPrice(
+          centsToDollars(user.referralEmails.length * MATE_REFERRAL_REWARD_CENTS),
+        ),
+        text: "Get $15 store credit automatically when a mate creates an account.",
+      },
     ],
     [user],
   );
@@ -286,7 +315,7 @@ function AccountDashboard({
         </button>
       </div>
 
-      <div className="mb-14 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-14 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((item) => (
           <article key={item.title} className="surface p-5">
             <div className="mb-3 text-[#d4af37]">
@@ -342,8 +371,10 @@ function AccountDashboard({
           <p className="mt-2 text-sm text-[#8f8c84]">Available balance</p>
           {user.creditLedger.length === 0 ? (
             <p className="mt-6 text-sm leading-7 text-[#8f8c84]">
-              No credit movements yet. Refunds and batch adjustments issued by
-              Redline Labs appear in this ledger and apply on the next checkout.
+              No credit movements yet. Refer a mate for{" "}
+              {formatPrice(centsToDollars(MATE_REFERRAL_REWARD_CENTS))} automatic
+              store credit, or wait for refunds and batch adjustments issued by
+              Redline Labs. Credit applies on the next checkout.
             </p>
           ) : (
             <ul className="mt-6 space-y-3 text-sm">
@@ -364,6 +395,10 @@ function AccountDashboard({
             </ul>
           )}
         </div>
+      </section>
+
+      <section className="mb-14" id="referral">
+        <ReferralShare user={user} />
       </section>
 
       <section className="mb-14" id="addresses">
@@ -495,6 +530,67 @@ function AccountDashboard({
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function ReferralShare({ user }: { user: PublicAccount }) {
+  const [copied, setCopied] = useState(false);
+  const origin =
+    typeof window === "undefined" ? "https://redlinelabs.shop" : window.location.origin;
+  const link = `${origin}/account?ref=${encodeURIComponent(user.referralCode)}`;
+  const earned = user.referralEmails.length * MATE_REFERRAL_REWARD_CENTS;
+
+  return (
+    <div>
+      <h2 className="mb-2 text-[13px] font-semibold tracking-[0.12em] uppercase">
+        Refer a mate
+      </h2>
+      <p className="mb-6 max-w-2xl text-[14px] leading-6 text-[#8f8c84]">
+        Share your link. When a mate creates an account, you automatically
+        receive {formatPrice(centsToDollars(MATE_REFERRAL_REWARD_CENTS))} store
+        credit — no code to enter at checkout.
+      </p>
+      <div className="surface p-6">
+        <p className="mb-2 text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+          Your referral link
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input
+            readOnly
+            aria-label="Referral link"
+            value={link}
+            className="field"
+          />
+          <button
+            type="button"
+            className="btn shrink-0"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(link);
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 2000);
+              } catch {
+                setCopied(false);
+              }
+            }}
+          >
+            {copied ? "Copied" : "Copy link"}
+          </button>
+        </div>
+        <p className="mt-4 text-sm text-[#8f8c84]">
+          Code {user.referralCode} · {user.referralEmails.length} successful
+          referral{user.referralEmails.length === 1 ? "" : "s"} ·{" "}
+          {formatPrice(centsToDollars(earned))} earned
+        </p>
+        {user.referralEmails.length > 0 && (
+          <ul className="mt-4 space-y-2 text-sm text-[#cfc8b8]">
+            {user.referralEmails.map((email) => (
+              <li key={email}>{email}</li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

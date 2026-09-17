@@ -3,10 +3,12 @@ import test from "node:test";
 import {
   addAddress,
   addStockAlert,
+  applyMateReferral,
   createUser,
   defaultAddress,
   grantStoreCredit,
   hasStockAlert,
+  MATE_REFERRAL_REWARD_CENTS,
   publicAccount,
   recordOrder,
   removeAddress,
@@ -180,3 +182,47 @@ test("debits only the store credit recorded on the paid order", async () => {
   assert.equal(user.orders[0]?.trackingNumber, "ABC123");
   assert.equal(user.creditLedger[0]?.amountCents, -1000);
 });
+
+test("automatically grants $15 store credit when a mate refers a new account", async () => {
+  const mate = await sampleUser();
+  const recruit = await createUser({
+    email: "lab@example.com",
+    password: "research1",
+    firstName: "Alex",
+    lastName: "Lane",
+  });
+  const result = applyMateReferral([mate], recruit, mate.referralCode, "2026-09-17T00:00:00.000Z", "credit-1");
+  assert.equal(result.rewarded, true);
+  assert.equal(result.recruit.referredByCode, mate.referralCode);
+  assert.equal(result.users[0]?.storeCreditCents, MATE_REFERRAL_REWARD_CENTS);
+  assert.equal(result.users[0]?.referralEmails[0], "lab@example.com");
+  assert.equal(result.users[0]?.creditLedger[0]?.amountCents, 1500);
+});
+
+test("does not reward unknown, self, or duplicate mate referrals", async () => {
+  const mate = await sampleUser();
+  const recruit = await createUser({
+    email: "lab@example.com",
+    password: "research1",
+    firstName: "Alex",
+    lastName: "Lane",
+  });
+  assert.equal(applyMateReferral([mate], recruit, "NOPE-000").rewarded, false);
+  assert.equal(applyMateReferral([mate], mate, mate.referralCode).rewarded, false);
+
+  const first = applyMateReferral([mate], recruit, mate.referralCode);
+  const second = applyMateReferral(first.users, first.recruit, mate.referralCode);
+  assert.equal(second.rewarded, false);
+  assert.equal(second.users[0]?.storeCreditCents, MATE_REFERRAL_REWARD_CENTS);
+
+  const another = await createUser({
+    email: "second@example.com",
+    password: "research1",
+    firstName: "Sam",
+    lastName: "Lee",
+  });
+  const third = applyMateReferral(first.users, another, mate.referralCode);
+  assert.equal(third.rewarded, true);
+  assert.equal(third.users[0]?.storeCreditCents, MATE_REFERRAL_REWARD_CENTS * 2);
+});
+

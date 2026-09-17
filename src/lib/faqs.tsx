@@ -67,11 +67,24 @@ export const faqs: { q: string; a: ReactNode }[] = [
         order, a COA request for each line, and the tracking number once the
         order is dispatched. Store credit applies automatically at checkout,
         saved addresses auto-fill, and stock alerts ping you when batches
-        restock. Start at the{" "}
+        restock.         Start at the{" "}
         <Link href="/account" className="text-[#d4af37] underline underline-offset-2">
           Account
         </Link>{" "}
         page.
+      </>
+    ),
+  },
+  {
+    q: "How does the mate referral reward work?",
+    a: (
+      <>
+        Signed-in customers get a referral link on the{" "}
+        <Link href="/account#referral" className="text-[#d4af37] underline underline-offset-2">
+          Account
+        </Link>{" "}
+        page. When a mate creates an account with that link, you automatically
+        receive $15 store credit. It applies at checkout without a code.
       </>
     ),
   },
