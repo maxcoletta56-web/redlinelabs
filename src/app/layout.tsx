@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { AssistLoopWidget } from "@/components/AssistLoopWidget";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Providers } from "@/components/Providers";
@@ -55,7 +54,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </main>
           <Footer />
         </Providers>
-        <AssistLoopWidget />
       </body>
     </html>
   );
