@@ -14,7 +14,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ## What’s included
 
 - Home, shop (search / category / sort), product pages with MG/IU options
-- Account profile (sign-up required): order history with COA requests and tracking, store credit, saved addresses, stock alerts
+- Account profile (sign-up required): order history with COA requests and tracking, store credit, saved addresses, stock alerts, and $15 mate-referral credit
 - Persistent cart (localStorage), drawer, cart page, checkout form
 - About, contact, FAQ, shipping, refund, privacy, and terms pages
 - Research-use-only notices throughout

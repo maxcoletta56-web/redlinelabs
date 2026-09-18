@@ -91,7 +91,13 @@ export type AccountUser = {
   addresses: SavedAddress[];
   stockAlerts: StockAlert[];
   orders: OrderRecord[];
+  referralCode: string;
+  referredByCode: string | null;
+  referralEmails: string[];
 };
+
+/** Automatic store credit issued to a mate when someone creates an account with their link. */
+export const MATE_REFERRAL_REWARD_CENTS = 1500;
 
 export type PublicAccount = Omit<AccountUser, "passwordHash" | "salt">;
 
@@ -113,6 +119,7 @@ export type SignupInput = {
   password: string;
   firstName: string;
   lastName: string;
+  referralCode?: string | null;
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -137,7 +144,46 @@ export function publicAccount(user: AccountUser): PublicAccount {
     addresses: user.addresses,
     stockAlerts: user.stockAlerts,
     orders: user.orders,
+    referralCode: user.referralCode,
+    referredByCode: user.referredByCode,
+    referralEmails: user.referralEmails,
   };
+}
+
+export function normalizeReferralCode(code: string | null | undefined) {
+  const value = (code ?? "").trim().toUpperCase();
+  return value || null;
+}
+
+export function makeReferralCode(firstName: string, taken: Iterable<string> = []) {
+  const takenSet = new Set([...taken].map((code) => code.toUpperCase()));
+  const prefix = firstName.replace(/[^a-zA-Z]/g, "").slice(0, 6).toUpperCase() || "MATE";
+  for (let i = 0; i < 24; i += 1) {
+    const suffix = bufferToHex(crypto.getRandomValues(new Uint8Array(3))).toUpperCase();
+    const code = `${prefix}-${suffix}`;
+    if (!takenSet.has(code)) return code;
+  }
+  return `${prefix}-${newId().slice(0, 8).toUpperCase()}`;
+}
+
+export function hydrateAccountUser(raw: AccountUser, taken: Iterable<string> = []): AccountUser {
+  const referralCode =
+    normalizeReferralCode(raw.referralCode) ?? makeReferralCode(raw.firstName, taken);
+  return {
+    ...raw,
+    referralCode,
+    referredByCode: normalizeReferralCode(raw.referredByCode),
+    referralEmails: Array.isArray(raw.referralEmails) ? raw.referralEmails : [],
+  };
+}
+
+export function hydrateAccountUsers(raw: AccountUser[]) {
+  const taken: string[] = [];
+  return raw.map((entry) => {
+    const next = hydrateAccountUser(entry, taken);
+    taken.push(next.referralCode);
+    return next;
+  });
 }
 
 export function defaultAddress(user: Pick<AccountUser, "addresses">) {
@@ -217,6 +263,9 @@ export async function createUser(input: SignupInput, at = new Date().toISOString
     addresses: [],
     stockAlerts: [],
     orders: [],
+    referralCode: makeReferralCode(input.firstName.trim()),
+    referredByCode: null,
+    referralEmails: [],
   };
 }
 
@@ -370,6 +419,46 @@ export function grantStoreCredit(
       },
       ...user.creditLedger,
     ],
+  };
+}
+
+export function applyMateReferral(
+  users: AccountUser[],
+  recruit: AccountUser,
+  code: string | null | undefined,
+  at = new Date().toISOString(),
+  creditId = newId(),
+): { users: AccountUser[]; recruit: AccountUser; rewarded: boolean } {
+  const normalized = normalizeReferralCode(code);
+  if (!normalized) {
+    return { users, recruit: { ...recruit, referredByCode: recruit.referredByCode ?? null }, rewarded: false };
+  }
+  const referrer = users.find((user) => user.referralCode === normalized);
+  if (!referrer || referrer.email === recruit.email) {
+    return { users, recruit, rewarded: false };
+  }
+  if (recruit.referredByCode || referrer.referralEmails.includes(recruit.email)) {
+    return {
+      users,
+      recruit: { ...recruit, referredByCode: recruit.referredByCode ?? normalized },
+      rewarded: false,
+    };
+  }
+  const credited = grantStoreCredit(
+    {
+      ...referrer,
+      referralEmails: [...referrer.referralEmails, recruit.email],
+    },
+    MATE_REFERRAL_REWARD_CENTS,
+    `Mate referral — ${recruit.email} created an account`,
+    undefined,
+    at,
+    creditId,
+  );
+  return {
+    users: users.map((user) => (user.email === credited.email ? credited : user)),
+    recruit: { ...recruit, referredByCode: normalized },
+    rewarded: true,
   };
 }
 

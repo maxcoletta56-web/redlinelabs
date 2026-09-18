@@ -10,10 +10,14 @@ import {
 import {
   addAddress,
   addStockAlert,
+  applyMateReferral,
   createUser,
   defaultAddress,
+  hydrateAccountUsers,
+  makeReferralCode,
   mergeOrders,
   normalizeEmail,
+  normalizeReferralCode,
   publicAccount,
   recordOrder,
   removeAddress,
@@ -49,6 +53,7 @@ const AccountContext = createContext<AccountContextValue | null>(null);
 const USERS_KEY = "redline-accounts-v1";
 const SESSION_KEY = "redline-session-v1";
 const GUEST_ORDERS_KEY = "redline-guest-orders-v1";
+const REFERRAL_KEY = "redline-referral-ref";
 
 const loggedOut: AccountSnapshot = { user: null, hydrated: false };
 
@@ -152,7 +157,7 @@ function claimGuestOrders(user: AccountUser) {
 }
 
 if (typeof window !== "undefined") {
-  users = readJson<AccountUser[]>(USERS_KEY, []);
+  users = hydrateAccountUsers(readJson<AccountUser[]>(USERS_KEY, []));
   const stored = readJson<string | null>(SESSION_KEY, null);
   sessionEmail =
     typeof stored === "string" ? normalizeEmail(stored) : null;
@@ -160,7 +165,26 @@ if (typeof window !== "undefined") {
     sessionEmail = null;
   }
   hydrated = true;
+  persist();
   snapshotCache = snapshot();
+}
+
+export function rememberReferralCode(code: string | null | undefined) {
+  const normalized = normalizeReferralCode(code);
+  if (typeof window === "undefined") return normalized;
+  if (normalized) writeJson(REFERRAL_KEY, normalized);
+  return normalized;
+}
+
+export function pendingReferralCode() {
+  if (typeof window === "undefined") return null;
+  const stored = readJson<string | null>(REFERRAL_KEY, null);
+  return normalizeReferralCode(stored);
+}
+
+function clearPendingReferralCode() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(REFERRAL_KEY);
 }
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
@@ -171,9 +195,19 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     if (users.some((user) => user.email === email)) {
       throw new Error("An account with this email already exists");
     }
-    const created = claimGuestOrders(await createUser(input));
-    users = [...users, created];
-    sessionEmail = created.email;
+    let created = claimGuestOrders(await createUser(input));
+    const taken = users.map((user) => user.referralCode);
+    if (taken.includes(created.referralCode)) {
+      created = { ...created, referralCode: makeReferralCode(created.firstName, taken) };
+    }
+    const applied = applyMateReferral(
+      users,
+      created,
+      input.referralCode ?? pendingReferralCode(),
+    );
+    users = [...applied.users, applied.recruit];
+    sessionEmail = applied.recruit.email;
+    clearPendingReferralCode();
     persist();
   }, []);
 
