@@ -5,8 +5,14 @@ import { Field, TextAreaField } from "@/components/Field";
 import { IconClock, IconMail, IconPin } from "@/components/Icons";
 import { PageIntro } from "@/components/PageIntro";
 
+function composeMailto(name: string, email: string, message: string) {
+  const subject = `Catalogue enquiry from ${name}`;
+  const body = [`Name: ${name}`, `Email: ${email}`, "", message].join("\n");
+  return `mailto:redlinelabsltd@pm.me?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 export default function ContactPage() {
-  const [sent, setSent] = useState(false);
+  const [opened, setOpened] = useState(false);
 
   return (
     <div className="wrap max-w-[980px] py-16">
@@ -51,32 +57,37 @@ export default function ContactPage() {
           >
             redlinelabsltd@pm.me
           </a>
-          . The form below is a demonstration and does not send a message.
+          . The form opens that address in your email app with the details
+          filled in.
         </p>
-        {sent ? (
+        {opened ? (
           <p className="surface p-8 text-sm leading-7 text-[#8f8c84]">
-            This contact form is a front-end demonstration. No message was sent.
-            Email{" "}
+            Your email app should have opened a message to{" "}
             <a
               href="mailto:redlinelabsltd@pm.me"
               className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
             >
               redlinelabsltd@pm.me
-            </a>{" "}
-            directly.
+            </a>
+            . If nothing opened, use that address directly.
           </p>
         ) : (
           <form
             className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              setSent(true);
+              const form = new FormData(e.currentTarget);
+              const name = String(form.get("name") ?? "").trim();
+              const email = String(form.get("email") ?? "").trim();
+              const message = String(form.get("message") ?? "").trim();
+              window.location.href = composeMailto(name, email, message);
+              setOpened(true);
             }}
           >
             <Field id="contact-name" label="Name" name="name" required autoComplete="name" />
             <Field id="contact-email" label="Email" name="email" type="email" required autoComplete="email" />
             <TextAreaField id="contact-message" label="Message" name="message" required rows={5} />
-            <button type="submit" className="btn">Send message</button>
+            <button type="submit" className="btn">Compose email</button>
           </form>
         )}
       </div>

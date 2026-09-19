@@ -6,7 +6,10 @@ import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { formatPrice } from "@/lib/products";
 import { stripe, stripeConfigured } from "@/lib/stripe";
 
-export const metadata: Metadata = { title: "Order received" };
+export const metadata: Metadata = {
+  title: "Order received",
+  robots: { index: false, follow: false },
+};
 
 type Props = { searchParams: Promise<{ session_id?: string }> };
 

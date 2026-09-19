@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
+import { JsonLd } from "@/components/JsonLd";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductImage } from "@/components/ProductImage";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { StockAlertButton } from "@/components/StockAlertButton";
 import { getProduct, products, relatedProducts } from "@/lib/products";
+import { absoluteUrl, metaDescription } from "@/lib/seo";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -19,9 +21,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = getProduct(slug);
   if (!product) return { title: "Product" };
+  const description = metaDescription(product.description);
   return {
     title: product.name,
-    description: product.description.slice(0, 150),
+    description,
+    openGraph: {
+      title: `${product.name} | Redline Labs`,
+      description,
+      images: product.image ? [{ url: product.image, alt: product.name }] : undefined,
+    },
   };
 }
 
@@ -33,6 +41,28 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="wrap py-12">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          description: product.description,
+          sku: product.sku || undefined,
+          image: product.image,
+          brand: { "@type": "Brand", name: "Redline Labs" },
+          category: product.categories[0],
+          url: absoluteUrl(`/product/${product.slug}`),
+          offers: {
+            "@type": product.minPrice !== product.maxPrice ? "AggregateOffer" : "Offer",
+            priceCurrency: "AUD",
+            availability: "https://schema.org/InStock",
+            url: absoluteUrl(`/product/${product.slug}`),
+            ...(product.minPrice !== product.maxPrice
+              ? { lowPrice: product.minPrice, highPrice: product.maxPrice }
+              : { price: product.minPrice }),
+          },
+        }}
+      />
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
@@ -43,7 +73,7 @@ export default async function ProductPage({ params }: Props) {
       <ResearchDisclaimer className="mb-10" />
       <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div className="surface relative aspect-square overflow-hidden">
-          <Image
+          <ProductImage
             src={product.image}
             alt={product.name}
             fill

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCart } from "@/lib/cart";
+import { MAX_QTY, useCart } from "@/lib/cart";
 import { formatPrice, optionLabel, type Product } from "@/lib/products";
 
 export function AddToCart({ product }: { product: Product }) {
@@ -56,10 +56,11 @@ export function AddToCart({ product }: { product: Product }) {
           <input
             type="number"
             min={1}
+            max={MAX_QTY}
             inputMode="numeric"
             aria-label="Quantity"
             value={qty}
-            onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+            onChange={(e) => setQty(Math.min(MAX_QTY, Math.max(1, Number(e.target.value) || 1)))}
             className="field w-20"
           />
         </label>

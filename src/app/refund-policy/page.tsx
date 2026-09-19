@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
 
-export const metadata: Metadata = { title: "Refund Policy" };
+export const metadata: Metadata = {
+  title: "Refund Policy",
+  description:
+    "When Redline Labs may review refunds for damaged, incorrect, or unverified fulfilment issues.",
+};
 
 export default function RefundPolicyPage() {
   return (

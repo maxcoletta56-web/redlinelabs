@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
 
-export const metadata: Metadata = { title: "Shipping Policy" };
+export const metadata: Metadata = {
+  title: "Shipping Policy",
+  description:
+    "Australia-wide dispatch notes for Redline Labs, including typical 1–3 business day processing after payment.",
+};
 
 export default function ShippingPolicyPage() {
   return (

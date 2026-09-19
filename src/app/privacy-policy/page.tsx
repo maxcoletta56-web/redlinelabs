@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "How Redline Labs collects and stores order, account, and checkout information, including data kept in your browser.",
+};
 
 export default function PrivacyPolicyPage() {
   return (
@@ -20,6 +24,10 @@ export default function PrivacyPolicyPage() {
         name, email address, billing information, shipping details, account
         profile data (order history, saved addresses, store credit movements,
         and stock alerts), and communications submitted through our website.
+        Account sign-in, saved addresses, stock alerts, and order history for
+        this storefront are stored in your browser (local storage) on this
+        device, in addition to any data Stripe collects to process payment and
+        shipping.
       </p>
       <h2>How Information Is Used</h2>
       <p>

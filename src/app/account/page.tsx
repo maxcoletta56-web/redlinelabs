@@ -112,6 +112,8 @@ export default function AccountPage() {
               <button
                 type="button"
                 role="tab"
+                id="account-tab-signup"
+                aria-controls="account-panel"
                 aria-selected={mode === "signup"}
                 className={`flex-1 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase ${
                   mode === "signup" ? "border-b-2 border-[#d4af37] text-[#d4af37]" : "text-[#8f8c84]"
@@ -126,6 +128,8 @@ export default function AccountPage() {
               <button
                 type="button"
                 role="tab"
+                id="account-tab-login"
+                aria-controls="account-panel"
                 aria-selected={mode === "login"}
                 className={`flex-1 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase ${
                   mode === "login" ? "border-b-2 border-[#d4af37] text-[#d4af37]" : "text-[#8f8c84]"
@@ -139,6 +143,9 @@ export default function AccountPage() {
               </button>
             </div>
             <form
+              id="account-panel"
+              role="tabpanel"
+              aria-labelledby={mode === "signup" ? "account-tab-signup" : "account-tab-login"}
               className="space-y-4"
               onSubmit={async (event) => {
                 event.preventDefault();

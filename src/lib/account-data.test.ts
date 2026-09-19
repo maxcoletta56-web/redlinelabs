@@ -7,6 +7,7 @@ import {
   defaultAddress,
   grantStoreCredit,
   hasStockAlert,
+  lineDisplayName,
   publicAccount,
   recordOrder,
   removeAddress,
@@ -41,6 +42,21 @@ const labAddress = {
   state: "VIC",
   postcode: "3000",
 };
+
+test("shows size units on order history lines", () => {
+  assert.equal(
+    lineDisplayName({
+      slug: "bpc-157",
+      name: "BPC-157",
+      option: "10",
+      variantLabel: "MG",
+      sku: "BPC157",
+      qty: 1,
+      unitAmountCents: 8900,
+    }),
+    "BPC-157 (10 MG)",
+  );
+});
 
 test("rejects incomplete signup details", () => {
   assert.equal(

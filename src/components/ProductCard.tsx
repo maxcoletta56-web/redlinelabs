@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ProductImage } from "@/components/ProductImage";
 import { useCart } from "@/lib/cart";
 import { displayName, formatPrice, optionLabel, type Product } from "@/lib/products";
 
@@ -24,7 +24,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="surface group flex h-full flex-col p-5 transition duration-200 hover:-translate-y-0.5 hover:border-[#d4af37]/50">
       <Link href={`/product/${product.slug}`} className="block">
         <div className="relative mb-5 aspect-square overflow-hidden bg-[#0b0b0b]">
-          <Image
+          <ProductImage
             src={product.image}
             alt={product.name}
             fill

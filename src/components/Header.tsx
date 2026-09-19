@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { IconUser } from "@/components/Icons";
 import { useAccount } from "@/lib/account";
@@ -23,6 +23,15 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
 
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [searchOpen]);
+
   return (
     <header className="sticky top-0 z-40">
       <div className="bg-[#d4af37] py-2 text-center text-[11px] font-medium tracking-[0.06em] text-black">
@@ -39,6 +48,7 @@ export function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  aria-current={active ? "page" : undefined}
                   className={`relative py-1 transition-colors ${
                     active ? "text-[#d4af37]" : "hover:text-white"
                   }`}
@@ -75,11 +85,14 @@ export function Header() {
               type="button"
               onClick={() => setDrawerOpen(true)}
               className="relative flex h-10 w-10 items-center justify-center text-[#f3f1ea] hover:text-[#d4af37]"
-              aria-label="Open cart"
+              aria-label={count > 0 ? `Open cart, ${count} items` : "Open cart"}
             >
               <CartIcon />
               {count > 0 && (
-                <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d4af37] px-1 text-[10px] font-semibold text-black">
+                <span
+                  className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d4af37] px-1 text-[10px] font-semibold text-black"
+                  aria-live="polite"
+                >
                   {count}
                 </span>
               )}
@@ -125,8 +138,9 @@ export function Header() {
           </form>
         )}
         {open && (
-          <div
+          <nav
             id="mobile-nav"
+            aria-label="Mobile"
             className="border-t border-[rgba(212,175,55,0.16)] bg-[#050505] px-5 py-3 lg:hidden"
           >
             {links.map((link) => (
@@ -153,7 +167,7 @@ export function Header() {
             >
               Shop catalogue
             </Link>
-          </div>
+          </nav>
         )}
       </div>
     </header>

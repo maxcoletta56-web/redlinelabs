@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useAccount } from "@/lib/account";
 import { isAuState, type OrderLine, type OrderRecord } from "@/lib/account-data";
+import { getProduct } from "@/lib/products";
 
 type SessionPayload = {
   id?: string;
@@ -40,14 +41,18 @@ function asOrder(session: SessionPayload): OrderRecord | null {
     return null;
   }
   const items: OrderLine[] = (session.line_items ?? [])
-    .map((item) => ({
-      slug: item.slug || "unknown",
-      name: item.name || "Research listing",
-      option: item.option || null,
-      sku: item.sku || "",
-      qty: Number(item.qty) || 1,
-      unitAmountCents: Number(item.unit_amount) || 0,
-    }))
+    .map((item) => {
+      const slug = item.slug || "unknown";
+      return {
+        slug,
+        name: item.name || "Research listing",
+        option: item.option || null,
+        variantLabel: getProduct(slug)?.variantLabel ?? null,
+        sku: item.sku || "",
+        qty: Number(item.qty) || 1,
+        unitAmountCents: Number(item.unit_amount) || 0,
+      };
+    })
     .filter((item) => item.qty > 0);
   const address = session.shipping?.address;
   const names = (session.shipping?.name ?? "").trim().split(/\s+/);

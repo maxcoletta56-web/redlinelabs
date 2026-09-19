@@ -9,6 +9,7 @@ import {
   IconTruck,
 } from "@/components/Icons";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductImage } from "@/components/ProductImage";
 import { faqs } from "@/lib/faqs";
 import {
   categories,
@@ -42,13 +43,12 @@ const steps = [
 const categoryCopy: Record<string, string> = {
   "GLP-1 RESEARCH": "Incretin-related research compounds listed in this catalogue.",
   "TISSUE RESEARCH": "Compounds grouped here for tissue-response laboratory literature.",
-  "GHRH / GHRELIN RESEARCH": "GHRH analogues and ghrelin-receptor research listings.",
-  "NEUROPEPTIDE RESEARCH": "Neuropeptide research chemicals from the current catalogue.",
-  "MITOCHONDRIAL RESEARCH": "Mitochondrial and metabolic research listings.",
-  "GONADOTROPIN RESEARCH": "Gonadotropin-related research listings.",
+  "GROWTH SUPPORT": "GHRH analogues and ghrelin-receptor research listings.",
+  "BRAIN-PERFORMANCE": "Neuropeptide research chemicals from the current catalogue.",
+  ENERGY: "Mitochondrial and metabolic research listings.",
+  REPRODUCTIVE: "Gonadotropin-related research listings.",
   BLENDS: "Multi-compound research blends. Confirm constituents on the vial label.",
   "MELANOCORTIN RESEARCH": "Melanocortin-receptor research listings.",
-  "LAB SUPPLIES": "Laboratory solvents listed alongside the research catalogue.",
 };
 
 export default function Home() {
@@ -106,7 +106,7 @@ export default function Home() {
                       : "bottom-8 right-28 z-10 w-[150px]"
                 }`}
               >
-                <Image
+                <ProductImage
                   src={product.image}
                   alt={product.name}
                   width={440}
@@ -258,7 +258,7 @@ export default function Home() {
                     href={`/shop?category=${encodeURIComponent(cat)}`}
                     className="mt-auto text-[12px] font-semibold tracking-[0.08em] text-[#d4af37] uppercase"
                   >
-                    Browse {cat.split(" ")[0].toLowerCase()} →
+                    Browse this category →
                   </Link>
                 </article>
               );

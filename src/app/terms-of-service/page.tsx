@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { PolicyLayout } from "@/components/PolicyLayout";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Terms for using the Redline Labs storefront. All listings are for laboratory research use only.",
+};
 
 export default function TermsPage() {
   return (
