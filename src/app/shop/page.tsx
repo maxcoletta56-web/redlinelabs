@@ -27,6 +27,11 @@ export default function ShopPage() {
   const pathname = usePathname();
   const query = searchParams.get("q") ?? "";
   const [searchDraft, setSearchDraft] = useState(query);
+  const [draftQuery, setDraftQuery] = useState(query);
+  if (query !== draftQuery) {
+    setDraftQuery(query);
+    setSearchDraft(query);
+  }
   const categoryParam = searchParams.get("category");
   const sortParam = searchParams.get("sort");
   const category = isShopCategory(categoryParam) ? categoryParam : "All";
@@ -52,10 +57,6 @@ export default function ShopPage() {
     },
     [pathname, router, searchParams],
   );
-
-  useEffect(() => {
-    setSearchDraft(query);
-  }, [query]);
 
   useEffect(() => {
     const next = searchDraft.trim();

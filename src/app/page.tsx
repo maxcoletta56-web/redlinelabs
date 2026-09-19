@@ -9,6 +9,7 @@ import {
   IconTruck,
 } from "@/components/Icons";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductImage } from "@/components/ProductImage";
 import { faqs } from "@/lib/faqs";
 import {
   categories,
@@ -106,7 +107,7 @@ export default function Home() {
                       : "bottom-8 right-28 z-10 w-[150px]"
                 }`}
               >
-                <Image
+                <ProductImage
                   src={product.image}
                   alt={product.name}
                   width={440}

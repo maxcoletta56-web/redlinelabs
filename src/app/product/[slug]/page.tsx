@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
 import { JsonLd } from "@/components/JsonLd";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductImage } from "@/components/ProductImage";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { StockAlertButton } from "@/components/StockAlertButton";
 import { getProduct, products, relatedProducts } from "@/lib/products";
@@ -73,7 +73,7 @@ export default async function ProductPage({ params }: Props) {
       <ResearchDisclaimer className="mb-10" />
       <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
         <div className="surface relative aspect-square overflow-hidden">
-          <Image
+          <ProductImage
             src={product.image}
             alt={product.name}
             fill
