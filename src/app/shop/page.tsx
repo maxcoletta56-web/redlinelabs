@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
@@ -26,6 +26,7 @@ export default function ShopPage() {
   const router = useRouter();
   const pathname = usePathname();
   const query = searchParams.get("q") ?? "";
+  const [searchDraft, setSearchDraft] = useState(query);
   const categoryParam = searchParams.get("category");
   const sortParam = searchParams.get("sort");
   const category = isShopCategory(categoryParam) ? categoryParam : "All";
@@ -52,8 +53,21 @@ export default function ShopPage() {
     [pathname, router, searchParams],
   );
 
+  useEffect(() => {
+    setSearchDraft(query);
+  }, [query]);
+
+  useEffect(() => {
+    const next = searchDraft.trim();
+    if (next === query.trim()) return;
+    const timeout = window.setTimeout(() => {
+      setParams({ q: searchDraft });
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [query, searchDraft, setParams]);
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = searchDraft.trim().toLowerCase();
     const list = products.filter((p) => {
       const matchesQuery =
         !q ||
@@ -70,7 +84,7 @@ export default function ShopPage() {
       if (sort === "price-desc") return b.minPrice - a.minPrice;
       return 0;
     });
-  }, [query, category, sort]);
+  }, [searchDraft, category, sort]);
 
   return (
     <div className="wrap py-12">
@@ -91,8 +105,8 @@ export default function ShopPage() {
           <Field
             id="catalogue-search"
             label="Search"
-            value={query}
-            onChange={(e) => setParams({ q: e.target.value })}
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
             placeholder="Name, SKU, or category"
             className="field"
           />
@@ -142,6 +156,7 @@ export default function ShopPage() {
             type="button"
             className="text-[#d4af37]"
             onClick={() => {
+              setSearchDraft("");
               setParams({ q: "", category: "All" });
             }}
           >

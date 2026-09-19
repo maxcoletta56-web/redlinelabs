@@ -37,6 +37,7 @@ export type OrderLine = {
   slug: string;
   name: string;
   option: string | null;
+  variantLabel?: string | null;
   sku: string;
   qty: number;
   unitAmountCents: number;
@@ -414,7 +415,16 @@ export function formatAddress(address: Pick<SavedAddress, "line1" | "line2" | "c
 
 export function lineDisplayName(line: OrderLine) {
   if (!line.option) return line.name;
-  return `${line.name} (${line.option})`;
+  const unit = line.variantLabel;
+  const option =
+    unit === "MG"
+      ? `${line.option} MG`
+      : unit === "IU" || unit === "Iu"
+        ? `${line.option} IU`
+        : unit
+          ? `${line.option} ${unit}`
+          : line.option;
+  return `${line.name} (${option})`;
 }
 
 export function coaMailto(order: OrderRecord, line: OrderLine) {

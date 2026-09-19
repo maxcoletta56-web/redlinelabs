@@ -9,6 +9,13 @@ import {
 } from "react";
 import { getProduct } from "./products";
 
+export const MAX_QTY = 99;
+
+export function clampQty(qty: number) {
+  if (!Number.isFinite(qty)) return 1;
+  return Math.min(MAX_QTY, Math.max(1, Math.floor(qty)));
+}
+
 export type CartItem = {
   slug: string;
   name: string;
@@ -97,9 +104,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     writeItems(
       existing
         ? current.map((p) =>
-            itemKey(p) === key ? { ...p, qty: p.qty + qty } : p,
+            itemKey(p) === key ? { ...p, qty: clampQty(p.qty + qty) } : p,
           )
-        : [...current, { ...item, qty }],
+        : [...current, { ...item, qty: clampQty(qty) }],
     );
     drawerOpen = true;
     emit();
@@ -108,7 +115,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQty = useCallback((key: string, qty: number) => {
     writeItems(
       itemsSnapshot
-        .map((p) => (itemKey(p) === key ? { ...p, qty } : p))
+        .map((p) => (itemKey(p) === key ? { ...p, qty: clampQty(qty) } : p))
         .filter((p) => p.qty > 0),
     );
   }, []);

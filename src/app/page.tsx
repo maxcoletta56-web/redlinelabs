@@ -258,7 +258,7 @@ export default function Home() {
                     href={`/shop?category=${encodeURIComponent(cat)}`}
                     className="mt-auto text-[12px] font-semibold tracking-[0.08em] text-[#d4af37] uppercase"
                   >
-                    Browse {cat.split(" ")[0].toLowerCase()} →
+                    Browse this category →
                   </Link>
                 </article>
               );

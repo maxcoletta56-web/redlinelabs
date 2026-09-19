@@ -2,25 +2,31 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
-import { itemKey, useCart } from "@/lib/cart";
+import { useEffect, useRef } from "react";
+import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
 import { formatPrice, optionLabel } from "@/lib/products";
 
 export function CartDrawer() {
   const { items, subtotal, drawerOpen, setDrawerOpen, updateQty, removeItem } =
     useCart();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!drawerOpen) return;
+    previouslyFocused.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setDrawerOpen(false);
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
+    closeRef.current?.focus();
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      previouslyFocused.current?.focus();
     };
   }, [drawerOpen, setDrawerOpen]);
 
@@ -41,7 +47,12 @@ export function CartDrawer() {
       >
         <div className="flex items-center justify-between border-b border-[rgba(212,175,55,0.16)] px-6 py-5">
           <h2 id="cart-drawer-title" className="text-[15px] font-medium tracking-[0.08em] uppercase">Cart</h2>
-          <button type="button" onClick={() => setDrawerOpen(false)} className="text-[12px] tracking-[0.08em] text-[#d4af37] uppercase">
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={() => setDrawerOpen(false)}
+            className="text-[12px] tracking-[0.08em] text-[#d4af37] uppercase"
+          >
             Close
           </button>
         </div>
@@ -65,7 +76,13 @@ export function CartDrawer() {
                     className="h-[72px] w-[72px] border border-[rgba(212,175,55,0.16)] object-contain"
                   />
                   <div className="flex-1">
-                    <p className="text-[14px] font-medium text-white">{item.name}</p>
+                    <Link
+                      href={`/product/${item.slug}`}
+                      onClick={() => setDrawerOpen(false)}
+                      className="text-[14px] font-medium text-white hover:text-[#d4af37]"
+                    >
+                      {item.name}
+                    </Link>
                     {item.option && (
                       <p className="text-xs text-[#8f8c84]">
                         {optionLabel(item, item.option)}
@@ -76,6 +93,7 @@ export function CartDrawer() {
                       <input
                         type="number"
                         min={1}
+                        max={MAX_QTY}
                         inputMode="numeric"
                         aria-label={`Quantity for ${item.name}`}
                         value={item.qty}

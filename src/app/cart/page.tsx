@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { itemKey, useCart } from "@/lib/cart";
+import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
 import { formatPrice, optionLabel } from "@/lib/products";
 
 export default function CartPage() {
@@ -37,7 +37,9 @@ export default function CartPage() {
                   className="h-[88px] w-[88px] object-contain"
                 />
                 <div className="flex-1">
-                  <p className="text-[16px] font-medium text-white">{item.name}</p>
+                  <Link href={`/product/${item.slug}`} className="text-[16px] font-medium text-white hover:text-[#d4af37]">
+                    {item.name}
+                  </Link>
                   {item.option && (
                     <p className="text-sm text-[#8f8c84]">
                       {optionLabel(item, item.option)}
@@ -50,6 +52,7 @@ export default function CartPage() {
                       <input
                         type="number"
                         min={1}
+                        max={MAX_QTY}
                         inputMode="numeric"
                         aria-label={`Quantity for ${item.name}`}
                         value={item.qty}
