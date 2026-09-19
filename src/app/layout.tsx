@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AssistLoopWidget } from "@/components/AssistLoopWidget";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Footer />
         </Providers>
         <AssistLoopWidget />
+        <SpeedInsights />
       </body>
     </html>
   );
