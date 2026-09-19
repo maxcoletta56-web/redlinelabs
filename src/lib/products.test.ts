@@ -7,6 +7,7 @@ type CatalogProduct = {
   sku: string;
   image: string;
   description: string;
+  categories: string[];
   variants: Array<{ sku: string }>;
 };
 
@@ -22,6 +23,17 @@ test("every listing has a SKU and unique slugs", () => {
     assert.ok(product.image, `${product.slug} is missing an image`);
     assert.ok(product.description, `${product.slug} is missing a description`);
   }
+});
+
+test("lab accessories are not listed", () => {
+  assert.equal(
+    products.some((product) => product.slug === "product-bacterial-water"),
+    false,
+  );
+  assert.equal(
+    products.some((product) => product.categories.includes("LAB SUPPLIES")),
+    false,
+  );
 });
 
 test("variant SKUs are unique on each listing", () => {

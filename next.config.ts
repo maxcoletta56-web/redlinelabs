@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/product/product-bacterial-water",
+        destination: "/shop",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
