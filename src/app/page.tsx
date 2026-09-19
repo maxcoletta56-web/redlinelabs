@@ -43,10 +43,10 @@ const steps = [
 const categoryCopy: Record<string, string> = {
   "GLP-1 RESEARCH": "Incretin-related research compounds listed in this catalogue.",
   "TISSUE RESEARCH": "Compounds grouped here for tissue-response laboratory literature.",
-  "GHRH / GHRELIN RESEARCH": "GHRH analogues and ghrelin-receptor research listings.",
-  "NEUROPEPTIDE RESEARCH": "Neuropeptide research chemicals from the current catalogue.",
-  "MITOCHONDRIAL RESEARCH": "Mitochondrial and metabolic research listings.",
-  "GONADOTROPIN RESEARCH": "Gonadotropin-related research listings.",
+  "GROWTH SUPPORT": "GHRH analogues and ghrelin-receptor research listings.",
+  "BRAIN-PERFORMANCE": "Neuropeptide research chemicals from the current catalogue.",
+  ENERGY: "Mitochondrial and metabolic research listings.",
+  REPRODUCTIVE: "Gonadotropin-related research listings.",
   BLENDS: "Multi-compound research blends. Confirm constituents on the vial label.",
   "MELANOCORTIN RESEARCH": "Melanocortin-receptor research listings.",
 };

@@ -31,7 +31,11 @@ test("lab accessories are not listed", () => {
     false,
   );
   assert.equal(
-    products.some((product) => product.categories.includes("LAB SUPPLIES")),
+    products.some((product) =>
+      product.categories.some((category) =>
+        ["LAB SUPPLIES", "ACCESSORIES"].includes(category),
+      ),
+    ),
     false,
   );
 });
