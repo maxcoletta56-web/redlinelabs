@@ -1,4 +1,4 @@
-import { optionLabel } from "@/lib/products";
+import { optionLabel } from "./variant-label.ts";
 
 export const AU_STATES = [
   "NSW",

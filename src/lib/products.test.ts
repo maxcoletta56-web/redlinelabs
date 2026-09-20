@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { optionLabel, variantGroupLabel } from "./products.ts";
+import { optionLabel, variantGroupLabel } from "./variant-label.ts";
 
 type CatalogProduct = {
   slug: string;
