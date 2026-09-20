@@ -65,7 +65,7 @@ export function PromoCodeForm({ id = "checkout-code" }: { id?: string }) {
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
         />
-        <button type="submit" className="btn-ghost shrink-0 px-4 py-2">
+        <button type="submit" className="btn-ghost shrink-0 self-stretch px-4">
           Apply
         </button>
       </div>
