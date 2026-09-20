@@ -17,7 +17,7 @@ type PromoContextValue = {
 };
 
 const PromoContext = createContext<PromoContextValue | null>(null);
-const STORAGE_KEY = "redline-promo-v1";
+const LEGACY_STORAGE_KEYS = ["redline-promo-v1", "redline-promo-v2"];
 
 let hydrated = false;
 let appliedCode: string | null = null;
@@ -32,40 +32,28 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-function persist(code: string | null) {
-  appliedCode = code;
+function forgetStoredCodes() {
   try {
-    if (code) localStorage.setItem(STORAGE_KEY, code);
-    else localStorage.removeItem(STORAGE_KEY);
+    for (const key of LEGACY_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    }
   } catch {
     /* ignore */
   }
-  emit();
 }
 
-function promoFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return lookupPromo(params.get("code") || params.get("promo"));
+function persist(code: string | null) {
+  appliedCode = code;
+  forgetStoredCodes();
+  emit();
 }
 
 export function hydratePromo() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
-  let stored: CheckoutPromo | null = null;
-  try {
-    stored = lookupPromo(sessionStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(STORAGE_KEY));
-  } catch {
-    stored = null;
-  }
-  appliedCode = promoFromUrl()?.code ?? stored?.code ?? null;
-  if (appliedCode) {
-    try {
-      localStorage.setItem(STORAGE_KEY, appliedCode);
-      sessionStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
-  }
+  forgetStoredCodes();
+  appliedCode = null;
   emit();
 }
 
