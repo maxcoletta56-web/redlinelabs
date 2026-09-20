@@ -10,6 +10,7 @@ export async function startCartCheckoutSession(input: {
   lastName: string;
   shipping?: ShippingAddressInput | null;
   storeCreditCents?: number;
+  promoCode?: string | null;
 }) {
   const email = input.email.trim();
   if (!email.includes("@")) {
@@ -23,5 +24,6 @@ export async function startCartCheckoutSession(input: {
     lastName: input.lastName,
     shipping: input.shipping,
     storeCreditCents: input.storeCreditCents,
+    promoCode: input.promoCode,
   });
 }

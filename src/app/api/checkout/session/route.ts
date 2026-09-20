@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
       amount_subtotal: session.amount_subtotal,
       currency: session.currency,
       store_credit_cents: Number(session.metadata?.store_credit_cents ?? 0),
+      promo_code: session.metadata?.promo_code || null,
+      promo_percent_off: Number(session.metadata?.promo_percent_off ?? 0),
       line_items: lineItems,
       shipping: shipping
         ? {

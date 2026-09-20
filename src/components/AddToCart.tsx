@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { MAX_QTY, useCart } from "@/lib/cart";
-import { formatPrice, optionLabel, type Product } from "@/lib/products";
+import { CatalogPrice } from "@/components/CatalogPrice";
+import { optionLabel, type Product } from "@/lib/products";
 
 export function AddToCart({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -19,7 +20,7 @@ export function AddToCart({ product }: { product: Product }) {
   return (
     <div className="space-y-5">
       <p className="text-[1.65rem] font-medium tracking-[-0.02em] text-[#d4af37]">
-        {formatPrice(price)}
+        <CatalogPrice amount={price} />
       </p>
       {variants.length > 0 && (
         <div>
@@ -41,7 +42,7 @@ export function AddToCart({ product }: { product: Product }) {
                       : "border-[rgba(212,175,55,0.34)] text-[#cfc8b8] hover:border-[#d4af37] hover:text-[#d4af37]"
                   }`}
                 >
-                  {optionLabel(product, variant.option)} — {formatPrice(variant.price)}
+                  {optionLabel(product, variant.option)} — <CatalogPrice amount={variant.price} />
                 </button>
               );
             })}

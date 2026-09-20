@@ -340,7 +340,9 @@ function AccountDashboard({
         </h2>
         <p className="mb-6 max-w-2xl text-[14px] leading-6 text-[#8f8c84]">
           Apply your store credit automatically at checkout. Issued credit is
-          deducted from the amount charged; you do not enter a code.
+          deducted from the amount charged; you do not enter a code. Checkout
+          code DGC20 is entered on the cart or checkout page and takes 20% off
+          all product prices before store credit.
         </p>
         <div className="surface p-6">
           <p className="text-[28px] font-semibold tracking-[-0.03em] text-[#d4af37]">

@@ -1,4 +1,5 @@
 import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
+import { applyPromoToUnitCents, lookupPromo } from "@/lib/promo";
 import { stripe, stripeConfigured, stripeMode } from "@/lib/stripe";
 import { creditToApplyCents } from "@/lib/store-credit";
 
@@ -19,15 +20,21 @@ export async function createEmbeddedCheckoutSession(input: {
   lastName?: string;
   shipping?: ShippingAddressInput | null;
   storeCreditCents?: number;
+  promoCode?: string | null;
 }) {
   if (!stripeConfigured()) {
     throw new Error("Stripe is not configured");
   }
 
   const lines = resolveCartLines(input.items);
+  const promo = lookupPromo(input.promoCode);
+  const priced = lines.map((line) => ({
+    ...line,
+    unitAmountCents: applyPromoToUnitCents(line.unitAmountCents, promo),
+  }));
   const name = [input.firstName, input.lastName].filter(Boolean).join(" ").trim();
   const email = input.email?.trim();
-  const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
+  const subtotalCents = priced.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
   const storeCreditCents = creditToApplyCents(Number(input.storeCreditCents) || 0, subtotalCents);
 
   let customerId: string | undefined;
@@ -81,7 +88,7 @@ export async function createEmbeddedCheckoutSession(input: {
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded_page",
     redirect_on_completion: "never",
-    line_items: lines.map((line) => ({
+    line_items: priced.map((line) => ({
       price_data: {
         currency: "aud",
         product_data: {
@@ -110,6 +117,8 @@ export async function createEmbeddedCheckoutSession(input: {
       age_confirmed: "true",
       research_use: "true",
       store_credit_cents: String(storeCreditCents),
+      promo_code: promo?.code ?? "",
+      promo_percent_off: promo ? String(promo.percentOff) : "0",
       stripe_mode: stripeMode() ?? "",
     },
   });

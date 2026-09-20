@@ -22,6 +22,7 @@ export function CartCheckout({
   publishableKey,
   shipping,
   storeCreditCents,
+  promoCode,
 }: {
   items: CartLineInput[];
   email: string;
@@ -30,6 +31,7 @@ export function CartCheckout({
   publishableKey: string;
   shipping?: ShippingAddressInput | null;
   storeCreditCents?: number;
+  promoCode?: string | null;
 }) {
   const router = useRouter();
   const sessionIdRef = useRef<string | null>(null);
@@ -43,10 +45,11 @@ export function CartCheckout({
       lastName,
       shipping,
       storeCreditCents,
+      promoCode,
     });
     sessionIdRef.current = sessionIdFromClientSecret(secret);
     return secret;
-  }, [items, email, firstName, lastName, shipping, storeCreditCents]);
+  }, [items, email, firstName, lastName, shipping, storeCreditCents, promoCode]);
 
   const onComplete = useCallback(() => {
     const sessionId = sessionIdRef.current;
@@ -56,6 +59,7 @@ export function CartCheckout({
   return (
     <div id="checkout">
       <EmbeddedCheckoutProvider
+        key={promoCode ?? "none"}
         stripe={stripePromise}
         options={{ fetchClientSecret, onComplete }}
       >

@@ -5,13 +5,17 @@ import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
+import { PromoCodeForm } from "@/components/PromoCodeForm";
+import { CatalogPrice } from "@/components/CatalogPrice";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { useAccount } from "@/lib/account";
 import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
+import { checkoutTotals } from "@/lib/promo";
+import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
-import { creditToApplyCents, dollarsToCents, centsToDollars } from "@/lib/store-credit";
+import { centsToDollars, creditToApplyCents } from "@/lib/store-credit";
 
 function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
   return {
@@ -26,7 +30,8 @@ function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
 }
 
 export default function CheckoutPage() {
-  const { items, subtotal } = useCart();
+  const { items } = useCart();
+  const { promo } = usePromo();
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -62,11 +67,15 @@ export default function CheckoutPage() {
   const selectedAddress =
     user?.addresses.find((address) => address.id === addressId) ??
     (user ? defaultAddress(user) : null);
+  const totals = checkoutTotals({
+    items,
+    promo,
+  });
   const creditCents = creditToApplyCents(
     user?.storeCreditCents ?? 0,
-    dollarsToCents(subtotal),
+    totals.discountedCents,
   );
-  const payable = Math.max(0, subtotal - centsToDollars(creditCents));
+  const payable = centsToDollars(totals.discountedCents - creditCents);
 
   const cartItems = useMemo(
     () =>
@@ -248,6 +257,9 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             <p className="text-sm leading-6 text-[#8f8c84]">
               Paying as {email}. Card details are handled by Stripe.
+              {promo
+                ? ` ${promo.code} takes ${promo.percentOff}% off all product prices.`
+                : ""}
               {creditCents > 0
                 ? ` ${formatPrice(centsToDollars(creditCents))} store credit will be applied automatically.`
                 : ""}
@@ -262,6 +274,7 @@ export default function CheckoutPage() {
                   publishableKey={publishableKey}
                   shipping={selectedAddress ? shippingFromAddress(selectedAddress) : null}
                   storeCreditCents={creditCents}
+                  promoCode={promo?.code ?? null}
                 />
               ) : (
                 <p className="text-sm leading-6 text-[#d4af37]" role="status">
@@ -284,14 +297,25 @@ export default function CheckoutPage() {
                 {item.name}
                 {item.option ? ` (${optionLabel(item, item.option)})` : ""} × {item.qty}
               </span>
-              <span className="text-[#d4af37]">{formatPrice(item.price * item.qty)}</span>
+              <span className="text-[#d4af37]">
+                <CatalogPrice amount={item.price} qty={item.qty} />
+              </span>
             </li>
           ))}
         </ul>
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4 text-sm">
           <span>Subtotal</span>
-          <span className="text-[#d4af37]">{formatPrice(subtotal)}</span>
+          <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
+        <PromoCodeForm id="summary-checkout-code" />
+        {totals.discountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>{promo?.code} · {promo?.percentOff}% off</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(totals.discountCents))}
+            </span>
+          </div>
+        )}
         <div className="mt-3 flex justify-between text-sm">
           <span>Store credit</span>
           <span className="text-[#d4af37]">
@@ -303,8 +327,9 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Signed-in store credit is applied automatically. Prices charged by
-          Stripe are taken from the catalogue, not from the browser cart. See the{" "}
+          Signed-in store credit is applied automatically. Checkout code DGC20
+          takes 20% off all product prices. Prices charged by Stripe are taken
+          from the catalogue, not from the browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}
