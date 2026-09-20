@@ -6,6 +6,7 @@ import {
   lookupPromo,
   normalizePromoCode,
   promoDiscountCents,
+  stripeCouponParams,
 } from "./promo.ts";
 import { creditToApplyCents } from "./store-credit.ts";
 
@@ -41,6 +42,25 @@ test("takes 20 percent off the order total, not each line", () => {
   assert.equal(totals.catalogCents, 6666);
   assert.equal(totals.discountedCents, orderTotal);
   assert.equal(totals.discountCents, 1333);
+});
+
+test("creates a 20 percent coupon for DGC20 on the order total", () => {
+  const promo = lookupPromo("DGC20");
+  assert.deepEqual(stripeCouponParams({ promo, promoOffCents: 4400, storeCreditCents: 0 }), {
+    percent_off: 20,
+    duration: "once",
+    name: "DGC20",
+  });
+  assert.deepEqual(
+    stripeCouponParams({ promo, promoOffCents: 4400, storeCreditCents: 1000 }),
+    {
+      amount_off: 5400,
+      currency: "aud",
+      duration: "once",
+      name: "DGC20 + Store credit",
+    },
+  );
+  assert.equal(stripeCouponParams({ promo: null, promoOffCents: 0, storeCreditCents: 0 }), null);
 });
 
 test("applies store credit after 20 percent off the total", () => {

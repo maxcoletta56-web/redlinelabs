@@ -39,6 +39,37 @@ export function promoDiscountCents(subtotalCents: number, promo: CheckoutPromo |
   return Math.max(0, subtotalCents - applyPercentOff(subtotalCents, promo.percentOff));
 }
 
+export function stripeCouponParams({
+  promo,
+  promoOffCents,
+  storeCreditCents,
+}: {
+  promo: CheckoutPromo | null;
+  promoOffCents: number;
+  storeCreditCents: number;
+}):
+  | { percent_off: number; duration: "once"; name: string }
+  | { amount_off: number; currency: "aud"; duration: "once"; name: string }
+  | null {
+  const credit = Math.max(0, Math.floor(storeCreditCents));
+  if (promo && credit === 0) {
+    return {
+      percent_off: promo.percentOff,
+      duration: "once",
+      name: promo.code,
+    };
+  }
+  const amountOff = Math.max(0, Math.floor(promoOffCents)) + credit;
+  if (amountOff <= 0) return null;
+  const name = [promo?.code, credit > 0 ? "Store credit" : null].filter(Boolean).join(" + ");
+  return {
+    amount_off: amountOff,
+    currency: "aud",
+    duration: "once",
+    name: name || "Discount",
+  };
+}
+
 export function checkoutTotals({
   items,
   promo,
