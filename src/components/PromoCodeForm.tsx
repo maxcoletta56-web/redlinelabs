@@ -20,7 +20,7 @@ export function PromoCodeForm({ id = "checkout-code" }: { id?: string }) {
         <button
           type="button"
           onClick={clearCode}
-          className="mt-1 text-xs text-[#8f8c84] hover:text-[#d4af37]"
+          className="mt-1 min-h-11 text-sm text-[#8f8c84] hover:text-[#d4af37]"
         >
           Remove code
         </button>
@@ -48,24 +48,28 @@ export function PromoCodeForm({ id = "checkout-code" }: { id?: string }) {
       >
         Checkout code
       </label>
-      <div className="flex gap-2">
+      <div className="flex items-stretch gap-2">
         <input
           id={id}
           name="checkoutCode"
+          type="text"
+          inputMode="text"
+          enterKeyHint="go"
           value={value}
           onChange={(event) => {
             setValue(event.target.value);
             if (error) setError(null);
           }}
           autoComplete="off"
+          autoCorrect="off"
           autoCapitalize="characters"
           spellCheck={false}
-          placeholder="Enter code"
-          className="field py-2"
+          placeholder="DGC20"
+          className="field min-h-11 min-w-0 flex-1 py-2 text-base"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
         />
-        <button type="submit" className="btn-ghost shrink-0 self-stretch px-4">
+        <button type="submit" className="btn-ghost min-h-11 shrink-0 px-4">
           Apply
         </button>
       </div>

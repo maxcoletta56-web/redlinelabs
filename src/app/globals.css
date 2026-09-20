@@ -25,6 +25,8 @@
 
 html {
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
@@ -169,10 +171,11 @@ a {
 
 .field {
   width: 100%;
+  min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: var(--bg-2);
   padding: 12px 14px;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text);
   border-radius: 2px;
   outline: none;

@@ -126,7 +126,7 @@ export function CartDrawer() {
           )}
         </div>
         {items.length > 0 && (
-          <div className="border-t border-[rgba(212,175,55,0.16)] p-6">
+          <div className="border-t border-[rgba(212,175,55,0.16)] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             <div className="mb-4 flex justify-between text-sm">
               <span>Subtotal</span>
               <span className="text-[#d4af37]">

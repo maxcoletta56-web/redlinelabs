@@ -25,8 +25,8 @@ export function CatalogPrice({
   );
 
   return (
-    <span className={className}>
-      <span className="mr-2 font-normal text-[#8f8c84] line-through">
+    <span className={`inline-flex flex-wrap items-baseline gap-x-2 ${className ?? ""}`.trim()}>
+      <span className="font-normal text-[#8f8c84] line-through">
         {formatPrice(catalog)}
       </span>
       {formatPrice(sale)}

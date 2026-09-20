@@ -35,8 +35,8 @@ function subscribe(listener: () => void) {
 function persist(code: string | null) {
   appliedCode = code;
   try {
-    if (code) sessionStorage.setItem(STORAGE_KEY, code);
-    else sessionStorage.removeItem(STORAGE_KEY);
+    if (code) localStorage.setItem(STORAGE_KEY, code);
+    else localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* ignore */
   }
@@ -53,14 +53,15 @@ export function hydratePromo() {
   hydrated = true;
   let stored: CheckoutPromo | null = null;
   try {
-    stored = lookupPromo(sessionStorage.getItem(STORAGE_KEY));
+    stored = lookupPromo(sessionStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(STORAGE_KEY));
   } catch {
     stored = null;
   }
   appliedCode = promoFromUrl()?.code ?? stored?.code ?? null;
   if (appliedCode) {
     try {
-      sessionStorage.setItem(STORAGE_KEY, appliedCode);
+      localStorage.setItem(STORAGE_KEY, appliedCode);
+      sessionStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
     }

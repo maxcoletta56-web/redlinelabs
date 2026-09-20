@@ -36,7 +36,7 @@ export function AddToCart({ product }: { product: Product }) {
                   type="button"
                   onClick={() => setOption(variant.option)}
                   aria-pressed={active}
-                  className={`border px-3 py-2 text-[12px] font-semibold tracking-[0.06em] uppercase ${
+                  className={`inline-flex flex-wrap items-center gap-x-2 gap-y-1 border px-3 py-2 text-[12px] font-semibold tracking-[0.06em] uppercase ${
                     active
                       ? "border-[#d4af37] bg-[#d4af37] text-black"
                       : "border-[rgba(212,175,55,0.34)] text-[#cfc8b8] hover:border-[#d4af37] hover:text-[#d4af37]"
