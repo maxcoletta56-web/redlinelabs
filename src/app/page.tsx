@@ -8,6 +8,7 @@ import {
   IconShield,
   IconTruck,
 } from "@/components/Icons";
+import { MarqueeBanner } from "@/components/MarqueeBanner";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductImage } from "@/components/ProductImage";
 import { faqs } from "@/lib/faqs";
@@ -137,28 +138,8 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <div className="border-t border-white/10 py-3">
-            <div
-              className="marquee text-[12px] tracking-[0.12em] text-[#8f8c84] uppercase"
-              aria-label="Catalogue compound names"
-            >
-              <div className="marquee-track">
-                {[0, 1].map((copy) => (
-                  <div
-                    className="marquee-group"
-                    key={copy}
-                    aria-hidden={copy === 1 ? true : undefined}
-                  >
-                    {tickerNames.map((name) => (
-                      <span key={`${copy}-${name}`}>
-                        <span className="mr-2 text-[#d4af37]">•</span>
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="border-t border-white/10 py-3 text-[12px] tracking-[0.12em] text-[#8f8c84] uppercase">
+            <MarqueeBanner items={tickerNames} label="Catalogue compound names" />
           </div>
         </div>
       </section>
