@@ -1,5 +1,5 @@
 import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
-import { lookupPromo, promoDiscountCents, stripeCouponParams } from "@/lib/promo";
+import { activePromo, promoDiscountCents, stripeCouponParams } from "@/lib/promo";
 import { stripe, stripeConfigured, stripeMode } from "@/lib/stripe";
 import { creditToApplyCents } from "@/lib/store-credit";
 
@@ -27,7 +27,7 @@ export async function createEmbeddedCheckoutSession(input: {
   }
 
   const lines = resolveCartLines(input.items);
-  const promo = lookupPromo(input.promoCode);
+  const promo = activePromo(input.promoCode);
   const name = [input.firstName, input.lastName].filter(Boolean).join(" ").trim();
   const email = input.email?.trim();
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
-import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { useAccount } from "@/lib/account";
 import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-data";
@@ -258,7 +257,7 @@ export default function CheckoutPage() {
             <p className="text-sm leading-6 text-[#8f8c84]">
               Paying as {email}. Card details are handled by Stripe.
               {promo
-                ? ` ${promo.code} takes ${promo.percentOff}% off the total order amount.`
+                ? ` ${promo.percentOff}% off the total order amount is applied automatically.`
                 : ""}
               {creditCents > 0
                 ? ` ${formatPrice(centsToDollars(creditCents))} store credit will be applied automatically.`
@@ -305,10 +304,9 @@ export default function CheckoutPage() {
           <span>Subtotal</span>
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
-        <PromoCodeForm id="summary-checkout-code" />
         {totals.discountCents > 0 && (
-          <div className="mb-3 flex justify-between text-sm">
-            <span>{promo?.code} · {promo?.percentOff}% off total</span>
+          <div className="mb-3 mt-3 flex justify-between text-sm">
+            <span>{promo.percentOff}% off total</span>
             <span className="text-[#d4af37]">
               −{formatPrice(centsToDollars(totals.discountCents))}
             </span>
@@ -325,8 +323,8 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Signed-in store credit is applied automatically. Checkout code DGC20
-          takes 20% off the total order amount. Prices charged by Stripe are taken
+          Signed-in store credit and 20% off the total order amount are applied
+          automatically. Prices charged by Stripe are taken
           from the catalogue, not from the browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy

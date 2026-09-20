@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  AUTO_PROMO,
+  activePromo,
   applyPercentOff,
   checkoutTotals,
   lookupPromo,
@@ -20,6 +22,9 @@ test("DGC20 is a 20 percent checkout code", () => {
   assert.equal(normalizePromoCode("  dgc20  "), "DGC20");
   assert.equal(lookupPromo("SAVE20"), null);
   assert.equal(lookupPromo(""), null);
+  assert.equal(activePromo(null), AUTO_PROMO);
+  assert.equal(activePromo(""), AUTO_PROMO);
+  assert.equal(activePromo("DGC20"), AUTO_PROMO);
 });
 
 test("takes 20 percent off the order total, not each line", () => {

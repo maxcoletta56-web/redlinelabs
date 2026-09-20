@@ -76,7 +76,7 @@ export const faqs: { q: string; a: ReactNode }[] = [
     ),
   },
   {
-    q: "Is there a checkout discount code?",
-    a: "Yes. Enter DGC20 on the cart or checkout page. It takes 20% off the total order amount. Product prices stay as listed.",
+    q: "Is there a checkout discount?",
+    a: "Yes. 20% off the total order amount is applied automatically at checkout. Product prices stay as listed.",
   },
 ];
