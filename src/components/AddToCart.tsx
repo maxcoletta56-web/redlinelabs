@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MAX_QTY, useCart } from "@/lib/cart";
-import { CatalogPrice } from "@/components/CatalogPrice";
-import { optionLabel, type Product } from "@/lib/products";
+import { formatPrice, optionLabel, type Product } from "@/lib/products";
 
 export function AddToCart({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -20,7 +19,7 @@ export function AddToCart({ product }: { product: Product }) {
   return (
     <div className="space-y-5">
       <p className="text-[1.65rem] font-medium tracking-[-0.02em] text-[#d4af37]">
-        <CatalogPrice amount={price} />
+        {formatPrice(price)}
       </p>
       {variants.length > 0 && (
         <div>
@@ -36,13 +35,13 @@ export function AddToCart({ product }: { product: Product }) {
                   type="button"
                   onClick={() => setOption(variant.option)}
                   aria-pressed={active}
-                  className={`inline-flex flex-wrap items-center gap-x-2 gap-y-1 border px-3 py-2 text-[12px] font-semibold tracking-[0.06em] uppercase ${
+                  className={`border px-3 py-2 text-[12px] font-semibold tracking-[0.06em] uppercase ${
                     active
                       ? "border-[#d4af37] bg-[#d4af37] text-black"
                       : "border-[rgba(212,175,55,0.34)] text-[#cfc8b8] hover:border-[#d4af37] hover:text-[#d4af37]"
                   }`}
                 >
-                  {optionLabel(product, variant.option)} — <CatalogPrice amount={variant.price} />
+                  {optionLabel(product, variant.option)} — {formatPrice(variant.price)}
                 </button>
               );
             })}

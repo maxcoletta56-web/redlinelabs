@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { CatalogPrice } from "@/components/CatalogPrice";
 import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
@@ -52,9 +51,7 @@ export default function CartPage() {
                       {optionLabel(item, item.option)}
                     </p>
                   )}
-                  <p className="mt-1 text-[#d4af37]">
-                    <CatalogPrice amount={item.price} />
-                  </p>
+                  <p className="mt-1 text-[#d4af37]">{formatPrice(item.price)}</p>
                   <div className="mt-3 flex items-center gap-3">
                     <label className="flex items-center gap-2 text-sm text-[#8f8c84]">
                       <span className="sr-only">Quantity for {item.name}</span>
@@ -93,7 +90,7 @@ export default function CartPage() {
             <PromoCodeForm id="cart-checkout-code" />
             {totals.discountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
-                <span>{promo?.code} · {promo?.percentOff}% off</span>
+                <span>{promo?.code} · {promo?.percentOff}% off total</span>
                 <span className="text-[#d4af37]">
                   −{formatPrice(centsToDollars(totals.discountCents))}
                 </span>
@@ -108,8 +105,8 @@ export default function CartPage() {
               </div>
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              Checkout is charged through Stripe. Enter DGC20 for 20% off all
-              product prices. Dispatch notes are on the{" "}
+              Checkout is charged through Stripe. Enter DGC20 for 20% off the
+              order total. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
               </Link>

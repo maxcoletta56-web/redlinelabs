@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
-import { CatalogPrice } from "@/components/CatalogPrice";
 import { useCart } from "@/lib/cart";
-import { displayName, optionLabel, type Product } from "@/lib/products";
+import { displayName, formatPrice, optionLabel, type Product } from "@/lib/products";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -50,7 +49,7 @@ export function ProductCard({ product }: { product: Product }) {
           Research use only · COA on request
         </p>
         <p className="mb-4 text-[22px] font-bold tracking-[-0.03em] text-[#d4af37]">
-          <CatalogPrice amount={price} />
+          {formatPrice(price)}
         </p>
       </Link>
       {hasChoices && (

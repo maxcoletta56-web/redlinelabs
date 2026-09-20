@@ -8,7 +8,7 @@ export const CHECKOUT_PROMOS: Record<string, CheckoutPromo> = {
   DGC20: {
     code: "DGC20",
     percentOff: 20,
-    name: "20% off all products",
+    name: "20% off order total",
   },
 };
 
@@ -34,13 +34,9 @@ export function applyPercentOff(amountCents: number, percentOff: number) {
   return Math.round((amount * (100 - percent)) / 100);
 }
 
-export function applyPercentOffDollars(amount: number, percentOff: number) {
-  return applyPercentOff(toCents(amount), percentOff) / 100;
-}
-
-export function applyPromoToUnitCents(unitAmountCents: number, promo: CheckoutPromo | null) {
-  if (!promo) return unitAmountCents;
-  return applyPercentOff(unitAmountCents, promo.percentOff);
+export function promoDiscountCents(subtotalCents: number, promo: CheckoutPromo | null) {
+  if (!promo) return 0;
+  return Math.max(0, subtotalCents - applyPercentOff(subtotalCents, promo.percentOff));
 }
 
 export function checkoutTotals({
@@ -50,15 +46,11 @@ export function checkoutTotals({
   items: Array<{ price: number; qty: number }>;
   promo: CheckoutPromo | null;
 }) {
-  const percentOff = promo?.percentOff ?? 0;
   const catalogCents = items.reduce((sum, item) => sum + toCents(item.price) * item.qty, 0);
-  const discountedCents = items.reduce(
-    (sum, item) => sum + applyPercentOff(toCents(item.price), percentOff) * item.qty,
-    0,
-  );
+  const discountCents = promoDiscountCents(catalogCents, promo);
   return {
     catalogCents,
-    discountedCents,
-    discountCents: catalogCents - discountedCents,
+    discountedCents: catalogCents - discountCents,
+    discountCents,
   };
 }

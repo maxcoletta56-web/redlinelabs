@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { ProductImage } from "@/components/ProductImage";
-import { CatalogPrice } from "@/components/CatalogPrice";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
 import { checkoutTotals } from "@/lib/promo";
@@ -95,9 +94,7 @@ export function CartDrawer() {
                         {optionLabel(item, item.option)}
                       </p>
                     )}
-                    <p className="mt-1 text-sm text-[#d4af37]">
-                      <CatalogPrice amount={item.price} />
-                    </p>
+                    <p className="mt-1 text-sm text-[#d4af37]">{formatPrice(item.price)}</p>
                     <div className="mt-2 flex items-center gap-3">
                       <input
                         type="number"
@@ -136,7 +133,7 @@ export function CartDrawer() {
             <PromoCodeForm id="drawer-checkout-code" />
             {totals.discountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
-                <span>{promo?.code}</span>
+                <span>{promo?.code} · {promo?.percentOff}% off</span>
                 <span className="text-[#d4af37]">
                   −{formatPrice(centsToDollars(totals.discountCents))}
                 </span>

@@ -2,11 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyPercentOff,
-  applyPercentOffDollars,
-  applyPromoToUnitCents,
   checkoutTotals,
   lookupPromo,
   normalizePromoCode,
+  promoDiscountCents,
 } from "./promo.ts";
 import { creditToApplyCents } from "./store-credit.ts";
 
@@ -15,21 +14,36 @@ test("DGC20 is a 20 percent checkout code", () => {
   assert.deepEqual(promo, {
     code: "DGC20",
     percentOff: 20,
-    name: "20% off all products",
+    name: "20% off order total",
   });
   assert.equal(normalizePromoCode("  dgc20  "), "DGC20");
   assert.equal(lookupPromo("SAVE20"), null);
   assert.equal(lookupPromo(""), null);
 });
 
-test("applies 20 percent off product prices in cents", () => {
+test("takes 20 percent off the order total, not each line", () => {
   assert.equal(applyPercentOff(8900, 20), 7120);
-  assert.equal(applyPercentOffDollars(89, 20), 71.2);
-  assert.equal(applyPromoToUnitCents(12500, lookupPromo("DGC20")), 10000);
-  assert.equal(applyPromoToUnitCents(12500, null), 12500);
+  assert.equal(promoDiscountCents(8900, lookupPromo("DGC20")), 1780);
+  assert.equal(promoDiscountCents(8900, null), 0);
+
+  const perLine = applyPercentOff(3333, 20) * 2;
+  const orderTotal = applyPercentOff(6666, 20);
+  assert.equal(perLine, 5332);
+  assert.equal(orderTotal, 5333);
+
+  const totals = checkoutTotals({
+    items: [
+      { price: 33.33, qty: 1 },
+      { price: 33.33, qty: 1 },
+    ],
+    promo: lookupPromo("DGC20"),
+  });
+  assert.equal(totals.catalogCents, 6666);
+  assert.equal(totals.discountedCents, orderTotal);
+  assert.equal(totals.discountCents, 1333);
 });
 
-test("discounts every line then applies store credit to the sale total", () => {
+test("applies store credit after 20 percent off the total", () => {
   const totals = checkoutTotals({
     items: [
       { price: 89, qty: 2 },
