@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     ageConfirmed?: boolean;
     researchUse?: boolean;
     items?: CartLineInput[];
+    promoCode?: string | null;
   };
 
   try {
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
       email,
       firstName: body.firstName,
       lastName: body.lastName,
+      promoCode: body.promoCode,
     });
     return NextResponse.json({ clientSecret, mode: resolved.mode });
   } catch (error) {
