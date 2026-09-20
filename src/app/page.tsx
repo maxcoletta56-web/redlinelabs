@@ -56,7 +56,7 @@ export default function Home() {
   const hero = productsBySlugs([...heroSlugs]);
   const activeHero = getProduct("bpc-157") ?? hero[0];
   const shopCategories = categories.filter((c) => c !== "All");
-  const ticker = [...products.map((p) => p.name), ...products.map((p) => p.name)];
+  const tickerNames = products.map((p) => p.name);
 
   return (
     <div>
@@ -138,13 +138,24 @@ export default function Home() {
             ))}
           </div>
           <div className="border-t border-white/10 py-3">
-            <div className="marquee text-[12px] tracking-[0.12em] text-[#8f8c84] uppercase">
+            <div
+              className="marquee text-[12px] tracking-[0.12em] text-[#8f8c84] uppercase"
+              aria-label="Catalogue compound names"
+            >
               <div className="marquee-track">
-                {ticker.map((name, i) => (
-                  <span key={`${name}-${i}`}>
-                    <span className="mr-2 text-[#d4af37]">•</span>
-                    {name}
-                  </span>
+                {[0, 1].map((copy) => (
+                  <div
+                    className="marquee-group"
+                    key={copy}
+                    aria-hidden={copy === 1 ? true : undefined}
+                  >
+                    {tickerNames.map((name) => (
+                      <span key={`${copy}-${name}`}>
+                        <span className="mr-2 text-[#d4af37]">•</span>
+                        {name}
+                      </span>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>
