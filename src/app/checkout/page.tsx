@@ -101,18 +101,19 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="wrap grid max-w-[1100px] gap-12 py-16 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="wrap max-w-[1100px] py-16">
+      <Breadcrumbs
+        items={[
+          { href: "/", label: "Home" },
+          { href: "/cart", label: "Cart" },
+          { label: "Checkout" },
+        ]}
+      />
+      <p className="kicker mb-3">Order</p>
+      <h1 className="mb-6 text-[2.15rem] font-semibold tracking-[-0.03em]">Checkout</h1>
+      <ResearchDisclaimer className="mb-8" />
+      <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="order-2 lg:order-1">
-        <Breadcrumbs
-          items={[
-            { href: "/", label: "Home" },
-            { href: "/cart", label: "Cart" },
-            { label: "Checkout" },
-          ]}
-        />
-        <p className="kicker mb-3">Order</p>
-        <h1 className="mb-6 text-[2.15rem] font-semibold tracking-[-0.03em]">Checkout</h1>
-        <ResearchDisclaimer className="mb-8" />
 
         {hydrated && !user && (
           <aside className="surface mb-8 p-5" role="note">
@@ -336,6 +337,7 @@ export default function CheckoutPage() {
           for dispatch notes.
         </p>
       </aside>
+      </div>
     </div>
   );
 }
