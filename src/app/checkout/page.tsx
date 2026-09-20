@@ -102,7 +102,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="wrap grid max-w-[1100px] gap-12 py-16 lg:grid-cols-[1.1fr_0.9fr]">
-      <div>
+      <div className="order-2 lg:order-1">
         <Breadcrumbs
           items={[
             { href: "/", label: "Home" },
@@ -288,7 +288,7 @@ export default function CheckoutPage() {
           </div>
         )}
       </div>
-      <aside className="surface h-fit p-6">
+      <aside className="surface order-1 h-fit p-6 lg:order-2">
         <h2 className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase">Summary</h2>
         <ul className="mb-4 space-y-3 text-sm">
           {items.map((item) => (

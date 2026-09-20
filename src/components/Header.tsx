@@ -36,16 +36,18 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40">
-      <div className="bg-[#d4af37] py-2 text-center text-[11px] font-medium tracking-[0.06em] text-black">
+      <div className="bg-[#d4af37] px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-center text-[11px] font-medium leading-4 tracking-[0.06em] text-black">
         For laboratory research use only. Not for human or veterinary consumption.
       </div>
       {promo && (
-        <div className="border-b border-[rgba(212,175,55,0.16)] bg-[#111] py-2 text-center text-[11px] font-medium tracking-[0.08em] text-[#d4af37] uppercase">
-          {promo.code} applied — {promo.name}
+        <div className="flex items-center justify-center gap-3 border-b border-[rgba(212,175,55,0.16)] bg-[#111] px-3 py-1.5">
+          <p className="text-[11px] font-medium tracking-[0.08em] text-[#d4af37] uppercase">
+            {promo.code} · {promo.percentOff}% off
+          </p>
           <button
             type="button"
             onClick={clearCode}
-            className="ml-3 tracking-[0.08em] text-[#cfc8b8] uppercase hover:text-white"
+            className="min-h-11 px-2 text-[11px] tracking-[0.08em] text-[#cfc8b8] uppercase hover:text-white"
           >
             Remove
           </button>
