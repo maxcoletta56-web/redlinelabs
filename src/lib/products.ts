@@ -38,11 +38,23 @@ export function productsBySlugs(slugs: string[]) {
     .filter((p): p is Product => Boolean(p));
 }
 
+export function isDoseOption(option: string) {
+  return /^[\d,]+(?:\s*\/\s*[\d,]+)?$/.test(option.trim());
+}
+
 export function optionLabel(product: Pick<Product, "variantLabel">, option: string) {
+  if (!isDoseOption(option)) return option;
   const unit = product.variantLabel;
   if (unit === "MG") return `${option} MG`;
   if (unit === "IU" || unit === "Iu") return `${option} IU`;
   return unit ? `${option} ${unit}` : option;
+}
+
+export function variantGroupLabel(product: Pick<Product, "variantLabel" | "variants">) {
+  const options = product.variants.map((variant) => variant.option);
+  const mixed = options.some(isDoseOption) && options.some((option) => !isDoseOption(option));
+  if (mixed) return "Option";
+  return product.variantLabel ?? "Option";
 }
 
 export function displayName(product: Product, selectedOption?: string) {

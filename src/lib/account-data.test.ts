@@ -56,6 +56,18 @@ test("shows size units on order history lines", () => {
     }),
     "BPC-157 (10 MG)",
   );
+  assert.equal(
+    lineDisplayName({
+      slug: "products-selank",
+      name: "SELANK",
+      option: "Nasal Spray",
+      variantLabel: "MG",
+      sku: "SelankNS",
+      qty: 1,
+      unitAmountCents: 9000,
+    }),
+    "SELANK (Nasal Spray)",
+  );
 });
 
 test("rejects incomplete signup details", () => {

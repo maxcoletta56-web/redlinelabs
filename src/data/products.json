@@ -20,6 +20,11 @@
         "option": "15",
         "price": 110,
         "sku": "Dsip15"
+      },
+      {
+        "option": "Nasal Spray",
+        "price": 95,
+        "sku": "DsipNS"
       }
     ],
     "minPrice": 95,
@@ -64,7 +69,18 @@
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/16f7a4fd-bb07-481b-ad10-291e818a41c3.png?fit=800%2C800&ssl=1",
     "description": "Melanotan II is a synthetic cyclic analogue of α-melanocyte-stimulating hormone. In research literature it is described as an agonist at melanocortin receptors (including MC1R and MC4R) and is used to study pigmentation and melanocortin signalling in experimental systems. Supplied for laboratory research only.",
     "variantLabel": null,
-    "variants": [],
+    "variants": [
+      {
+        "option": "Vial",
+        "price": 70,
+        "sku": "MT2"
+      },
+      {
+        "option": "Nasal Spray",
+        "price": 70,
+        "sku": "MT2NS"
+      }
+    ],
     "minPrice": 70,
     "maxPrice": 70,
     "featured": false
@@ -477,6 +493,11 @@
         "option": "10",
         "price": 90,
         "sku": "Selank10"
+      },
+      {
+        "option": "Nasal Spray",
+        "price": 90,
+        "sku": "SelankNS"
       }
     ],
     "minPrice": 90,
@@ -531,6 +552,11 @@
         "option": "30",
         "price": 125,
         "sku": "Semax30"
+      },
+      {
+        "option": "Nasal Spray",
+        "price": 90,
+        "sku": "SemaxNS"
       }
     ],
     "minPrice": 90,

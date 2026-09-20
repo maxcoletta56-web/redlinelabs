@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { optionLabel, variantGroupLabel } from "./products.ts";
 
 type CatalogProduct = {
   slug: string;
@@ -8,7 +9,7 @@ type CatalogProduct = {
   image: string;
   description: string;
   categories: string[];
-  variants: Array<{ sku: string }>;
+  variants: Array<{ option: string; sku: string }>;
 };
 
 const products = JSON.parse(
@@ -49,4 +50,39 @@ test("variant SKUs are unique on each listing", () => {
       `${product.slug} reuses a variant SKU`,
     );
   }
+});
+
+test("Selank, Semax, DSIP, and Melanotan 2 offer a nasal spray option", () => {
+  const slugs = [
+    "products-selank",
+    "products-semax",
+    "products-dsip",
+    "melanotan-2",
+  ];
+  for (const slug of slugs) {
+    const product = products.find((entry) => entry.slug === slug);
+    assert.ok(product, `${slug} is missing`);
+    assert.ok(
+      product.variants.some((variant) => variant.option === "Nasal Spray"),
+      `${slug} is missing a Nasal Spray variant`,
+    );
+  }
+  const melanotan = products.find((entry) => entry.slug === "melanotan-2");
+  assert.ok(melanotan?.variants.some((variant) => variant.option === "Vial"));
+});
+
+test("form options keep their own labels instead of a dose unit", () => {
+  assert.equal(optionLabel({ variantLabel: "MG" }, "10"), "10 MG");
+  assert.equal(optionLabel({ variantLabel: "MG" }, "Nasal Spray"), "Nasal Spray");
+  assert.equal(optionLabel({ variantLabel: null }, "Vial"), "Vial");
+  assert.equal(
+    variantGroupLabel({
+      variantLabel: "MG",
+      variants: [
+        { option: "10", price: 90, sku: "Selank10" },
+        { option: "Nasal Spray", price: 90, sku: "SelankNS" },
+      ],
+    }),
+    "Option",
+  );
 });

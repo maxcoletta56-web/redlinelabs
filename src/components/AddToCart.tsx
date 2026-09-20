@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MAX_QTY, useCart } from "@/lib/cart";
-import { formatPrice, optionLabel, type Product } from "@/lib/products";
+import { formatPrice, optionLabel, variantGroupLabel, type Product } from "@/lib/products";
 
 export function AddToCart({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -24,7 +24,7 @@ export function AddToCart({ product }: { product: Product }) {
       {variants.length > 0 && (
         <div>
           <p className="mb-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
-            {product.variantLabel ?? "Option"}
+            {variantGroupLabel(product)}
           </p>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Size">
             {variants.map((variant) => {
