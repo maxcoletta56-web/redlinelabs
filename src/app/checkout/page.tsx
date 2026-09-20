@@ -6,7 +6,6 @@ import { CartCheckout } from "@/components/CartCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
-import { CatalogPrice } from "@/components/CatalogPrice";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { useAccount } from "@/lib/account";
 import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-data";
@@ -259,7 +258,7 @@ export default function CheckoutPage() {
             <p className="text-sm leading-6 text-[#8f8c84]">
               Paying as {email}. Card details are handled by Stripe.
               {promo
-                ? ` ${promo.code} takes ${promo.percentOff}% off all product prices.`
+                ? ` ${promo.code} takes ${promo.percentOff}% off the order total.`
                 : ""}
               {creditCents > 0
                 ? ` ${formatPrice(centsToDollars(creditCents))} store credit will be applied automatically.`
@@ -298,9 +297,7 @@ export default function CheckoutPage() {
                 {item.name}
                 {item.option ? ` (${optionLabel(item, item.option)})` : ""} × {item.qty}
               </span>
-              <span className="text-[#d4af37]">
-                <CatalogPrice amount={item.price} qty={item.qty} />
-              </span>
+              <span className="text-[#d4af37]">{formatPrice(item.price * item.qty)}</span>
             </li>
           ))}
         </ul>
@@ -311,7 +308,7 @@ export default function CheckoutPage() {
         <PromoCodeForm id="summary-checkout-code" />
         {totals.discountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
-            <span>{promo?.code} · {promo?.percentOff}% off</span>
+            <span>{promo?.code} · {promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
               −{formatPrice(centsToDollars(totals.discountCents))}
             </span>
@@ -329,7 +326,7 @@ export default function CheckoutPage() {
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
           Signed-in store credit is applied automatically. Checkout code DGC20
-          takes 20% off all product prices. Prices charged by Stripe are taken
+          takes 20% off the order total. Prices charged by Stripe are taken
           from the catalogue, not from the browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy

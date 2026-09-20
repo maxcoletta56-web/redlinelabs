@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FaqList } from "@/components/FaqList";
-import { CatalogPrice } from "@/components/CatalogPrice";
 import {
   IconLock,
   IconMail,
@@ -15,6 +14,7 @@ import { faqs } from "@/lib/faqs";
 import {
   categories,
   featuredProducts,
+  formatPrice,
   getProduct,
   products,
   productsBySlugs,
@@ -118,7 +118,7 @@ export default function Home() {
             ))}
             {activeHero && (
               <div className="absolute right-0 bottom-0 left-0 rounded-xl border border-white/10 bg-black/70 px-4 py-3 text-[11px] tracking-[0.08em] text-[#cfc8b8] uppercase backdrop-blur-sm">
-                {activeHero.name} · from <CatalogPrice amount={activeHero.minPrice} /> · COA on request
+                {activeHero.name} · from {formatPrice(activeHero.minPrice)} · COA on request
               </div>
             )}
           </div>

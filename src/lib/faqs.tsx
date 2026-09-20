@@ -77,6 +77,6 @@ export const faqs: { q: string; a: ReactNode }[] = [
   },
   {
     q: "Is there a checkout discount code?",
-    a: "Yes. Enter DGC20 on the cart or checkout page for 20% off all product prices. Stripe charges the discounted catalogue prices.",
+    a: "Yes. Enter DGC20 on the cart or checkout page for 20% off the order total. Product prices stay as listed; the discount is taken from the cart subtotal.",
   },
 ];

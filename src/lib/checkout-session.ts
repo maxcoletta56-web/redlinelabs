@@ -1,5 +1,5 @@
 import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
-import { applyPromoToUnitCents, lookupPromo } from "@/lib/promo";
+import { lookupPromo, promoDiscountCents } from "@/lib/promo";
 import { stripe, stripeConfigured, stripeMode } from "@/lib/stripe";
 import { creditToApplyCents } from "@/lib/store-credit";
 
@@ -28,14 +28,13 @@ export async function createEmbeddedCheckoutSession(input: {
 
   const lines = resolveCartLines(input.items);
   const promo = lookupPromo(input.promoCode);
-  const priced = lines.map((line) => ({
-    ...line,
-    unitAmountCents: applyPromoToUnitCents(line.unitAmountCents, promo),
-  }));
   const name = [input.firstName, input.lastName].filter(Boolean).join(" ").trim();
   const email = input.email?.trim();
-  const subtotalCents = priced.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const storeCreditCents = creditToApplyCents(Number(input.storeCreditCents) || 0, subtotalCents);
+  const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
+  const promoOffCents = promoDiscountCents(subtotalCents, promo);
+  const afterPromoCents = subtotalCents - promoOffCents;
+  const storeCreditCents = creditToApplyCents(Number(input.storeCreditCents) || 0, afterPromoCents);
+  const amountOffCents = promoOffCents + storeCreditCents;
 
   let customerId: string | undefined;
   if (email) {
@@ -69,16 +68,19 @@ export async function createEmbeddedCheckoutSession(input: {
     }
   }
 
+  const discountName = [promo?.code, storeCreditCents > 0 ? "Store credit" : null]
+    .filter(Boolean)
+    .join(" + ");
   const discounts =
-    storeCreditCents > 0
+    amountOffCents > 0
       ? [
           {
             coupon: (
               await stripe.coupons.create({
-                amount_off: storeCreditCents,
+                amount_off: amountOffCents,
                 currency: "aud",
                 duration: "once",
-                name: "Store credit",
+                name: discountName || "Discount",
               })
             ).id,
           },
@@ -88,7 +90,7 @@ export async function createEmbeddedCheckoutSession(input: {
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded_page",
     redirect_on_completion: "never",
-    line_items: priced.map((line) => ({
+    line_items: lines.map((line) => ({
       price_data: {
         currency: "aud",
         product_data: {
@@ -119,6 +121,7 @@ export async function createEmbeddedCheckoutSession(input: {
       store_credit_cents: String(storeCreditCents),
       promo_code: promo?.code ?? "",
       promo_percent_off: promo ? String(promo.percentOff) : "0",
+      promo_discount_cents: String(promoOffCents),
       stripe_mode: stripeMode() ?? "",
     },
   });
