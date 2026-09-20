@@ -35,9 +35,7 @@ export function MarqueeBanner({
       last = now;
       if (!paused && distance > 0) {
         offset = (offset + SPEED_PX_PER_SEC * delta) % distance;
-        const value = `translate3d(${-offset}px,0,0)`;
-        track.style.transform = value;
-        track.style.webkitTransform = value;
+        track.style.transform = `translate3d(${-offset}px,0,0)`;
       }
       frame = window.requestAnimationFrame(tick);
     };
