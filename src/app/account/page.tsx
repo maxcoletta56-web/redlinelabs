@@ -342,7 +342,7 @@ function AccountDashboard({
           Apply your store credit automatically at checkout. Issued credit is
           deducted from the amount charged; you do not enter a code. Checkout
           code DGC20 is entered on the cart or checkout page and takes 20% off
-          the order total before store credit.
+          the total order amount before store credit.
         </p>
         <div className="surface p-6">
           <p className="text-[28px] font-semibold tracking-[-0.03em] text-[#d4af37]">

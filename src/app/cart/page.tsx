@@ -106,7 +106,7 @@ export default function CartPage() {
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
               Checkout is charged through Stripe. Enter DGC20 for 20% off the
-              order total. Dispatch notes are on the{" "}
+              total order amount. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
               </Link>

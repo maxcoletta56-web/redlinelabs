@@ -258,7 +258,7 @@ export default function CheckoutPage() {
             <p className="text-sm leading-6 text-[#8f8c84]">
               Paying as {email}. Card details are handled by Stripe.
               {promo
-                ? ` ${promo.code} takes ${promo.percentOff}% off the order total.`
+                ? ` ${promo.code} takes ${promo.percentOff}% off the total order amount.`
                 : ""}
               {creditCents > 0
                 ? ` ${formatPrice(centsToDollars(creditCents))} store credit will be applied automatically.`
@@ -326,7 +326,7 @@ export default function CheckoutPage() {
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
           Signed-in store credit is applied automatically. Checkout code DGC20
-          takes 20% off the order total. Prices charged by Stripe are taken
+          takes 20% off the total order amount. Prices charged by Stripe are taken
           from the catalogue, not from the browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
