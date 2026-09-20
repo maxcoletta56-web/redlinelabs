@@ -12,13 +12,6 @@ export const CHECKOUT_PROMOS: Record<string, CheckoutPromo> = {
   },
 };
 
-export const AUTO_PROMO: CheckoutPromo = CHECKOUT_PROMOS.DGC20;
-
-/** 20% off the order total is always on; no code entry. */
-export function activePromo(input?: string | null): CheckoutPromo {
-  return lookupPromo(input) ?? AUTO_PROMO;
-}
-
 export function normalizePromoCode(input: string | null | undefined) {
   return (input ?? "").trim().toUpperCase();
 }

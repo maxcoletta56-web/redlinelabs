@@ -7,6 +7,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { IconUser } from "@/components/Icons";
 import { useAccount } from "@/lib/account";
 import { useCart } from "@/lib/cart";
+import { usePromo } from "@/lib/promo-state";
 
 const links = [
   { href: "/", label: "Home" },
@@ -19,6 +20,7 @@ const links = [
 export function Header() {
   const { count, setDrawerOpen } = useCart();
   const { user } = useAccount();
+  const { promo, clearCode } = usePromo();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
@@ -37,6 +39,20 @@ export function Header() {
       <div className="bg-[#d4af37] px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-center text-[11px] font-medium leading-4 tracking-[0.06em] text-black">
         For laboratory research use only. Not for human or veterinary consumption.
       </div>
+      {promo && (
+        <div className="flex items-center justify-center gap-3 border-b border-[rgba(212,175,55,0.16)] bg-[#111] px-3 py-1.5">
+          <p className="text-[11px] font-medium tracking-[0.08em] text-[#d4af37] uppercase">
+            {promo.percentOff}% off total
+          </p>
+          <button
+            type="button"
+            onClick={clearCode}
+            className="min-h-11 px-2 text-[11px] tracking-[0.08em] text-[#cfc8b8] uppercase hover:text-white"
+          >
+            Remove
+          </button>
+        </div>
+      )}
       <div className="border-b border-[rgba(212,175,55,0.16)] bg-[#050505]/92 backdrop-blur-md">
         <div className="wrap grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-4">
           <BrandMark priority />

@@ -77,6 +77,6 @@ export const faqs: { q: string; a: ReactNode }[] = [
   },
   {
     q: "Is there a checkout discount?",
-    a: "Yes. 20% off the total order amount is applied automatically at checkout. Product prices stay as listed.",
+    a: "Yes. Apply a coupon on the cart or checkout page. Current codes take 20% off the total order amount. Product prices stay as listed.",
   },
 ];
