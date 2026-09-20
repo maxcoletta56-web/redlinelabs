@@ -1,3 +1,5 @@
+import { optionLabel } from "./variant-label.ts";
+
 export const AU_STATES = [
   "NSW",
   "VIC",
@@ -415,16 +417,7 @@ export function formatAddress(address: Pick<SavedAddress, "line1" | "line2" | "c
 
 export function lineDisplayName(line: OrderLine) {
   if (!line.option) return line.name;
-  const unit = line.variantLabel;
-  const option =
-    unit === "MG"
-      ? `${line.option} MG`
-      : unit === "IU" || unit === "Iu"
-        ? `${line.option} IU`
-        : unit
-          ? `${line.option} ${unit}`
-          : line.option;
-  return `${line.name} (${option})`;
+  return `${line.name} (${optionLabel(line, line.option)})`;
 }
 
 export function coaMailto(order: OrderRecord, line: OrderLine) {

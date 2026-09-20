@@ -1,4 +1,7 @@
 import catalog from "@/data/products.json";
+import { isDoseOption, optionLabel, variantGroupLabel } from "./variant-label";
+
+export { isDoseOption, optionLabel, variantGroupLabel };
 
 export type Variant = {
   option: string;
@@ -36,13 +39,6 @@ export function productsBySlugs(slugs: string[]) {
   return slugs
     .map((slug) => products.find((p) => p.slug === slug))
     .filter((p): p is Product => Boolean(p));
-}
-
-export function optionLabel(product: Pick<Product, "variantLabel">, option: string) {
-  const unit = product.variantLabel;
-  if (unit === "MG") return `${option} MG`;
-  if (unit === "IU" || unit === "Iu") return `${option} IU`;
-  return unit ? `${option} ${unit}` : option;
 }
 
 export function displayName(product: Product, selectedOption?: string) {
