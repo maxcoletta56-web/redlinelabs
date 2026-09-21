@@ -57,6 +57,7 @@ export const categories = [
   "REPRODUCTIVE",
   "BLENDS",
   "MELANOCORTIN RESEARCH",
+  "ACCESSORIES",
 ] as const;
 
 export function isShopCategory(

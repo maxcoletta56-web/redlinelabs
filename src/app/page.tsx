@@ -49,6 +49,7 @@ const categoryCopy: Record<string, string> = {
   REPRODUCTIVE: "Gonadotropin-related research listings.",
   BLENDS: "Multi-compound research blends. Confirm constituents on the vial label.",
   "MELANOCORTIN RESEARCH": "Melanocortin-receptor research listings.",
+  ACCESSORIES: "Laboratory solvents listed alongside the research catalogue.",
 };
 
 export default function Home() {
