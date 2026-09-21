@@ -26,19 +26,11 @@ test("every listing has a SKU and unique slugs", () => {
   }
 });
 
-test("lab accessories are not listed", () => {
-  assert.equal(
-    products.some((product) => product.slug === "product-bacterial-water"),
-    false,
-  );
-  assert.equal(
-    products.some((product) =>
-      product.categories.some((category) =>
-        ["LAB SUPPLIES", "ACCESSORIES"].includes(category),
-      ),
-    ),
-    false,
-  );
+test("bacterial water is listed as an accessory", () => {
+  const water = products.find((product) => product.slug === "product-bacterial-water");
+  assert.ok(water, "bacterial water is missing");
+  assert.equal(water.sku, "Bac09");
+  assert.ok(water.categories.includes("ACCESSORIES"));
 });
 
 test("variant SKUs are unique on each listing", () => {
