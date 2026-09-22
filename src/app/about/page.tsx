@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
+import { LEGAL_NAME, REGISTERED_COMPANY_DETAIL } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Redline Labs was established in 2026 to supply research-use laboratory products with clear product information and batch documentation. Research use only. Not a pharmacy.",
+    "Redline Labs is the trading name of RedlineLabs Limited, a verified registered private corporation in Hong Kong (company number 80442501). Research-use laboratory products with clear product information.",
 };
 
 export default function AboutPage() {
@@ -23,7 +24,8 @@ export default function AboutPage() {
           <p className="max-w-2xl text-[16px] leading-8 text-[#8f8c84]">
             Redline Labs was established in 2026 with a focus on supplying
             research-use laboratory products with clear product information and
-            batch documentation.
+            batch documentation. The storefront is operated by {LEGAL_NAME}, a
+            verified registered private corporation.
           </p>
         </div>
       </section>
@@ -31,6 +33,14 @@ export default function AboutPage() {
       <section className="border-b border-[rgba(212,175,55,0.16)]">
         <div className="wrap max-w-[860px] py-16 lg:py-20">
           <div className="grid gap-4">
+            <article className="surface p-6">
+              <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
+                Registered company
+              </h2>
+              <p className="text-[15px] leading-8 text-[#8f8c84]">
+                {REGISTERED_COMPANY_DETAIL}
+              </p>
+            </article>
             <article className="surface p-6">
               <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
                 Quality & Testing

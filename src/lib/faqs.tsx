@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import {
+  COMPANY_NUMBER,
+  INCORPORATION_DATE_LABEL,
+  LEGAL_NAME,
+  REGISTERED_COMPANY_SHORT,
+} from "./company";
 
 export const faqs: { q: string; a: ReactNode }[] = [
   {
@@ -40,6 +46,20 @@ export const faqs: { q: string; a: ReactNode }[] = [
         The shipping policy states that orders are typically processed within
         1–3 business days after payment confirmation. Delivery dates are not
         guaranteed.
+      </>
+    ),
+  },
+  {
+    q: "Who operates Redline Labs?",
+    a: (
+      <>
+        This storefront is operated by {LEGAL_NAME} (Hong Kong company number{" "}
+        {COMPANY_NUMBER}), incorporated on {INCORPORATION_DATE_LABEL}.{" "}
+        {REGISTERED_COMPANY_SHORT} See the{" "}
+        <Link href="/about" className="text-[#d4af37] underline underline-offset-2">
+          About
+        </Link>{" "}
+        page for the registered-company notes.
       </>
     ),
   },

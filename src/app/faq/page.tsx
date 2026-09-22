@@ -7,7 +7,7 @@ import { faqs } from "@/lib/faqs";
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Answers on research-use supply, certificates of analysis, dispatch, and how to contact Redline Labs.",
+    "Answers on research-use supply, certificates of analysis, dispatch, who operates Redline Labs, and how to contact us.",
 };
 
 export default function FaqPage() {

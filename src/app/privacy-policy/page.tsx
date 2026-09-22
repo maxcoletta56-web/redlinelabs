@@ -1,22 +1,31 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
+import {
+  BRAND_NAME,
+  COMPANY_NUMBER,
+  JURISDICTION,
+  LEGAL_NAME,
+} from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How Redline Labs collects and stores order, account, and checkout information, including data kept in your browser.",
+    "How RedlineLabs Limited, trading as Redline Labs, collects and stores order, account, and checkout information, including data kept in your browser.",
 };
 
 export default function PrivacyPolicyPage() {
   return (
-    <PolicyLayout kicker="Legal information" title="Privacy Policy" updated="June 2026">
+    <PolicyLayout kicker="Legal information" title="Privacy Policy" updated="September 2026">
       <h2>Introduction</h2>
       <p>
-        Redline Labs respects your privacy and is committed to protecting your
-        personal information. This Privacy Policy explains how information is
-        collected, used, and safeguarded when you visit our website or interact
-        with our services.
+        This Privacy Policy is issued by {LEGAL_NAME} (Hong Kong company number{" "}
+        {COMPANY_NUMBER}), a verified registered private corporation
+        incorporated in {JURISDICTION}. {BRAND_NAME} is the trading name used
+        on this storefront. We respect your privacy and are committed to
+        protecting your personal information. This Privacy Policy explains how
+        information is collected, used, and safeguarded when you visit our
+        website or interact with our services.
       </p>
       <h2>Information We Collect</h2>
       <p>

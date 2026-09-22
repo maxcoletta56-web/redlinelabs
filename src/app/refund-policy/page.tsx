@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
+import { COMPANY_NUMBER, LEGAL_NAME } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "Refund Policy",
@@ -10,12 +11,13 @@ export const metadata: Metadata = {
 
 export default function RefundPolicyPage() {
   return (
-    <PolicyLayout kicker="Returns & refunds" title="Refund Policy" updated="June 2026">
+    <PolicyLayout kicker="Returns & refunds" title="Refund Policy" updated="September 2026">
       <h2>Overview</h2>
       <p>
-        Customer satisfaction is important to Redline Labs. This Refund Policy
-        outlines the conditions under which refund requests may be reviewed and
-        processed.
+        Customer satisfaction is important to {LEGAL_NAME} (Hong Kong company
+        number {COMPANY_NUMBER}), a verified registered private corporation
+        trading as Redline Labs. This Refund Policy outlines the conditions
+        under which refund requests may be reviewed and processed.
       </p>
       <h2>Eligibility For Refunds</h2>
       <p>

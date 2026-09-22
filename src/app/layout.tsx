@@ -5,6 +5,13 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { JsonLd } from "@/components/JsonLd";
 import { Providers } from "@/components/Providers";
+import {
+  BRAND_NAME,
+  COMPANY_EMAIL,
+  COMPANY_NUMBER,
+  INCORPORATION_DATE_ISO,
+  LEGAL_NAME,
+} from "@/lib/company";
 import { absoluteUrl } from "@/lib/seo";
 import "./globals.css";
 
@@ -58,16 +65,27 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             {
               "@context": "https://schema.org",
               "@type": "Organization",
-              name: "Redline Labs",
+              name: BRAND_NAME,
+              legalName: LEGAL_NAME,
+              foundingDate: INCORPORATION_DATE_ISO,
               url: absoluteUrl("/"),
-              email: "redlinelabsltd@pm.me",
+              email: COMPANY_EMAIL,
               description:
                 "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
+              identifier: {
+                "@type": "PropertyValue",
+                name: "Hong Kong Company Registration Number",
+                value: COMPANY_NUMBER,
+              },
+              address: {
+                "@type": "PostalAddress",
+                addressCountry: "HK",
+              },
             },
             {
               "@context": "https://schema.org",
               "@type": "WebSite",
-              name: "Redline Labs",
+              name: BRAND_NAME,
               url: absoluteUrl("/"),
               potentialAction: {
                 "@type": "SearchAction",

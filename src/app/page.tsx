@@ -8,6 +8,7 @@ import {
   IconShield,
   IconTruck,
 } from "@/components/Icons";
+import { COMPANY_NUMBER, REGISTERED_COMPANY_SHORT } from "@/lib/company";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductImage } from "@/components/ProductImage";
 import { faqs } from "@/lib/faqs";
@@ -75,7 +76,7 @@ export default function Home() {
         <div className="wrap relative z-10 grid items-center gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
           <div>
             <p className="mb-5 text-[11px] font-semibold tracking-[0.18em] text-[#d4af37] uppercase">
-              — Research catalogue · Australia
+              — Research catalogue · Australia · Registered company
             </p>
             <h1 className="mb-6 max-w-xl text-[3rem] leading-[0.95] font-extrabold tracking-[-0.05em] sm:text-6xl lg:text-[4.25rem]">
               Research-Grade
@@ -84,7 +85,8 @@ export default function Home() {
             <p className="mb-8 max-w-lg text-[16px] leading-7 text-[#cfc8b8]">
               Redline Labs lists laboratory research chemicals for purchase in
               Australia. Certificates of Analysis are available on request. This
-              is not a pharmacy.
+              is not a pharmacy. Operated by a verified registered private
+              corporation in Hong Kong.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Link href="/shop" className="btn">
@@ -184,7 +186,7 @@ export default function Home() {
       </section>
 
       <section className="bg-[#0b0b0b] py-8">
-        <div className="wrap">
+        <div className="wrap grid gap-4 lg:grid-cols-2">
           <aside className="flex gap-4 rounded-2xl border border-[rgba(212,175,55,0.16)] bg-[#0b0b0b] p-5" role="note">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#d4af37]/10 text-[#d4af37]">
               <IconLock className="h-5 w-5" />
@@ -195,6 +197,22 @@ export default function Home() {
                 All listings are laboratory research chemicals. They are not
                 medicines, not for human or animal consumption, and are not sold
                 for personal use.
+              </p>
+            </div>
+          </aside>
+          <aside className="flex gap-4 rounded-2xl border border-[rgba(212,175,55,0.16)] bg-[#0b0b0b] p-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#d4af37]/10 text-[#d4af37]">
+              <IconShield className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold">Verified registered company</p>
+              <p className="mt-1 text-[14px] leading-6 text-[#8f8c84]">
+                {REGISTERED_COMPANY_SHORT} Company number {COMPANY_NUMBER}. Details are
+                on the{" "}
+                <Link href="/about" className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3">
+                  About
+                </Link>{" "}
+                page.
               </p>
             </div>
           </aside>
