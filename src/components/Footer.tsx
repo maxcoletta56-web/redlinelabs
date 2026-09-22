@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { IconLock, IconMail, IconPin, IconTruck } from "@/components/Icons";
+import {
+  COMPANY_NUMBER,
+  LEGAL_NAME,
+  REGISTERED_COMPANY_SHORT,
+  footerCopyright,
+} from "@/lib/company";
 
 export function Footer() {
   return (
@@ -11,6 +17,9 @@ export function Footer() {
           <p className="max-w-xs text-[13px] leading-6 text-[#8f8c84]">
             Laboratory research chemicals. Australia-wide dispatch. Documentation
             on request.
+          </p>
+          <p className="mt-3 max-w-xs text-[12px] leading-5 text-[#8f8c84]">
+            {LEGAL_NAME} · HK Co. No. {COMPANY_NUMBER}. {REGISTERED_COMPANY_SHORT}
           </p>
         </div>
         <div>
@@ -77,9 +86,9 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-white/8 px-5 py-5 text-center text-[12px] leading-6 text-[#8f8c84]">
-        © {new Date().getFullYear()} Redline Labs. For laboratory research use
-        only. Not for human or veterinary consumption. Not evaluated or approved
-        for the diagnosis, treatment, cure, or prevention of any disease.
+        {footerCopyright()}. For laboratory research use only. Not for human or
+        veterinary consumption. Not evaluated or approved for the diagnosis,
+        treatment, cure, or prevention of any disease.
       </div>
     </footer>
   );

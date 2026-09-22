@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
+import { COMPANY_NUMBER, LEGAL_NAME } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "Shipping Policy",
@@ -10,7 +11,13 @@ export const metadata: Metadata = {
 
 export default function ShippingPolicyPage() {
   return (
-    <PolicyLayout kicker="Shipping information" title="Shipping Policy" updated="June 2026">
+    <PolicyLayout kicker="Shipping information" title="Shipping Policy" updated="September 2026">
+      <h2>The Company</h2>
+      <p>
+        Orders placed through this storefront are fulfilled by {LEGAL_NAME}{" "}
+        (Hong Kong company number {COMPANY_NUMBER}), a verified registered
+        private corporation trading as Redline Labs.
+      </p>
       <h2>Order Processing</h2>
       <p>
         Orders are typically processed within 1–3 business days after payment

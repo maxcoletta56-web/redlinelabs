@@ -1,15 +1,29 @@
 import type { Metadata } from "next";
 import { PolicyLayout } from "@/components/PolicyLayout";
+import {
+  BRAND_NAME,
+  COMPANY_NUMBER,
+  INCORPORATION_DATE_LABEL,
+  JURISDICTION,
+  LEGAL_NAME,
+} from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms for using the Redline Labs storefront. All listings are for laboratory research use only.",
+    "Terms for using the Redline Labs storefront, operated by RedlineLabs Limited, a verified registered private corporation in Hong Kong. All listings are for laboratory research use only.",
 };
 
 export default function TermsPage() {
   return (
-    <PolicyLayout kicker="Legal agreement" title="Terms of Service" updated="June 2026">
+    <PolicyLayout kicker="Legal agreement" title="Terms of Service" updated="September 2026">
+      <h2>The Company</h2>
+      <p>
+        This website is operated by {LEGAL_NAME} (Hong Kong company number{" "}
+        {COMPANY_NUMBER}), a verified registered private corporation
+        incorporated in {JURISDICTION} on {INCORPORATION_DATE_LABEL}. In these
+        terms, “{BRAND_NAME}”, “we”, and “us” mean that company.
+      </p>
       <h2>Acceptance of Terms</h2>
       <p>
         By accessing or using the Redline Labs website, you agree to be bound

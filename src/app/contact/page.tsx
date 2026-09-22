@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Field, TextAreaField } from "@/components/Field";
 import { IconClock, IconMail, IconPin } from "@/components/Icons";
 import { PageIntro } from "@/components/PageIntro";
+import {
+  COMPANY_NUMBER,
+  LEGAL_NAME,
+  REGISTERED_COMPANY_SHORT,
+} from "@/lib/company";
 
 function composeMailto(name: string, email: string, message: string) {
   const subject = `Catalogue enquiry from ${name}`;
@@ -18,7 +23,8 @@ export default function ContactPage() {
     <div className="wrap max-w-[980px] py-16">
       <PageIntro kicker="Contact" title="Contact us">
         Questions about an order or the catalogue? The team responds during
-        business hours across Australia.
+        business hours across Australia. This storefront is operated by{" "}
+        {LEGAL_NAME} (company number {COMPANY_NUMBER}). {REGISTERED_COMPANY_SHORT}
       </PageIntro>
 
       <div className="surface mb-12 grid md:grid-cols-3">
