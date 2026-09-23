@@ -36,24 +36,7 @@ test("BAC water is listed as an accessory", () => {
   assert.equal(water.variants[0]?.option, "10");
   assert.equal(water.variants[0]?.price, 10);
   assert.match(water.description, /bacteriostatic/i);
-  const haystack = [
-    water.name,
-    water.sku,
-    water.slug.replaceAll("-", " "),
-    water.description,
-    ...water.categories,
-  ]
-    .join(" ")
-    .toLowerCase();
-  for (const query of ["bac water", "bac", "bacteriostatic", "Bac09"]) {
-    assert.ok(
-      query
-        .toLowerCase()
-        .split(/\s+/)
-        .every((term) => haystack.includes(term)),
-      `${query} should match BAC water`,
-    );
-  }
+  assert.ok(water.name.toLowerCase().includes("bac water"));
 });
 
 test("variant SKUs are unique on each listing", () => {

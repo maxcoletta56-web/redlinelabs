@@ -70,21 +70,6 @@ export function getProduct(slug: string) {
   return products.find((p) => p.slug === slug);
 }
 
-export function matchesProductQuery(product: Product, query: string) {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return true;
-  const haystack = [
-    product.name,
-    product.sku,
-    product.slug.replaceAll("-", " "),
-    product.description,
-    ...product.categories,
-  ]
-    .join(" ")
-    .toLowerCase();
-  return terms.every((term) => haystack.includes(term));
-}
-
 export function featuredProducts() {
   return productsBySlugs(featuredSlugs);
 }
