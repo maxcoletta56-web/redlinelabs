@@ -27,10 +27,12 @@ test("every listing has a SKU and unique slugs", () => {
 });
 
 test("bacterial water is listed as an accessory", () => {
-  const water = products.find((product) => product.slug === "product-bacterial-water");
+  const water = products.find((product) => product.slug === "bacterial-water");
   assert.ok(water, "bacterial water is missing");
   assert.equal(water.sku, "Bac09");
   assert.ok(water.categories.includes("ACCESSORIES"));
+  assert.equal(water.variants[0]?.option, "10");
+  assert.equal(water.variants[0]?.price, 10);
 });
 
 test("variant SKUs are unique on each listing", () => {
