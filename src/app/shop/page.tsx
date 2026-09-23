@@ -6,7 +6,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
 import { ProductCard } from "@/components/ProductCard";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
-import { categories, isShopCategory, products } from "@/lib/products";
+import { categories, isShopCategory, matchesProductQuery, products } from "@/lib/products";
 
 const sorts = [
   { value: "catalogue", label: "Catalogue order" },
@@ -70,11 +70,7 @@ export default function ShopPage() {
   const filtered = useMemo(() => {
     const q = searchDraft.trim().toLowerCase();
     const list = products.filter((p) => {
-      const matchesQuery =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.categories.some((c) => c.toLowerCase().includes(q));
+      const matchesQuery = matchesProductQuery(p, q);
       const matchesCat = category === "All" || p.categories.includes(category);
       return matchesQuery && matchesCat;
     });

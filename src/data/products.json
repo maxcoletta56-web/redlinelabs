@@ -60,14 +60,14 @@
   },
   {
     "id": 200,
-    "name": "BACTERIAL WATER",
-    "slug": "bacterial-water",
+    "name": "BAC WATER",
+    "slug": "bac-water",
     "sku": "Bac09",
     "categories": [
       "ACCESSORIES"
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/BC4C9D3E-5347-4F93-9856-ED19DE40BD2D.png?fit=800%2C800&ssl=1",
-    "description": "Bacteriostatic water is sterile water containing 0.9% benzyl alcohol as a bacteriostatic agent. It is supplied as a laboratory solvent for reconstituting lyophilised research compounds. Not a medicine and not for injection or other use in humans or animals.",
+    "description": "BAC water (bacteriostatic water) is sterile water containing 0.9% benzyl alcohol as a bacteriostatic agent. It is supplied as a laboratory solvent for reconstituting lyophilised research compounds. Not a medicine and not for injection or other use in humans or animals.",
     "variantLabel": "ML",
     "variants": [
       {
