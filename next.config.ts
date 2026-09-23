@@ -14,7 +14,12 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/product/product-bacterial-water",
-        destination: "/product/bacterial-water",
+        destination: "/product/bac-water",
+        permanent: true,
+      },
+      {
+        source: "/product/bacterial-water",
+        destination: "/product/bac-water",
         permanent: true,
       },
     ];

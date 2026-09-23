@@ -4,12 +4,13 @@ import test from "node:test";
 import { optionLabel, variantGroupLabel } from "./variant-label.ts";
 
 type CatalogProduct = {
+  name: string;
   slug: string;
   sku: string;
   image: string;
   description: string;
   categories: string[];
-  variants: Array<{ option: string; sku: string }>;
+  variants: Array<{ option: string; sku: string; price: number }>;
 };
 
 const products = JSON.parse(
@@ -26,13 +27,33 @@ test("every listing has a SKU and unique slugs", () => {
   }
 });
 
-test("bacterial water is listed as an accessory", () => {
-  const water = products.find((product) => product.slug === "bacterial-water");
-  assert.ok(water, "bacterial water is missing");
+test("BAC water is listed as an accessory", () => {
+  const water = products.find((product) => product.slug === "bac-water");
+  assert.ok(water, "BAC water is missing");
+  assert.equal(water.name, "BAC WATER");
   assert.equal(water.sku, "Bac09");
   assert.ok(water.categories.includes("ACCESSORIES"));
   assert.equal(water.variants[0]?.option, "10");
   assert.equal(water.variants[0]?.price, 10);
+  assert.match(water.description, /bacteriostatic/i);
+  const haystack = [
+    water.name,
+    water.sku,
+    water.slug.replaceAll("-", " "),
+    water.description,
+    ...water.categories,
+  ]
+    .join(" ")
+    .toLowerCase();
+  for (const query of ["bac water", "bac", "bacteriostatic", "Bac09"]) {
+    assert.ok(
+      query
+        .toLowerCase()
+        .split(/\s+/)
+        .every((term) => haystack.includes(term)),
+      `${query} should match BAC water`,
+    );
+  }
 });
 
 test("variant SKUs are unique on each listing", () => {
