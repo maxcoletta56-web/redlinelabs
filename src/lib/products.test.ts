@@ -27,15 +27,16 @@ test("every listing has a SKU and unique slugs", () => {
   }
 });
 
-test("BAC water is listed as an accessory", () => {
-  const water = products.find((product) => product.slug === "bac-water");
-  assert.ok(water, "BAC water is missing");
-  assert.equal(water.name, "BAC WATER");
+test("bacterial water is listed as an accessory", () => {
+  const water = products.find((product) => product.slug === "bacterial-water");
+  assert.ok(water, "bacterial water is missing");
+  assert.equal(water.name, "BACTERIAL WATER");
   assert.equal(water.sku, "Bac09");
   assert.ok(water.categories.includes("ACCESSORIES"));
   assert.equal(water.variants[0]?.option, "10");
   assert.equal(water.variants[0]?.price, 10);
   assert.match(water.description, /bacteriostatic/i);
+  assert.match(water.description, /bac water/i);
   const haystack = [
     water.name,
     water.sku,
@@ -45,13 +46,20 @@ test("BAC water is listed as an accessory", () => {
   ]
     .join(" ")
     .toLowerCase();
-  for (const query of ["bac water", "bac", "bacteriostatic", "Bac09"]) {
+  for (const query of [
+    "bacterial water",
+    "bacterial",
+    "bac water",
+    "bac",
+    "bacteriostatic",
+    "Bac09",
+  ]) {
     assert.ok(
       query
         .toLowerCase()
         .split(/\s+/)
         .every((term) => haystack.includes(term)),
-      `${query} should match BAC water`,
+      `${query} should match bacterial water`,
     );
   }
 });
