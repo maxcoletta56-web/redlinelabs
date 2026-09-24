@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { optionLabel, variantGroupLabel } from "./variant-label.ts";
 
@@ -61,6 +62,53 @@ test("bacterial water is listed as an accessory", () => {
         .every((term) => haystack.includes(term)),
       `${query} should match bacterial water`,
     );
+  }
+});
+
+test("insulin syringes and alcohol swabs are listed as accessories", () => {
+  const syringes = products.find((product) => product.slug === "insulin-syringes");
+  const swabs = products.find((product) => product.slug === "alcohol-swabs");
+  assert.ok(syringes, "insulin syringes are missing");
+  assert.ok(swabs, "alcohol swabs are missing");
+  assert.equal(syringes.name, "INSULIN SYRINGES");
+  assert.equal(swabs.name, "ALCOHOL SWABS");
+  assert.equal(syringes.sku, "Syr01");
+  assert.equal(swabs.sku, "Alc01");
+  assert.ok(syringes.categories.includes("ACCESSORIES"));
+  assert.ok(swabs.categories.includes("ACCESSORIES"));
+  assert.equal(syringes.image, "/accessories/insulin-syringes.png");
+  assert.equal(swabs.image, "/accessories/alcohol-swabs.png");
+  const publicDir = fileURLToPath(new URL("../../public", import.meta.url));
+  assert.ok(existsSync(`${publicDir}${syringes.image}`), "insulin syringes photo is missing");
+  assert.ok(existsSync(`${publicDir}${swabs.image}`), "alcohol swabs photo is missing");
+  assert.equal(syringes.variants[0]?.option, "10");
+  assert.equal(syringes.variants[0]?.price, 12);
+  assert.equal(swabs.variants[0]?.option, "100");
+  assert.equal(swabs.variants[0]?.price, 8);
+  assert.match(syringes.description, /1 ml/i);
+  assert.match(swabs.description, /isopropyl/i);
+  for (const [product, queries] of [
+    [syringes, ["insulin syringes", "insulin", "syringe", "Syr01"]],
+    [swabs, ["alcohol swabs", "alcohol", "swab", "isopropyl", "Alc01"]],
+  ] as const) {
+    const haystack = [
+      product.name,
+      product.sku,
+      product.slug.replaceAll("-", " "),
+      product.description,
+      ...product.categories,
+    ]
+      .join(" ")
+      .toLowerCase();
+    for (const query of queries) {
+      assert.ok(
+        query
+          .toLowerCase()
+          .split(/\s+/)
+          .every((term) => haystack.includes(term)),
+        `${query} should match ${product.slug}`,
+      );
+    }
   }
 });
 
