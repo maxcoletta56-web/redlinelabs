@@ -81,6 +81,50 @@
     "featured": false
   },
   {
+    "id": 201,
+    "name": "INSULIN SYRINGES",
+    "slug": "insulin-syringes",
+    "sku": "Syr01",
+    "categories": [
+      "ACCESSORIES"
+    ],
+    "image": "/accessories/insulin-syringes.png",
+    "description": "1 ml insulin syringes supplied as a 10-pack laboratory accessory for measuring and transferring research solutions. For laboratory research use only. Not a medicine and not for injection or other use in humans or animals.",
+    "variantLabel": "PACK",
+    "variants": [
+      {
+        "option": "10",
+        "price": 12,
+        "sku": "Syr01"
+      }
+    ],
+    "minPrice": 12,
+    "maxPrice": 12,
+    "featured": false
+  },
+  {
+    "id": 202,
+    "name": "ALCOHOL SWABS",
+    "slug": "alcohol-swabs",
+    "sku": "Alc01",
+    "categories": [
+      "ACCESSORIES"
+    ],
+    "image": "/accessories/alcohol-swabs.png",
+    "description": "70% isopropyl alcohol swabs supplied as a 100-pack laboratory accessory for surface and vial-stopper cleaning in research settings. For laboratory research use only. Not a medicine and not for use in humans or animals.",
+    "variantLabel": "PACK",
+    "variants": [
+      {
+        "option": "100",
+        "price": 8,
+        "sku": "Alc01"
+      }
+    ],
+    "minPrice": 8,
+    "maxPrice": 8,
+    "featured": false
+  },
+  {
     "id": 133,
     "name": "MELANOTAN 2",
     "slug": "melanotan-2",
