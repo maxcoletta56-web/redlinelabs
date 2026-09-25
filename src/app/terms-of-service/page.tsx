@@ -7,12 +7,14 @@ import {
   JURISDICTION,
   LEGAL_NAME,
 } from "@/lib/company";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of Service",
   description:
-    "Terms for using the Redline Labs storefront, operated by RedlineLabs Limited, a verified registered private corporation in Hong Kong. All listings are for laboratory research use only.",
-};
+    "Terms for using the Redline Labs storefront, operated by RedlineLabs Limited in Hong Kong. All listings are for laboratory research use only.",
+  path: "/terms-of-service",
+});
 
 export default function TermsPage() {
   return (

@@ -2,8 +2,15 @@
 
 import { useState, type ReactNode } from "react";
 
-export function FaqList({ items }: { items: { q: string; a: ReactNode }[] }) {
+export function FaqList({
+  items,
+  headingLevel = "h2",
+}: {
+  items: { q: string; a: ReactNode }[];
+  headingLevel?: "h2" | "h3";
+}) {
   const [open, setOpen] = useState<number | null>(0);
+  const Heading = headingLevel;
 
   return (
     <div className="space-y-3">
@@ -13,7 +20,7 @@ export function FaqList({ items }: { items: { q: string; a: ReactNode }[] }) {
         const isOpen = open === i;
         return (
           <div key={item.q} className="overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.16)] bg-[#0b0b0b]">
-            <h2>
+            <Heading>
               <button
                 id={buttonId}
                 type="button"
@@ -27,7 +34,7 @@ export function FaqList({ items }: { items: { q: string; a: ReactNode }[] }) {
                   {isOpen ? "–" : "+"}
                 </span>
               </button>
-            </h2>
+            </Heading>
             {isOpen && (
               <div id={panelId} role="region" aria-labelledby={buttonId} className="px-5 pb-5">
                 <div className="mb-3 h-px w-10 bg-[#d4af37]" />

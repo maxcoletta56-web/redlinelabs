@@ -26,7 +26,7 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="relative mb-5 aspect-square overflow-hidden bg-[#0b0b0b]">
           <ProductImage
             src={product.image}
-            alt={product.name}
+            alt={`${product.name}${selected?.option ? ` ${optionLabel(product, selected.option)}` : ""} research vial`}
             fill
             sizes="(max-width: 768px) 50vw, 33vw"
             className="object-contain p-6 transition duration-300 group-hover:scale-[1.03]"

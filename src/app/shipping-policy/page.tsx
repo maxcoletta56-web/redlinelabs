@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
 import { COMPANY_NUMBER, LEGAL_NAME } from "@/lib/company";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Shipping Policy",
   description:
-    "Australia-wide dispatch notes for Redline Labs, including typical 1–3 business day processing after payment.",
-};
+    "Australia-wide dispatch notes for Redline Labs, including typical 1–3 business day processing after payment and how tracking is shared.",
+  path: "/shipping-policy",
+});
 
 export default function ShippingPolicyPage() {
   return (

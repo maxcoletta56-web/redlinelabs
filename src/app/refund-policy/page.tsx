@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PolicyLayout } from "@/components/PolicyLayout";
 import { COMPANY_NUMBER, LEGAL_NAME } from "@/lib/company";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Refund Policy",
   description:
-    "When Redline Labs may review refunds for damaged, incorrect, or unverified fulfilment issues.",
-};
+    "When Redline Labs may review refunds for damaged, incorrect, or unverified fulfilment issues, and how approved returns are processed.",
+  path: "/refund-policy",
+});
 
 export default function RefundPolicyPage() {
   return (

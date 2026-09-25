@@ -1,4 +1,5 @@
 import catalog from "@/data/products.json";
+import { canonicalProductSlug } from "./slugs";
 import { isDoseOption, optionLabel, variantGroupLabel } from "./variant-label";
 
 export { isDoseOption, optionLabel, variantGroupLabel };
@@ -22,6 +23,8 @@ export type Product = {
   minPrice: number;
   maxPrice: number;
   featured: boolean;
+  lotNumber?: string | null;
+  coaUrl?: string | null;
 };
 
 export const products = catalog as Product[];
@@ -33,7 +36,7 @@ export const featuredSlugs = [
   "tesamorelin",
 ];
 
-export const premiumSlugs = ["bpc-157", "products-nad", "tb-500", "products-glow"];
+export const premiumSlugs = ["bpc-157", "nad-plus", "tb-500", "glow"];
 
 export function productsBySlugs(slugs: string[]) {
   return slugs
@@ -67,7 +70,8 @@ export function isShopCategory(
 }
 
 export function getProduct(slug: string) {
-  return products.find((p) => p.slug === slug);
+  const canonical = canonicalProductSlug(slug);
+  return products.find((p) => p.slug === canonical);
 }
 
 export function matchesProductQuery(product: Product, query: string) {
@@ -94,13 +98,18 @@ export function premiumProducts() {
 }
 
 export function relatedProducts(product: Product, limit = 3) {
-  return products
-    .filter(
-      (p) =>
-        p.slug !== product.slug &&
-        p.categories.some((c) => product.categories.includes(c)),
-    )
-    .slice(0, limit);
+  const seen = new Set<string>([product.slug]);
+  const related: Product[] = [];
+  for (const candidate of products) {
+    if (seen.has(candidate.slug)) continue;
+    if (!candidate.categories.some((category) => product.categories.includes(category))) {
+      continue;
+    }
+    seen.add(candidate.slug);
+    related.push(candidate);
+    if (related.length >= limit) break;
+  }
+  return related;
 }
 
 export function formatPrice(amount: number) {

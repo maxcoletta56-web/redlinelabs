@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, stripeConfigured } from "@/lib/stripe";
+import { checkoutSessionQuerySchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   if (!stripeConfigured()) {
     return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
   }
 
-  const sessionId = request.nextUrl.searchParams.get("session_id");
-  if (!sessionId || !sessionId.startsWith("cs_")) {
+  const parsed = checkoutSessionQuerySchema.safeParse({
+    session_id: request.nextUrl.searchParams.get("session_id"),
+  });
+  if (!parsed.success) {
     return NextResponse.json({ error: "Missing checkout session" }, { status: 400 });
   }
+  const sessionId = parsed.data.session_id;
 
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId, {

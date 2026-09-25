@@ -4,12 +4,16 @@ import Stripe from "stripe";
 import { CapturePaidOrder } from "@/components/CapturePaidOrder";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { formatPrice } from "@/lib/products";
+import { pageMetadata } from "@/lib/seo";
 import { stripe, stripeConfigured } from "@/lib/stripe";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Order received",
-  robots: { index: false, follow: false },
-};
+  description:
+    "Confirmation for a Redline Labs research-use order paid through Stripe. This checkout success page is not indexed.",
+  path: "/checkout/success",
+  index: false,
+});
 
 type Props = { searchParams: Promise<{ session_id?: string }> };
 

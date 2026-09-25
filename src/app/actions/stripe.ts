@@ -1,10 +1,10 @@
 "use server";
 
 import { createEmbeddedCheckoutSession, type ShippingAddressInput } from "@/lib/checkout-session";
-import { type CartLineInput } from "@/lib/order";
+import { checkoutBodySchema } from "@/lib/validation";
 
 export async function startCartCheckoutSession(input: {
-  items: CartLineInput[];
+  items: { slug: string; option?: string | null; qty: number }[];
   email: string;
   firstName: string;
   lastName: string;
@@ -13,21 +13,26 @@ export async function startCartCheckoutSession(input: {
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
-  const email = input.email.trim();
-  if (!email.includes("@")) {
-    throw new Error("A valid email is required");
-  }
-  if (!input.ageConfirmed || !input.researchUse) {
-    throw new Error("Age and research-use confirmation are required");
+  const parsed = checkoutBodySchema.safeParse({
+    email: input.email,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    ageConfirmed: input.ageConfirmed,
+    researchUse: input.researchUse,
+    items: input.items,
+    promoCode: input.promoCode,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid checkout payload");
   }
 
   return createEmbeddedCheckoutSession({
-    items: input.items,
-    email,
-    firstName: input.firstName,
-    lastName: input.lastName,
+    items: parsed.data.items,
+    email: parsed.data.email,
+    firstName: parsed.data.firstName,
+    lastName: parsed.data.lastName,
     shipping: input.shipping,
-    promoCode: input.promoCode,
+    promoCode: parsed.data.promoCode,
     ageConfirmed: true,
     researchUse: true,
   });

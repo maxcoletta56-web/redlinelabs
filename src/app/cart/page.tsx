@@ -37,7 +37,7 @@ export default function CartPage() {
               >
                 <ProductImage
                   src={item.image}
-                  alt={item.name}
+                  alt={`${item.name} research vial`}
                   width={88}
                   height={88}
                   className="h-[88px] w-[88px] object-contain"

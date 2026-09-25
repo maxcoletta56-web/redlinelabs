@@ -7,12 +7,14 @@ import {
   JURISDICTION,
   LEGAL_NAME,
 } from "@/lib/company";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
   description:
     "How RedlineLabs Limited, trading as Redline Labs, collects and stores order, account, and checkout information, including data kept in your browser.",
-};
+  path: "/privacy-policy",
+});
 
 export default function PrivacyPolicyPage() {
   return (

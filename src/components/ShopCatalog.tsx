@@ -1,0 +1,168 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Field, SelectField } from "@/components/Field";
+import { ProductCard } from "@/components/ProductCard";
+import { categories, isShopCategory, matchesProductQuery, products } from "@/lib/products";
+
+const sorts = [
+  { value: "catalogue", label: "Catalogue order" },
+  { value: "name", label: "Name A–Z" },
+  { value: "price-asc", label: "Price low to high" },
+  { value: "price-desc", label: "Price high to low" },
+] as const;
+
+type Sort = (typeof sorts)[number]["value"];
+
+function isSort(value: string | null): value is Sort {
+  return Boolean(value && sorts.some((option) => option.value === value));
+}
+
+export function ShopCatalog() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const query = searchParams.get("q") ?? "";
+  const [searchDraft, setSearchDraft] = useState(query);
+  const [draftQuery, setDraftQuery] = useState(query);
+  if (query !== draftQuery) {
+    setDraftQuery(query);
+    setSearchDraft(query);
+  }
+  const categoryParam = searchParams.get("category");
+  const sortParam = searchParams.get("sort");
+  const category = isShopCategory(categoryParam) ? categoryParam : "All";
+  const sort: Sort = isSort(sortParam) ? sortParam : "catalogue";
+  const setParams = useCallback(
+    (patch: { q?: string; category?: string; sort?: string }) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if ("q" in patch) {
+        const q = (patch.q ?? "").trim();
+        if (q) next.set("q", q);
+        else next.delete("q");
+      }
+      if ("category" in patch) {
+        if (!patch.category || patch.category === "All") next.delete("category");
+        else next.set("category", patch.category);
+      }
+      if ("sort" in patch) {
+        if (!patch.sort || patch.sort === "catalogue") next.delete("sort");
+        else next.set("sort", patch.sort);
+      }
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  useEffect(() => {
+    const next = searchDraft.trim();
+    if (next === query.trim()) return;
+    const timeout = window.setTimeout(() => {
+      setParams({ q: searchDraft });
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [query, searchDraft, setParams]);
+
+  const filtered = useMemo(() => {
+    const q = searchDraft.trim().toLowerCase();
+    const list = products.filter((p) => {
+      const matchesQuery = matchesProductQuery(p, q);
+      const matchesCat = category === "All" || p.categories.includes(category);
+      return matchesQuery && matchesCat;
+    });
+
+    return [...list].sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "price-asc") return a.minPrice - b.minPrice;
+      if (sort === "price-desc") return b.minPrice - a.minPrice;
+      return 0;
+    });
+  }, [searchDraft, category, sort]);
+
+  return (
+    <>
+      <div className="mb-10 flex flex-col justify-between gap-6 border-b border-[rgba(212,175,55,0.16)] pb-8 lg:flex-row lg:items-end">
+        <div>
+          <p className="kicker mb-3">Catalogue</p>
+          <h1 className="text-[2.15rem] font-semibold tracking-[-0.03em] text-white">
+            Research chemicals
+          </h1>
+          <p className="mt-3 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
+            Laboratory research chemicals. Confirm identity against vial labels
+            and any documentation you hold for the batch.
+          </p>
+        </div>
+        <div className="flex w-full max-w-xl flex-col gap-3 sm:flex-row">
+          <Field
+            id="catalogue-search"
+            label="Search"
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            placeholder="Name, SKU, or category"
+            className="field"
+          />
+          <SelectField
+            id="catalogue-sort"
+            label="Sort"
+            value={sort}
+            onChange={(e) => setParams({ sort: e.target.value })}
+          >
+            {sorts.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setParams({ category: cat })}
+            aria-pressed={category === cat}
+            className={`rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] uppercase ${
+              category === cat
+                ? "border-[#d4af37] bg-[#d4af37] text-black"
+                : "border-[rgba(212,175,55,0.16)] bg-[#0b0b0b] text-[#cfc8b8] hover:border-[#d4af37] hover:text-[#d4af37]"
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+      <p className="mb-8 text-[12px] text-[#8f8c84]" aria-live="polite">
+        {filtered.length} listing{filtered.length === 1 ? "" : "s"}
+        {category !== "All" ? ` in ${category}` : ""}
+      </p>
+
+      {filtered.length === 0 ? (
+        <div className="surface p-12 text-center">
+          <p className="mb-3 text-sm text-[#8f8c84]">
+            No listings match this search or category.
+          </p>
+          <button
+            type="button"
+            className="text-[#d4af37]"
+            onClick={() => {
+              setSearchDraft("");
+              setParams({ q: "", category: "All" });
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((product) => (
+            <ProductCard key={product.slug} product={product} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
