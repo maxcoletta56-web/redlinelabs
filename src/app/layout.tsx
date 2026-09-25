@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { AssistLoopWidget } from "@/components/AssistLoopWidget";
 import { Footer } from "@/components/Footer";
@@ -56,7 +57,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#f3f1ea]">
