@@ -189,3 +189,4 @@ Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue
 | --- | --- |
 | 2026-09-25 | Overview added in `#38`. |
 | 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
+| 2026-09-25 | Production branch moved to `cebe42b` (#37 checkout credit, on top of #43 CI). A probe at 16:58 UTC found https://redlinelabs.shop still serving a multi-day cache (homepage age about 4.7 days, Bacterial Water 404). Details are in `reports/website-health.md`. |

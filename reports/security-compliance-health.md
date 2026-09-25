@@ -59,13 +59,23 @@
 
 ## Current status
 
-_Baseline pending first audit._ On setup: `.env*` is git-ignored, Stripe secret access is
-behind `server-only`, key resolution rejects live/test mismatches and enforces live keys in
-production, and checkout degrades to a 503 without keys. Record `npm audit` results and
-header/CSP posture here per run.
+25 September 2026, coordinator handoff (not a full security pass). On setup: `.env*` is
+git-ignored, Stripe secret access is behind `server-only`, key resolution rejects
+live/test mismatches and enforces live keys in production, and checkout degrades to a 503
+without keys. `npm audit` and a header/CSP review are still outstanding.
+
+Already recorded, do not re-open as new findings until verified against a deployment that
+is actually live: accounts, orders, addresses, and stock alerts are browser-local; there
+is no Stripe webhook; `GET /api/checkout/session` returns email and shipping to anyone
+with the Checkout Session id. A live homepage probe the same day showed HSTS and
+`Access-Control-Allow-Origin: *` only. The public domain is still an older cache than
+`cebe42b`, so those headers describe the cached document, not necessarily the latest
+commit. Payment integrity of browser store credit is fixed in git and still described as
+a discount on the cached homepage; details are in `reports/website-health.md`.
 
 ## Change log
 
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
+| 2026-09-25 | website health | Recorded the session-id, local-account, and live-header notes so a later pass does not treat them as new, and pointed at the stale production cache. |
