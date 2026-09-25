@@ -44,7 +44,8 @@ catalogue, a persistent cart, and Stripe Checkout.
 | **Payment integration** | **Stripe** — embedded checkout (`ui_mode: "embedded_page"`). `@stripe/stripe-js` + `@stripe/react-stripe-js` (client), `stripe` Node SDK (server). Live-only in production; test keys ignored. |
 | **Product data source** | `src/data/products.json` (~**30** products), typed via `src/lib/products.ts` |
 | **Analytics** | **None integrated** (no GA4, Vercel Analytics, Plausible, or PostHog). Privacy policy references cookies/analytics generically. AssistLoop is a chat widget, not analytics. |
-| **SEO implementation** | Next.js Metadata API (global + per-page `generateMetadata`), JSON-LD (`Organization`, `WebSite`+`SearchAction`, per-product `Product`/`Offer`/`AggregateOffer`), dynamic `sitemap.ts`, `robots.ts`, OpenGraph/Twitter cards + social images |
+| **SEO implementation** | Next.js Metadata API (global + per-page `generateMetadata`), JSON-LD (`Organization`, `WebSite`+`SearchAction`, per-product `Product`/`Offer`/`AggregateOffer`), dynamic `sitemap.ts`, `robots.ts`, OpenGraph/Twitter cards. Site social images are `src/app/opengraph-image.png` and `src/app/twitter-image.png`. Product pages also pass the catalogue image. |
+| **Not part of the storefront** | Root `index.mts` calls the `ai` package (`generateText`). No App Router route imports it. |
 
 ### Project structure map
 
@@ -111,7 +112,7 @@ agent makes a change.
 
 2. **GitHub (`maxcoletta56-web/redlinelabs`) — source of truth.** Every change lands as a
    commit on a branch and is reviewed via a Pull Request. Branch history shows the team
-   already works this way (numbered PRs `#29`–`#35`, and many `cursor/*` branches). Merges
+   already works this way (numbered PRs from `#29` onward, and many `cursor/*` branches). Merges
    into the default/production branch (`cursor/redlinelabs-shop-1c01`) are the authorization
    signal to deploy.
 
@@ -177,3 +178,14 @@ Follow these steps in order for **every** maintenance task. Do not skip steps.
 | `ecommerce-cro-health.md` | Cart, promotions, checkout, Stripe, conversion |
 | `qa-performance-health.md` | Lint/type/test/build gates + Core Web Vitals |
 | `security-compliance-health.md` | Secrets, payment safety, dependencies, headers, compliance |
+
+Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue-merchandising-health.md`.
+
+---
+
+## 6. Change log
+
+| Date | Summary |
+| --- | --- |
+| 2026-09-25 | Overview added in `#38`. |
+| 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
