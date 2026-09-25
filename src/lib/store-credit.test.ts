@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { creditToApplyCents } from "./store-credit.ts";
+import { creditToApplyCents, serverStoreCreditCents } from "./store-credit.ts";
+
+test("checkout ignores client-supplied store credit", () => {
+  assert.equal(serverStoreCreditCents(), 0);
+});
 
 test("applies no credit when the balance or cart is empty", () => {
   assert.equal(creditToApplyCents(0, 8900), 0);

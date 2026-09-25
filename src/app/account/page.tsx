@@ -31,12 +31,12 @@ const benefits = [
   {
     icon: IconClock,
     title: "Full history",
-    text: "Every order, COA, and tracking number.",
+    text: "Orders completed in this browser, with a COA request on each line.",
   },
   {
     icon: IconCard,
     title: "Store credit",
-    text: "Apply your store credit automatically at checkout.",
+    text: "Saved in this browser. It is not deducted from the card charge.",
   },
   {
     icon: IconPin,
@@ -46,7 +46,7 @@ const benefits = [
   {
     icon: IconBell,
     title: "Stock alerts",
-    text: "Get pinged when batches restock.",
+    text: "A watchlist on this device. It does not send email.",
   },
 ] as const;
 
@@ -252,13 +252,13 @@ function AccountDashboard({
         icon: IconClock,
         title: "Full history",
         value: `${user.orders.length} order${user.orders.length === 1 ? "" : "s"}`,
-        text: "Every order, COA, and tracking number.",
+        text: "Orders completed in this browser, with a COA request on each line.",
       },
       {
         icon: IconCard,
         title: "Store credit",
         value: formatPrice(centsToDollars(user.storeCreditCents)),
-        text: "Apply your store credit automatically at checkout.",
+        text: "Saved in this browser. It is not deducted from the card charge.",
       },
       {
         icon: IconPin,
@@ -270,7 +270,7 @@ function AccountDashboard({
         icon: IconBell,
         title: "Stock alerts",
         value: `${user.stockAlerts.length} watching`,
-        text: "Get pinged when batches restock.",
+        text: "A watchlist on this device. It does not send email.",
       },
     ],
     [user],
@@ -313,9 +313,10 @@ function AccountDashboard({
           Full history
         </h2>
         <p className="mb-6 max-w-2xl text-[14px] leading-6 text-[#8f8c84]">
-          Every order, COA, and tracking number. Paid checkouts while signed in
-          are stored here. Guest orders are attached if you later create an
-          account with the same email.
+          Paid checkouts completed in this browser are stored here, with a COA
+          request on each line. Guest orders are attached if you later create
+          an account with the same email on this device. Tracking appears only
+          after it is added to the saved order.
         </p>
         {user.orders.length === 0 ? (
           <div className="surface p-8 text-sm leading-7 text-[#8f8c84]">
@@ -339,10 +340,9 @@ function AccountDashboard({
           Store credit
         </h2>
         <p className="mb-6 max-w-2xl text-[14px] leading-6 text-[#8f8c84]">
-          Apply your store credit automatically at checkout. Issued credit is
-          deducted from the amount charged; you do not enter a code. Apply a
-          coupon on the cart or checkout page for 20% off the total order
-          amount before store credit.
+          The balance on this page is stored in this browser. It is not deducted
+          from the card charge. Apply a coupon on the cart or checkout page for
+          20% off the total order amount.
         </p>
         <div className="surface p-6">
           <p className="text-[28px] font-semibold tracking-[-0.03em] text-[#d4af37]">
@@ -351,8 +351,8 @@ function AccountDashboard({
           <p className="mt-2 text-sm text-[#8f8c84]">Available balance</p>
           {user.creditLedger.length === 0 ? (
             <p className="mt-6 text-sm leading-7 text-[#8f8c84]">
-              No credit movements yet. Refunds and batch adjustments issued by
-              Redline Labs appear in this ledger and apply on the next checkout.
+              No credit movements yet. A balance saved here is not deducted from
+              the card charge.
             </p>
           ) : (
             <ul className="mt-6 space-y-3 text-sm">
@@ -465,8 +465,8 @@ function AccountDashboard({
           Stock alerts
         </h2>
         <p className="mb-6 max-w-2xl text-[14px] leading-6 text-[#8f8c84]">
-          Get pinged when batches restock. Open a listing and choose notify me,
-          or manage watches here.
+          Watches are saved in this browser and do not send email. Open a listing
+          and save a restock watch, or manage watches here.
         </p>
         {user.stockAlerts.length === 0 ? (
           <div className="surface p-8 text-sm leading-7 text-[#8f8c84]">

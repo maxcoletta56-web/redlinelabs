@@ -58,6 +58,8 @@ export async function POST(request: Request) {
       firstName: body.firstName,
       lastName: body.lastName,
       promoCode: body.promoCode,
+      ageConfirmed: true,
+      researchUse: true,
     });
     return NextResponse.json({ clientSecret, mode: resolved.mode });
   } catch (error) {

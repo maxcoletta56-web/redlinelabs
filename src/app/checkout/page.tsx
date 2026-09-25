@@ -14,7 +14,7 @@ import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { checkoutTotals } from "@/lib/promo";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
-import { centsToDollars, creditToApplyCents } from "@/lib/store-credit";
+import { centsToDollars } from "@/lib/store-credit";
 
 function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
   return {
@@ -70,11 +70,8 @@ export default function CheckoutPage() {
     items,
     promo,
   });
-  const creditCents = creditToApplyCents(
-    user?.storeCreditCents ?? 0,
-    totals.discountedCents,
-  );
-  const payable = centsToDollars(totals.discountedCents - creditCents);
+  const browserCreditCents = user?.storeCreditCents ?? 0;
+  const payable = centsToDollars(totals.discountedCents);
 
   const cartItems = useMemo(
     () =>
@@ -120,8 +117,8 @@ export default function CheckoutPage() {
               Account required for profile benefits
             </p>
             <p className="mt-2 text-sm leading-6 text-[#8f8c84]">
-              Sign in to apply store credit automatically, auto-fill saved
-              addresses, and keep full order history with COAs and tracking.
+              Sign in to keep order history and saved addresses in this browser.
+              Store credit on the account page is not deducted from the card charge.
             </p>
             <Link href="/account?next=/checkout" className="btn mt-4">
               Sign in or create account
@@ -260,9 +257,6 @@ export default function CheckoutPage() {
               {promo
                 ? ` ${promo.percentOff}% off the total order amount is applied.`
                 : ""}
-              {creditCents > 0
-                ? ` ${formatPrice(centsToDollars(creditCents))} store credit will be applied automatically.`
-                : ""}
             </p>
             <div className="surface overflow-hidden p-3">
               {publishableKey ? (
@@ -273,8 +267,9 @@ export default function CheckoutPage() {
                   lastName={lastName}
                   publishableKey={publishableKey}
                   shipping={selectedAddress ? shippingFromAddress(selectedAddress) : null}
-                  storeCreditCents={creditCents}
                   promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
                 />
               ) : (
                 <p className="text-sm leading-6 text-[#d4af37]" role="status">
@@ -316,18 +311,23 @@ export default function CheckoutPage() {
         )}
         <div className="mt-3 flex justify-between text-sm">
           <span>Store credit</span>
-          <span className="text-[#d4af37]">
-            {creditCents > 0 ? `−${formatPrice(centsToDollars(creditCents))}` : formatPrice(0)}
-          </span>
+          <span className="text-[#d4af37]">{formatPrice(0)}</span>
         </div>
+        {browserCreditCents > 0 && (
+          <p className="mt-2 text-xs leading-5 text-[#8f8c84]">
+            This browser shows {formatPrice(centsToDollars(browserCreditCents))} saved
+            credit. It is not deducted from the card charge.
+          </p>
+        )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
           <span>Due now</span>
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Signed-in store credit is applied automatically. Apply a coupon for
-          20% off the total order amount. Prices charged by Stripe are taken
-          from the catalogue, not from the browser cart. See the{" "}
+          Store credit saved in this browser is not deducted from the card
+          charge. Apply a coupon for 20% off the total order amount. Prices
+          charged by Stripe are taken from the catalogue, not from the browser
+          cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}

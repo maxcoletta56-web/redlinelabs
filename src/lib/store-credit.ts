@@ -8,6 +8,14 @@ export function centsToDollars(cents: number) {
   return cents / 100;
 }
 
+/**
+ * Browser profiles are not a ledger. Checkout must ignore any store-credit
+ * amount supplied by the client until credit is loaded from server records.
+ */
+export function serverStoreCreditCents() {
+  return 0;
+}
+
 /** Largest store-credit amount that can be applied without a $0 Stripe charge. */
 export function creditToApplyCents(balanceCents: number, subtotalCents: number) {
   const balance = Math.max(0, Math.floor(balanceCents));
