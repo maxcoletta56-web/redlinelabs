@@ -31,7 +31,7 @@ export function StockAlertButton({
         <Link href={next} className="text-[#d4af37]">
           Sign in
         </Link>{" "}
-        to get pinged when this batch restocks.
+        to save a restock watch on this device.
       </p>
     );
   }
@@ -41,7 +41,7 @@ export function StockAlertButton({
       {watching ? (
         <>
           <p className="text-sm leading-6 text-[#8f8c84]">
-            Watching {name}. We will ping {user.email} when a new batch is listed.
+            Watching {name} on this device. This does not send email.
           </p>
           <button type="button" className="btn-ghost" onClick={() => unwatchProduct(slug)}>
             Stop alert
@@ -53,7 +53,7 @@ export function StockAlertButton({
           className="btn-outline"
           onClick={() => watchProduct({ slug, name, sku })}
         >
-          Notify me of restocks
+          Save restock watch
         </button>
       )}
     </div>

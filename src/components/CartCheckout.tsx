@@ -21,8 +21,9 @@ export function CartCheckout({
   lastName,
   publishableKey,
   shipping,
-  storeCreditCents,
   promoCode,
+  ageConfirmed,
+  researchUse,
 }: {
   items: CartLineInput[];
   email: string;
@@ -30,8 +31,9 @@ export function CartCheckout({
   lastName: string;
   publishableKey: string;
   shipping?: ShippingAddressInput | null;
-  storeCreditCents?: number;
   promoCode?: string | null;
+  ageConfirmed: boolean;
+  researchUse: boolean;
 }) {
   const router = useRouter();
   const sessionIdRef = useRef<string | null>(null);
@@ -44,12 +46,13 @@ export function CartCheckout({
       firstName,
       lastName,
       shipping,
-      storeCreditCents,
       promoCode,
+      ageConfirmed,
+      researchUse,
     });
     sessionIdRef.current = sessionIdFromClientSecret(secret);
     return secret;
-  }, [items, email, firstName, lastName, shipping, storeCreditCents, promoCode]);
+  }, [items, email, firstName, lastName, shipping, promoCode, ageConfirmed, researchUse]);
 
   const onComplete = useCallback(() => {
     const sessionId = sessionIdRef.current;

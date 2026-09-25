@@ -5,7 +5,7 @@ import { RouteFallback } from "@/components/RouteFallback";
 export const metadata: Metadata = {
   title: "Account",
   description:
-    "Sign in for full order history, store credit, saved addresses, and stock alerts.",
+    "Sign in to keep order history, saved addresses, and restock watches in this browser.",
   robots: { index: false, follow: false },
 };
 

@@ -1,7 +1,7 @@
 import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
 import { lookupPromo, promoDiscountCents, stripeCouponParams } from "@/lib/promo";
 import { stripe, stripeConfigured, stripeMode } from "@/lib/stripe";
-import { creditToApplyCents } from "@/lib/store-credit";
+import { serverStoreCreditCents } from "@/lib/store-credit";
 
 export type ShippingAddressInput = {
   name: string;
@@ -19,11 +19,15 @@ export async function createEmbeddedCheckoutSession(input: {
   firstName?: string;
   lastName?: string;
   shipping?: ShippingAddressInput | null;
-  storeCreditCents?: number;
   promoCode?: string | null;
+  ageConfirmed: boolean;
+  researchUse: boolean;
 }) {
   if (!stripeConfigured()) {
     throw new Error("Stripe is not configured");
+  }
+  if (!input.ageConfirmed || !input.researchUse) {
+    throw new Error("Age and research-use confirmation are required");
   }
 
   const lines = resolveCartLines(input.items);
@@ -32,8 +36,7 @@ export async function createEmbeddedCheckoutSession(input: {
   const email = input.email?.trim();
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
   const promoOffCents = promoDiscountCents(subtotalCents, promo);
-  const afterPromoCents = subtotalCents - promoOffCents;
-  const storeCreditCents = creditToApplyCents(Number(input.storeCreditCents) || 0, afterPromoCents);
+  const storeCreditCents = serverStoreCreditCents();
 
   let customerId: string | undefined;
   if (email) {
@@ -109,8 +112,8 @@ export async function createEmbeddedCheckoutSession(input: {
     shipping_address_collection: { allowed_countries: ["AU"] },
     metadata: {
       customer_name: name,
-      age_confirmed: "true",
-      research_use: "true",
+      age_confirmed: input.ageConfirmed ? "true" : "false",
+      research_use: input.researchUse ? "true" : "false",
       store_credit_cents: String(storeCreditCents),
       promo_code: promo?.code ?? "",
       promo_percent_off: promo ? String(promo.percentOff) : "0",
