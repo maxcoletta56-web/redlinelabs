@@ -63,11 +63,31 @@ Review the report-only console, then promote the header to `Content-Security-Pol
 
 ## Product images
 
-Catalogue still points at Jetpack (`i0.wp.com/redlinelabs.shop/wp-content/uploads/…`). `next.config.ts` `images.remotePatterns` allows only that host. Copy files into `/public/products/{slug}.png` and switch `src/data/products.json` `image` fields when egress allows; then drop the remote pattern.
+Catalogue still points at Jetpack (`i0.wp.com/redlinelabs.shop/wp-content/uploads/…`). `next.config.ts` `images.remotePatterns` allows only that host. Downloading those files from this environment failed (`i0.wp.com` TLS/egress). Keep the remote pattern. Copy files into `/public/products/{slug}.png` and switch `src/data/products.json` `image` fields when egress allows; then drop the remote pattern.
 
 ## Analytics
 
-The storefront loads Vercel Analytics and Speed Insights from `/_vercel/insights/script.js` and `/_vercel/speed-insights/script.js` (see `src/components/VercelTelemetry.tsx`). Enable both products on the Vercel project so those endpoints serve scripts in production.
+The storefront loads Vercel Analytics and Speed Insights from `/_vercel/insights/script.js` and `/_vercel/speed-insights/script.js` (see `src/components/VercelTelemetry.tsx`). Official `@vercel/analytics` and `@vercel/speed-insights` packages could not be installed here (npm registry TLS/egress). Keep the local scripts unless those packages are added in an environment that can reach `registry.npmjs.org`. Enable both products on the Vercel project so those endpoints serve scripts in production.
+
+Checkout validation uses a local schema in `src/lib/validation.ts` for the same reason (`zod` was not installable here).
+
+## Next.js patch level
+
+`package.json` pins `next@16.3.4` / `eslint-config-next@16.3.4`. That line includes the August 2026 Windows RCE and AVIF fixes, but **16.3.4–16.3.5 are affected by the 22 September 2026 `ImageResponse` / Satori RCE** (GHSA-vcvr-r3jv-pc5j). Active LTS patch is `16.3.6`. This storefront does not import `next/og` or `ImageResponse`, so the specific issue is not in the current call graph. Bump `next` and `eslint-config-next` to `16.3.6` when `npm` can reach the registry, and run `npm audit` at the same time.
+
+## Largest client modules
+
+`next build` could not be run in this environment (`node_modules` could not be restored; `registry.npmjs.org` TLS is reset by egress). After a successful build, run `npm run analyze` (`scripts/list-client-chunks.mjs`) and replace this source-level estimate with the real `.next/static/chunks` sizes.
+
+| Rank | Module | Why it is large | Recommendation |
+| --- | --- | --- | --- |
+| 1 | `@stripe/stripe-js` + `@stripe/react-stripe-js` | Embedded Checkout on `/checkout` via `CartCheckout` | Keep the import only in `CartCheckout`. Optionally `next/dynamic` that component so the checkout chrome paints before Stripe downloads. |
+| 2 | Next.js / React runtime | Framework client for every `"use client"` island | Leave as-is. |
+| 3 | `src/app/account/page.tsx` (~21 KB source) | Largest app client page (profile, orders, addresses, alerts) | Split orders / addresses / alerts into lazy sections if Lighthouse TBT is high. |
+| 4 | `src/app/checkout/page.tsx` (~14 KB source) | Checkout form + totals; pulls Stripe through `CartCheckout` | Already a dedicated route. Do not import `CartCheckout` from the header or cart drawer. |
+| 5 | `src/components/Header.tsx` + `CartDrawer` + `src/lib/cart.tsx` | Shared chrome on every page | Leave unless the drawer ships unused checkout helpers. |
+
+`FaqList` is already `next/dynamic` on the homepage. Shop search/sort lives in `ShopCatalog` (client) under a server `shop/page.tsx` + `Suspense` layout.
 
 ## Pre-deploy checklist
 

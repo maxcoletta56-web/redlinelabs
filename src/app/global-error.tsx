@@ -35,12 +35,15 @@ export default function GlobalError({
             >
               Try again
             </button>
-            <a
-              href="/"
+            <button
+              type="button"
+              onClick={() => {
+                window.location.assign("/");
+              }}
               className="inline-flex items-center justify-center border border-[rgba(212,175,55,0.34)] px-5 py-3 text-[12px] font-semibold tracking-[0.08em] uppercase"
             >
               Home
-            </a>
+            </button>
           </div>
         </div>
       </body>
