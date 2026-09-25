@@ -1,0 +1,13 @@
+---
+description: Keep lint, types, and the production build green before code is pushed
+alwaysApply: true
+---
+
+# Build safety
+
+Broken types have already reached Vercel. A required `title` field was added to `CategoryCopy` on one branch while another branch's content omitted it. The merge compiled locally for each author and failed in production with `lint_or_type_error`.
+
+- Run `npm run check` before every push. It runs lint, `tsc --noEmit`, and `next build`.
+- Run `npm run check` again after merging `main` (and after merging the Vercel production branch, currently `cursor/redlinelabs-shop-1c01`).
+- When you change a shared type or component, update every usage in the same commit. Do not leave call sites for a follow-up branch.
+- Never use `ts-ignore`, `any`, or a disabled lint rule to force a pass. Fix the type or the lint finding.
