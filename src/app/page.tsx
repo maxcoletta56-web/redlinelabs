@@ -1,6 +1,7 @@
+import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { FaqList } from "@/components/FaqList";
 import {
   IconLock,
   IconMail,
@@ -20,6 +21,17 @@ import {
   products,
   productsBySlugs,
 } from "@/lib/products";
+import { pageMetadata } from "@/lib/seo";
+
+const FaqList = dynamic(() => import("@/components/FaqList").then((mod) => mod.FaqList));
+
+export const metadata: Metadata = pageMetadata({
+  title: "Redline Labs | Research chemicals, Australia",
+  description:
+    "Redline Labs lists laboratory research chemicals for purchase in Australia. Certificates of analysis on request. Research use only, not a pharmacy.",
+  path: "/",
+  absoluteTitle: true,
+});
 
 const heroSlugs = ["ghk-cu", "bpc-157", "retatrutide"] as const;
 
@@ -111,7 +123,7 @@ export default function Home() {
               >
                 <ProductImage
                   src={product.image}
-                  alt={product.name}
+                  alt={`${product.name} research vial`}
                   width={440}
                   height={440}
                   className="h-auto w-full object-contain drop-shadow-2xl"
@@ -363,7 +375,7 @@ export default function Home() {
             <p className="kicker mb-3">FAQ</p>
             <h2 className="section-title">Common questions answered</h2>
           </div>
-          <FaqList items={faqs} />
+          <FaqList items={faqs} headingLevel="h3" />
           <p className="mt-6 text-center">
             <Link href="/faq" className="text-[14px] font-medium text-[#d4af37]">
               View all frequently asked questions →

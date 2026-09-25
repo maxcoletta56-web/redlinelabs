@@ -76,7 +76,7 @@ export function CartDrawer() {
                 <li key={itemKey(item)} className="flex gap-3 border-b border-[rgba(212,175,55,0.16)] pb-5">
                   <ProductImage
                     src={item.image}
-                    alt={item.name}
+                    alt={`${item.name} research vial`}
                     width={72}
                     height={72}
                     className="h-[72px] w-[72px] border border-[rgba(212,175,55,0.16)] object-contain"

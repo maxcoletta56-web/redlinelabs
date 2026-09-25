@@ -14,7 +14,7 @@ export default function NotFound() {
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link href="/shop" className="btn">
-          Return to catalogue
+          Shop
         </Link>
         <Link href="/" className="btn-ghost">
           Home

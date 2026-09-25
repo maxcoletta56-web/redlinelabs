@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run build",
+    "analyze": "next build && node scripts/list-client-chunks.mjs",
     "test": "node --experimental-strip-types --test src/lib/*.test.ts"
   },
   "dependencies": {

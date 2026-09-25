@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 export type Crumb = {
   href?: string;
@@ -8,6 +10,7 @@ export type Crumb = {
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
   return (
     <nav aria-label="Breadcrumb" className="mb-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
+      <JsonLd data={breadcrumbJsonLd(items)} />
       <ol className="flex flex-wrap items-center">
         {items.map((item, i) => (
           <li key={`${item.label}-${i}`} className="flex items-center">

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
@@ -8,61 +8,97 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductImage } from "@/components/ProductImage";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { StockAlertButton } from "@/components/StockAlertButton";
-import { getProduct, products, relatedProducts } from "@/lib/products";
-import { absoluteUrl, metaDescription } from "@/lib/seo";
+import { getProduct, optionLabel, products, relatedProducts, type Product } from "@/lib/products";
+import { absoluteUrl, pageMetadata } from "@/lib/seo";
+import { canonicalProductSlug } from "@/lib/slugs";
 
 type Props = { params: Promise<{ slug: string }> };
 
+export const revalidate = 3600;
+export const dynamicParams = true;
+
 export function generateStaticParams() {
   return products.map((p) => ({ slug: p.slug }));
+}
+
+function productImageAlt(name: string, option?: string) {
+  const size = option ? ` ${option}` : "";
+  return `${name}${size} research vial`;
+}
+
+function productJsonLd(product: Product) {
+  const url = absoluteUrl(`/product/${product.slug}`);
+  const offers =
+    product.variants.length > 1
+      ? {
+          "@type": "AggregateOffer",
+          priceCurrency: "AUD",
+          lowPrice: product.minPrice,
+          highPrice: product.maxPrice,
+          offerCount: product.variants.length,
+          availability: "https://schema.org/InStock",
+          url,
+          offers: product.variants.map((variant) => ({
+            "@type": "Offer",
+            price: variant.price,
+            priceCurrency: "AUD",
+            availability: "https://schema.org/InStock",
+            sku: variant.sku,
+            name: optionLabel(product, variant.option),
+            url,
+          })),
+        }
+      : {
+          "@type": "Offer",
+          price: product.minPrice,
+          priceCurrency: "AUD",
+          availability: "https://schema.org/InStock",
+          sku: product.variants[0]?.sku || product.sku,
+          url,
+        };
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    sku: product.sku || undefined,
+    image: product.image.startsWith("http") ? product.image : absoluteUrl(product.image),
+    brand: { "@type": "Brand", name: "Redline Labs" },
+    category: product.categories[0],
+    url,
+    offers,
+  };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = getProduct(slug);
   if (!product) return { title: "Product" };
-  const description = metaDescription(product.description);
-  return {
+  return pageMetadata({
     title: product.name,
-    description,
-    openGraph: {
-      title: `${product.name} | Redline Labs`,
-      description,
-      images: product.image ? [{ url: product.image, alt: product.name }] : undefined,
-    },
-  };
+    description: product.description,
+    path: `/product/${product.slug}`,
+    image: product.image,
+    imageAlt: productImageAlt(product.name, product.variants[0]?.option),
+  });
 }
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
+  const canonical = canonicalProductSlug(slug);
+  if (canonical !== slug) {
+    if (getProduct(canonical)) permanentRedirect(`/product/${canonical}`);
+    notFound();
+  }
   const product = getProduct(slug);
   if (!product) notFound();
   const related = relatedProducts(product);
+  const imageAlt = productImageAlt(product.name, product.variants[0]?.option);
 
   return (
     <div className="wrap py-12">
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Product",
-          name: product.name,
-          description: product.description,
-          sku: product.sku || undefined,
-          image: product.image,
-          brand: { "@type": "Brand", name: "Redline Labs" },
-          category: product.categories[0],
-          url: absoluteUrl(`/product/${product.slug}`),
-          offers: {
-            "@type": product.minPrice !== product.maxPrice ? "AggregateOffer" : "Offer",
-            priceCurrency: "AUD",
-            availability: "https://schema.org/InStock",
-            url: absoluteUrl(`/product/${product.slug}`),
-            ...(product.minPrice !== product.maxPrice
-              ? { lowPrice: product.minPrice, highPrice: product.maxPrice }
-              : { price: product.minPrice }),
-          },
-        }}
-      />
+      <JsonLd data={productJsonLd(product)} />
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
@@ -75,7 +111,7 @@ export default async function ProductPage({ params }: Props) {
         <div className="surface relative aspect-square overflow-hidden">
           <ProductImage
             src={product.image}
-            alt={product.name}
+            alt={imageAlt}
             fill
             className="object-contain p-10"
             sizes="(max-width: 1024px) 100vw, 45vw"
@@ -93,16 +129,13 @@ export default async function ProductPage({ params }: Props) {
           <div className="mt-5">
             <StockAlertButton slug={product.slug} name={product.name} sku={product.sku} />
           </div>
-          <p className="mt-6 text-[12px] tracking-[0.04em] text-[#8f8c84]">
-            SKU {product.sku || "not listed"} · Lot number not published
-          </p>
           <div className="mt-10 border-t border-[rgba(212,175,55,0.16)] pt-8">
             <h2 className="mb-3 text-[13px] font-semibold tracking-[0.12em] text-white uppercase">
               Description
             </h2>
             <p className="text-[15px] leading-8 text-[#8f8c84]">{product.description}</p>
           </div>
-          <CoaSection sku={product.sku} />
+          <CoaSection product={product} />
         </div>
       </div>
 

@@ -2,7 +2,7 @@
   {
     "id": 159,
     "name": "DSIP",
-    "slug": "products-dsip",
+    "slug": "dsip",
     "sku": "Dsip15",
     "categories": [
       "BRAIN-PERFORMANCE"
@@ -89,7 +89,7 @@
       "MELANOCORTIN RESEARCH"
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/16f7a4fd-bb07-481b-ad10-291e818a41c3.png?fit=800%2C800&ssl=1",
-    "description": "Melanotan II is a synthetic cyclic analogue of α-melanocyte-stimulating hormone. In research literature it is described as an agonist at melanocortin receptors (including MC1R and MC4R) and is used to study pigmentation and melanocortin signalling in experimental systems. Supplied for laboratory research only.",
+    "description": "Melanotan II is a synthetic cyclic analogue of \u03b1-melanocyte-stimulating hormone. In research literature it is described as an agonist at melanocortin receptors (including MC1R and MC4R) and is used to study pigmentation and melanocortin signalling in experimental systems. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [
       {
@@ -222,14 +222,14 @@
   },
   {
     "id": 199,
-    "name": "SLU-PP-322",
-    "slug": "products-slu-pp-322",
+    "name": "SLU-PP-332",
+    "slug": "slu-pp-332",
     "sku": "Slupp37",
     "categories": [
       "ENERGY"
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/0dabca18-074e-4f43-b153-6348707de2dc-1.png?fit=800%2C800&ssl=1",
-    "description": "SLU-PP-332 is a small-molecule research compound described in published literature as an agonist of estrogen-related receptors (ERRα/β/γ). Experimental work has examined mitochondrial and oxidative-metabolism pathways in laboratory models. Supplied for laboratory research only. (Catalogue name: SLU-PP-322.)",
+    "description": "SLU-PP-332 is a small-molecule research compound described in published literature as an agonist of estrogen-related receptors (ERR\u03b1/\u03b2/\u03b3). Experimental work has examined mitochondrial and oxidative-metabolism pathways in laboratory models. Supplied for laboratory research only. (Catalogue name: SLU-PP-322.)",
     "variantLabel": null,
     "variants": [],
     "minPrice": 165,
@@ -239,7 +239,7 @@
   {
     "id": 181,
     "name": "NAD+",
-    "slug": "products-nad",
+    "slug": "nad-plus",
     "sku": "Nad5100",
     "categories": [
       "BRAIN-PERFORMANCE",
@@ -267,7 +267,7 @@
   {
     "id": 441,
     "name": "TB-1",
-    "slug": "product-tb-1",
+    "slug": "tb-1",
     "sku": "Tb111",
     "categories": [
       "TISSUE RESEARCH"
@@ -300,14 +300,14 @@
   {
     "id": 195,
     "name": "Kisspeptin",
-    "slug": "products-kisspepien",
+    "slug": "kisspeptin",
     "sku": "Kisspep",
     "categories": [
       "GROWTH SUPPORT",
       "REPRODUCTIVE"
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/ce3a0d71-6a5a-4fe7-8eea-355b3110c65f.png?fit=800%2C800&ssl=1",
-    "description": "Kisspeptin (typically kisspeptin-10 or related fragments, depending on the batch) is a peptide ligand of the GPR54/KISS1R receptor. Laboratory research uses it to study GnRH-related and hypothalamic–pituitary signalling in experimental systems. Supplied for laboratory research only.",
+    "description": "Kisspeptin (typically kisspeptin-10 or related fragments, depending on the batch) is a peptide ligand of the GPR54/KISS1R receptor. Laboratory research uses it to study GnRH-related and hypothalamic\u2013pituitary signalling in experimental systems. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
     "minPrice": 110,
@@ -317,7 +317,7 @@
   {
     "id": 177,
     "name": "IPAMORELIN",
-    "slug": "products-ipamorelin",
+    "slug": "ipamorelin",
     "sku": "Ipaipa",
     "categories": [
       "GROWTH SUPPORT"
@@ -388,7 +388,7 @@
   {
     "id": 192,
     "name": "IGF-1",
-    "slug": "products-igf-1",
+    "slug": "igf-1",
     "sku": "Igf1g",
     "categories": [
       "GROWTH SUPPORT"
@@ -410,7 +410,7 @@
   {
     "id": 190,
     "name": "SS-31",
-    "slug": "products-ss-31",
+    "slug": "ss-31",
     "sku": "Ss31s",
     "categories": [
       "ENERGY"
@@ -426,13 +426,13 @@
   {
     "id": 173,
     "name": "KPV",
-    "slug": "products-kpv",
+    "slug": "kpv",
     "sku": "Kpvvpm",
     "categories": [
       "TISSUE RESEARCH"
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/87c4b482-9af2-4f2d-a79e-5a5acdd0fa7b-1.png?fit=800%2C800&ssl=1",
-    "description": "KPV is a tripeptide (Lys-Pro-Val) C-terminal fragment of α-MSH. Laboratory research has examined melanocortin-related and inflammatory-signalling pathways in cell and animal models. Supplied for laboratory research only.",
+    "description": "KPV is a tripeptide (Lys-Pro-Val) C-terminal fragment of \u03b1-MSH. Laboratory research has examined melanocortin-related and inflammatory-signalling pathways in cell and animal models. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
     "minPrice": 85,
@@ -442,7 +442,7 @@
   {
     "id": 169,
     "name": "GLOW",
-    "slug": "products-glow",
+    "slug": "glow",
     "sku": "Glow70",
     "categories": [
       "TISSUE RESEARCH"
@@ -464,7 +464,7 @@
   {
     "id": 167,
     "name": "KLOW",
-    "slug": "products-klow",
+    "slug": "klow",
     "sku": "Klow80",
     "categories": [
       "TISSUE RESEARCH"
@@ -486,7 +486,7 @@
   {
     "id": 163,
     "name": "PT-141",
-    "slug": "products-pt-141",
+    "slug": "pt-141",
     "sku": "Pt141",
     "categories": [
       "REPRODUCTIVE"
@@ -502,7 +502,7 @@
   {
     "id": 155,
     "name": "SELANK",
-    "slug": "products-selank",
+    "slug": "selank",
     "sku": "Selank10",
     "categories": [
       "BRAIN-PERFORMANCE"
@@ -529,7 +529,7 @@
   {
     "id": 146,
     "name": "MOTS-C",
-    "slug": "products-mots-c",
+    "slug": "mots-c",
     "sku": "Mot-c",
     "categories": [
       "BRAIN-PERFORMANCE"
@@ -556,13 +556,13 @@
   {
     "id": 139,
     "name": "Semax",
-    "slug": "products-semax",
+    "slug": "semax",
     "sku": "Semax130",
     "categories": [
       "BRAIN-PERFORMANCE"
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/925e654e-8e31-47e4-a620-b1f364100a8e.png?fit=800%2C800&ssl=1",
-    "description": "Semax is a synthetic peptide analogue of an ACTH(4–10) fragment used in laboratory research. Experimental literature examines melanocortin-related and neurotrophic signalling in non-clinical models. Supplied for laboratory research only.",
+    "description": "Semax is a synthetic peptide analogue of an ACTH(4\u201310) fragment used in laboratory research. Experimental literature examines melanocortin-related and neurotrophic signalling in non-clinical models. Supplied for laboratory research only.",
     "variantLabel": "MG",
     "variants": [
       {
@@ -665,7 +665,7 @@
       "TISSUE RESEARCH"
     ],
     "image": "https://i0.wp.com/redlinelabs.shop/wp-content/uploads/2026/05/3506cfcc-4d10-478a-988a-613867fa453a-2.png?fit=800%2C800&ssl=1",
-    "description": "TB-500 is a synthetic peptide corresponding to an active fragment of thymosin beta-4 (often the 17–23 region, LKKTETQ, depending on the preparation). Laboratory research uses related sequences to study actin-binding and cytoskeletal pathways. Confirm the exact sequence against batch documentation. Supplied for laboratory research only.",
+    "description": "TB-500 is a synthetic peptide corresponding to an active fragment of thymosin beta-4 (often the 17\u201323 region, LKKTETQ, depending on the preparation). Laboratory research uses related sequences to study actin-binding and cytoskeletal pathways. Confirm the exact sequence against batch documentation. Supplied for laboratory research only.",
     "variantLabel": "MG",
     "variants": [
       {

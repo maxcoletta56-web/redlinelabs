@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createEmbeddedCheckoutSession } from "@/lib/checkout-session";
-import { type CartLineInput } from "@/lib/order";
 import { stripeResolved } from "@/lib/stripe";
+import { checkoutBodySchema } from "@/lib/validation";
 
 export async function GET() {
   const resolved = stripeResolved();
@@ -24,46 +24,35 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: {
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-    ageConfirmed?: boolean;
-    researchUse?: boolean;
-    items?: CartLineInput[];
-    promoCode?: string | null;
-  };
-
+  let json: unknown;
   try {
-    body = await request.json();
+    json = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid checkout payload" }, { status: 400 });
   }
 
-  const email = String(body.email ?? "").trim();
-  if (!email || !email.includes("@")) {
-    return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
-  }
-  if (!body.ageConfirmed || !body.researchUse) {
+  const parsed = checkoutBodySchema.safeParse(json);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Age and research-use confirmation are required" },
+      { error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" },
       { status: 400 },
     );
   }
 
   try {
     const clientSecret = await createEmbeddedCheckoutSession({
-      items: body.items ?? [],
-      email,
-      firstName: body.firstName,
-      lastName: body.lastName,
-      promoCode: body.promoCode,
+      items: parsed.data.items,
+      email: parsed.data.email,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      promoCode: parsed.data.promoCode,
       ageConfirmed: true,
       researchUse: true,
     });
     return NextResponse.json({ clientSecret, mode: resolved.mode });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Stripe checkout failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const status = message.includes("Cart is empty") || message.includes("quantity") ? 400 : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 }

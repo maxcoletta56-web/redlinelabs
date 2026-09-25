@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { JsonLd } from "@/components/JsonLd";
 import { Providers } from "@/components/Providers";
+import { VercelTelemetry } from "@/components/VercelTelemetry";
 import {
   BRAND_NAME,
   COMPANY_EMAIL,
@@ -19,16 +20,20 @@ import "./globals.css";
 const sans = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
+const defaultDescription =
+  "Redline Labs lists laboratory research chemicals for purchase in Australia. Certificates of analysis on request. Research use only, not a pharmacy.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(absoluteUrl("/")),
+  metadataBase: new URL("https://redlinelabs.shop"),
   title: {
     default: "Redline Labs | Research chemicals, Australia",
     template: "%s | Redline Labs",
   },
-  description:
-    "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
+  description: defaultDescription,
+  alternates: { canonical: absoluteUrl("/") },
   icons: {
     icon: "/brand/icon.jpeg",
     apple: "/brand/icon.jpeg",
@@ -38,14 +43,15 @@ export const metadata: Metadata = {
     locale: "en_AU",
     siteName: "Redline Labs",
     title: "Redline Labs | Research chemicals, Australia",
-    description:
-      "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
+    description: defaultDescription,
+    url: absoluteUrl("/"),
+    images: [{ url: absoluteUrl("/opengraph-image.png"), alt: "Redline Labs research catalogue" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Redline Labs | Research chemicals, Australia",
-    description:
-      "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
+    description: defaultDescription,
+    images: [absoluteUrl("/opengraph-image.png")],
   },
 };
 
@@ -59,7 +65,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} h-full antialiased`}>
+    <html lang="en-AU" className={`${sans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-[#050505] font-sans text-[#f3f1ea]">
         <JsonLd
           data={[
@@ -107,6 +113,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <Footer />
         </Providers>
         <AssistLoopWidget />
+        <VercelTelemetry />
       </body>
     </html>
   );

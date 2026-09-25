@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Checkout",
   description:
-    "Pay for Redline Labs research chemicals through Stripe. Research-use confirmation is required.",
-  robots: { index: false, follow: false },
-};
+    "Pay for Redline Labs research chemicals through Stripe. Research-use confirmation is required. Checkout pages are not indexed.",
+  path: "/checkout",
+  index: false,
+});
 
 export default function CheckoutLayout({
   children,

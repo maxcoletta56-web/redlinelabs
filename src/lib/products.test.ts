@@ -77,9 +77,9 @@ test("variant SKUs are unique on each listing", () => {
 
 test("Selank, Semax, DSIP, and Melanotan 2 offer a nasal spray option", () => {
   const slugs = [
-    "products-selank",
-    "products-semax",
-    "products-dsip",
+    "selank",
+    "semax",
+    "dsip",
     "melanotan-2",
   ];
   for (const slug of slugs) {
@@ -92,6 +92,25 @@ test("Selank, Semax, DSIP, and Melanotan 2 offer a nasal spray option", () => {
   }
   const melanotan = products.find((entry) => entry.slug === "melanotan-2");
   assert.ok(melanotan?.variants.some((variant) => variant.option === "Vial"));
+});
+
+test("related listings never include the current product or duplicates", () => {
+  for (const product of products) {
+    const seen = new Set<string>([product.slug]);
+    const related = [];
+    for (const candidate of products) {
+      if (seen.has(candidate.slug)) continue;
+      if (!candidate.categories.some((category) => product.categories.includes(category))) {
+        continue;
+      }
+      seen.add(candidate.slug);
+      related.push(candidate);
+      if (related.length >= 6) break;
+    }
+    const slugs = related.map((item) => item.slug);
+    assert.equal(new Set(slugs).size, slugs.length);
+    assert.equal(slugs.includes(product.slug), false);
+  }
 });
 
 test("form options keep their own labels instead of a dose unit", () => {

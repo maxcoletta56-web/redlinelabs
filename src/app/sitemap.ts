@@ -14,8 +14,10 @@ const publicRoutes = [
   "/terms-of-service",
 ] as const;
 
+const CATALOG_UPDATED_AT = new Date("2026-09-25T00:00:00.000Z");
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
+  const now = CATALOG_UPDATED_AT;
   const pages: MetadataRoute.Sitemap = publicRoutes.map((path) => ({
     url: absoluteUrl(path),
     lastModified: now,

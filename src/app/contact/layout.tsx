@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact Us",
   description:
-    "Email Redline Labs at redlinelabsltd@pm.me. Operated by RedlineLabs Limited, a verified registered private corporation in Hong Kong.",
-};
+    "Email Redline Labs at redlinelabsltd@pm.me for catalogue or order questions. Operated by RedlineLabs Limited, a registered Hong Kong company.",
+  path: "/contact",
+});
 
 export default function ContactLayout({
   children,

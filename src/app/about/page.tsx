@@ -3,12 +3,14 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { LEGAL_NAME, REGISTERED_COMPANY_DETAIL } from "@/lib/company";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "About",
   description:
-    "Redline Labs is the trading name of RedlineLabs Limited, a verified registered private corporation in Hong Kong (company number 80442501). Research-use laboratory products with clear product information.",
-};
+    "Redline Labs is the trading name of RedlineLabs Limited (HK 80442501). Research-use laboratory chemicals with batch documentation available on request.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

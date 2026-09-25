@@ -52,7 +52,13 @@ function readCart(): CartItem[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return empty;
     const parsed = JSON.parse(raw) as CartItem[];
-    return parsed.filter((item) => getProduct(item.slug) && item.qty > 0);
+    return parsed
+      .map((item) => {
+        const product = getProduct(item.slug);
+        if (!product || item.qty <= 0) return null;
+        return { ...item, slug: product.slug, name: product.name };
+      })
+      .filter((item): item is CartItem => Boolean(item));
   } catch {
     return empty;
   }

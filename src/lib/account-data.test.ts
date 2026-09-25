@@ -58,7 +58,7 @@ test("shows size units on order history lines", () => {
   );
   assert.equal(
     lineDisplayName({
-      slug: "products-selank",
+      slug: "selank",
       name: "SELANK",
       option: "Nasal Spray",
       variantLabel: "MG",
