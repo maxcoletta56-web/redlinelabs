@@ -1,101 +1,78 @@
-# Website Health Report
+# Redlinelabs Website Health
 
-> **Purpose:** This report is owned by the **Website Health specialist agent**. It tracks the overall
-> operational health of the Redline Labs storefront (`https://redlinelabs.shop`) — that the site
-> builds, deploys, renders, and serves its core pages and flows without errors. It is the
-> first place to look when "the site is broken" and the umbrella owner for issues that do not
-> clearly belong to one of the other specialist reports.
+Last Updated: 25 September 2026, 16:58 UTC
 
-Last Updated: 25 September 2026
+Overall Status: Degraded. The production branch `cursor/redlinelabs-shop-1c01` is at `cebe42b` (#37), which stops checkout from turning a browser store-credit balance into a Stripe coupon. https://redlinelabs.shop is up, and the main catalogue routes return 200, but the custom domain is still serving older cached HTML. Customers are not yet on the checkout fix, the Hong Kong entity footer, or the Bacterial Water listing. The current design system is Redline Labs black and gold.
 
-Overall Status: The live site at https://redlinelabs.shop/ is up, Stripe live checkout is configured, and the main catalogue pages return 200. Checkout on this branch no longer treats a browser store-credit balance as a Stripe coupon. That fix is not on production until it is reviewed and deployed. The current design system is Redline Labs black and gold.
+## Critical Issues
 
-## Scope / responsibilities
+- **The public domain is not serving the current production commit.** Minutes after `cebe42b` landed, the homepage was `x-vercel-cache: HIT` with `age: 408744` (about 4.7 days). The footer on that HTML is `© 2026 Redline Labs`. The repository footer is `© 2026 RedlineLabs Limited (Hong Kong Co. No. 80442501). Trading as Redline Labs.` The homepage hero still says `29 listings`. This is the same drift seen after the #40 deploy: later production commits, including #43 and #37, have not replaced the custom-domain cache. Do not promote, purge, or redeploy from an agent run. A person with Vercel access needs to confirm which deployment is bound to `redlinelabs.shop`.
 
-- Successful production build (`next build`) and Vercel deployment health.
-- Availability and correct rendering of core routes: home (`/`), catalogue (`/shop`),
-  product pages (`/product/[slug]`), cart (`/cart`), checkout (`/checkout`), account
-  (`/account`), and the policy pages.
-- Global layout, navigation (`Header`, `Footer`), providers, and error/not-found handling.
-- Console errors, hydration mismatches, broken images, and broken internal links.
-- Third-party embeds that affect page health (e.g. the optional AssistLoop chat widget).
-- Redirects declared in `next.config.ts` resolving correctly.
+- **Live checkout can still describe store credit as a discount.** The homepage FAQ in the cached HTML says store credit applies automatically at checkout. In git, that answer says the balance shown on the account page is not deducted from the card charge, and `serverStoreCreditCents()` returns `0`. Until the domain serves `cebe42b`, a browser-only balance can still reduce what Stripe charges. Do not open a second checkout fix. #37 is merged.
 
-## Out of scope (see sibling reports)
+- **Bacterial Water is a cached 404 on the live site.** `GET /product/bacterial-water` and `GET /product/bac-water` returned 404, both `x-vercel-cache: HIT`, cached response `date: Wed, 23 Sep 2026 02:12:23 GMT`, `age: 225946`. The live sitemap has no bacterial-water URL. `GET /product/product-bacterial-water` returned 308 to `/shop`. Git `next.config.ts` redirects both `/product/bac-water` and `/product/product-bacterial-water` to `/product/bacterial-water`.
 
-- Search/structured-data specifics → `seo-aeo-health.md`
-- Catalogue/product data correctness → `catalogue-merchandising-health.md`
-- Cart/checkout conversion tuning → `ecommerce-cro-health.md`
-- Automated tests & performance budgets → `qa-performance-health.md`
-- Secrets, headers, compliance → `security-compliance-health.md`
+## High Priority Issues
 
-## Key files & signals
+These stay with the specialist reports. Do not re-implement them in a website-health change.
 
-- `next.config.ts` — image `remotePatterns`, redirects.
-- `src/app/layout.tsx` — root layout, global chrome, metadata base.
-- `src/app/not-found.tsx`, `src/components/RouteFallback.tsx` — error surfaces.
-- `src/components/Header.tsx`, `src/components/Footer.tsx` — global navigation.
-- Vercel deployment logs and Preview URLs per branch/PR.
+- **Catalogue** (`reports/catalogue-merchandising-health.md`): 14 catalogue image URLs returned HTTP 403 from `i0.wp.com` on 25 September 2026; 11 listings have an empty `variants` array; premium picks are unused; the product page prints the parent SKU. The live homepage is the older 29-listing snapshot, so those git findings are not what customers see yet.
+- **Checkout copy vs code** (`reports/ecommerce-cro-health.md`): git ignores client store credit and requires age and research-use confirmation before creating a session. The CRO checklist item that says store credit should apply at checkout disagrees with that code. Leave credit at zero until it is loaded from server records.
+- **Account and session exposure** (`reports/security-compliance-health.md`): accounts, orders, addresses, and stock alerts are browser-local. There is no Stripe webhook. `GET /api/checkout/session` returns email and shipping to anyone with the Checkout Session id. Live homepage headers were HSTS plus `Access-Control-Allow-Origin: *`.
+- **Search markup** (`reports/seo-aeo-health.md`): product JSON-LD marks listings `InStock`; FAQ content has no `FAQPage` schema; several slugs still use a `products-` or `product-` prefix, including `products-kisspepien`. The live sitemap is missing Bacterial Water because of the stale deploy, not because `sitemap.ts` omits it.
+- **Stale draft reports.** Pull requests #41 and #42 still describe the pre-merge state (checkout fix open, catalogue file move). #40 already filed the catalogue audit, and #37 is merged. Rebasing those drafts will conflict on `reports/website-health.md`. Do not revive them.
 
-## Health checklist
+## Medium Priority Issues
 
-- [x] `npm run build` completes with all routes generated. Local build on 25 September 2026 succeeded, including `/product/bacterial-water`. CI on the base branch now runs lint, typecheck, and build.
-- [x] Home, catalogue, and a sample product page return HTTP 200. Production probe the same day: home, shop, about, FAQ, contact, cart, checkout, account, four policy pages, and `/product/bpc-157` returned 200.
-- [x] No console/hydration errors on core pages. Local browser pass reported no console issues.
-- [x] Header/footer links resolve (no 404s). Those routes returned 200. Mobile menu showed Home, Shop, About, FAQ, and Contact.
-- [ ] Declared redirects (`/product/bac-water`, `/product/product-bacterial-water`) 308 to the canonical slug. Not re-checked in this pass.
-- [ ] Remote product images load from the allow-listed host. One sampled BPC-157 image returned 200. Image failures for other listings belong in `catalogue-merchandising-health.md`.
+- No product analytics in the repository. Draft pull request #22 is Vercel Speed Insights. Leave it draft unless someone asks to add analytics.
+- Root `index.mts` is the only consumer of the `ai` dependency and is not an App Router route. `src/components/Placeholder.tsx` has no other references. `public/vercel.svg`, `public/brand/hero.png`, and `public/brand/logo.png` are still in the tree. Confirm before deleting; this run did not remove them.
+- `reports/ecommerce-cro-health.md`, `reports/seo-aeo-health.md`, `reports/qa-performance-health.md`, and `reports/security-compliance-health.md` still say the baseline audit is pending. The handoff above is the source for those passes. `reports/catalogue-merchandising-health.md` is the catalogue audit.
+- The earlier checkout pass reported a Node test-runner warning that `package.json` has no `"type": "module"`. Not re-run here.
 
-## Current status
+## Low Priority Issues
 
-Production is serving the site. It is behind the repository: `GET /product/bacterial-water` returned 404 on 25 September 2026 and that URL was absent from the live sitemap, while the listing is already in `src/data/products.json`. The homepage cache `age` was about 4.5 days. Publishing that listing is a deploy of existing catalogue commits, not part of the checkout change.
+- Listing titles mix case, and 16 slugs still carry an old `products-` or `product-` prefix. Owned by the catalogue report.
+- A historical branch named `cursor/metro-uniforms-about-151c` is not the current brand. Keep the Redline Labs black and gold storefront.
 
-AssistLoop is enabled in production. The homepage HTML preloads `https://assistloop.ai/assistloop-widget.js`.
+## Changes Made
 
-`npx tsc --noEmit` used to fail with `Cannot find name 'LayoutProps'` until `next build` generated route types. The base branch now types the root layout `children` as `ReactNode`, so that failure is closed on this merge.
+- Rewrote this report against `cebe42b` and a live probe at 16:58 UTC. No storefront, catalogue, environment, or Vercel config changes. Production was not deployed or cache-purged.
+- Noted on the e-commerce and security reports that the checkout credit fix is merged in git and must not be reopened, and that the live domain is still the older cache.
+- Added a project-overview changelog row for the same probe.
 
-Contact is a `mailto:` composer. The newsletter form says it does not start a mailing list. Both render and do what they say.
+## Tests Performed
 
-### Handed to sibling reports
+- Live HTTP checks at 25 September 2026, 16:58 UTC: `/`, `/shop`, `/about`, `/faq`, `/contact`, `/cart`, `/checkout`, `/account`, four policy pages, and `/product/bpc-157` and `/product/ghk-cu` returned 200. `/product/bacterial-water` and `/product/bac-water` returned 404. `/product/product-bacterial-water` returned 308 to `/shop`.
+- Homepage HTML: footer `© 2026 Redline Labs`, hero `29 listings`, AssistLoop script preload, FAQ line that store credit applies automatically at checkout.
+- Compared that HTML with `src/lib/faqs.tsx`, `src/lib/store-credit.ts`, `src/lib/company.ts`, and `next.config.ts` at `cebe42b`.
+- No local `npm test`, lint, or `next build`. This run did not change application code, and `node_modules` is not installed in the workspace. CI from #43 (lint, typecheck, build) is already on the production branch.
 
-These came out of the same pass. They stay listed here so the audit is not dropped, and the owning report should record them.
+## Build Status
 
-- `ecommerce-cro-health.md`: checkout used to create a Stripe coupon from a browser store-credit amount. Account balances live only in `localStorage`. This branch ignores that amount and no longer subtracts it from “Due now”. The CRO checklist still says store credit should apply at checkout; that item disagrees with this code.
-- `ecommerce-cro-health.md`: the live checkout path did not require age and research-use confirmation on the server. The server action and `POST /api/checkout` now reject a session unless both are true. Account, FAQ, checkout, and the restock control no longer promise email alerts or an automatic credit deduction.
-- `security-compliance-health.md`: accounts, orders, addresses, and stock alerts are browser-local. There is no Stripe webhook. `GET /api/checkout/session` returns email and shipping to anyone with the Checkout Session id. Live homepage headers were HSTS only, plus `Access-Control-Allow-Origin: *`.
-- `seo-aeo-health.md`: product JSON-LD marks every listing `InStock`. FAQ content has no `FAQPage` schema. Slugs include `products-dsip`, `product-tb-1`, and the misspelling `products-kisspepien`.
-- `catalogue-merchandising-health.md`: listing titles mix case. Catalogue photos are remote `i0.wp.com` files with a `/brand/vial.png` fallback.
-- `qa-performance-health.md`: no product analytics in the repo. Draft pull request `#22` is Vercel Speed Insights. The test runner warns that `package.json` has no `"type": "module"`. Dead code: root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`, default `public/*.svg` files, and unused `public/brand/hero.png` and `public/brand/logo.png`.
+Local build was not run. The live custom domain is serving a successful older Vercel cache, not an error page. Whether the `cebe42b` deployment itself finished was not available from the Vercel API in this run. Homepage cache age of about 4.7 days means production deploys after ~20 September 2026 have not replaced that document.
 
-### Changes on this branch
+## Outstanding Work
 
-- Checkout no longer turns a browser store-credit balance into a Stripe coupon.
-- Checkout requires age and research-use confirmation before creating a session.
-- Checkout, account, FAQ, and the product restock control match that behaviour.
-- No visual redesign. Header, gold/black palette, catalogue data, and the DGC20 coupon behaviour are unchanged.
+- A person with Vercel access should confirm the deployment assigned to https://redlinelabs.shop and replace the stale cache only when that promotion is explicitly requested.
+- After the domain serves `cebe42b`, re-check: footer names RedlineLabs Limited, `/product/bacterial-water` returns 200, both legacy bacterial-water paths 308 to that slug, the sitemap lists it, and the FAQ no longer says store credit is deducted at checkout.
+- Specialist passes should update their own reports from the high-priority list. Do not open another store-credit checkout change.
+- Draft pull requests #41 and #42 can be closed as superseded.
 
-### Tests performed
+## Recommendations
 
-- `npm test`: 32 passed, 0 failed.
-- `npm run lint`: passed.
-- `npm run build` (Next.js 16.3.4): passed. Static product paths include `/product/bacterial-water`.
-- `npx tsc --noEmit` after that build: passed. Re-run after this merge because the base branch added `npm run typecheck` and changed `src/app/layout.tsx`.
-- Local browser pass against `next start`: FAQ account answer, account benefit cards, BPC-157 restock line, shop search `bpc`, checkout summary with store credit $0.00, and the mobile menu at 390px. No card payment was submitted.
+- Judge customer impact from the live domain and intended behaviour from git. They disagree until the cache is replaced.
+- Keep checkout store credit at `serverStoreCreditCents()` until credit comes from server records.
+- Keep the Redline Labs black and gold design system.
+- Use a Vercel Preview for future code changes. Do not promote this report to production by itself; it does not change the storefront.
 
-### Build status
+## Scope
 
-Local production build succeeded on 25 September 2026 before this merge. This branch has not been deployed. Production was not updated.
-
-### Outstanding work
-
-- Review and, only when explicitly requested, deploy the checkout fix. Production still applies client-supplied store credit until then.
-- Decide whether Bacterial Water should be published by deploying the existing catalogue commits.
-- Keep the Redline Labs black and gold storefront. A historical branch named `cursor/metro-uniforms-about-151c` is not the current brand.
-- Use a Vercel preview for this branch. Do not promote it to production without an explicit request.
+This file is the umbrella health report. Render, deploy, and navigation failures stay here. Search markup belongs in `reports/seo-aeo-health.md`. Catalogue data belongs in `reports/catalogue-merchandising-health.md`. Cart and Stripe conversion belongs in `reports/ecommerce-cro-health.md`. Lint, tests, and Core Web Vitals belong in `reports/qa-performance-health.md`. Secrets, headers, and compliance belong in `reports/security-compliance-health.md`.
 
 ## Change log
 
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
-| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. Render and deploy findings stay here. Checkout, security, SEO, catalogue, and test findings are handed to the sibling reports. |
+| 2026-09-25 | checkout integrity | Merged the 25 September audit into the scaffold as part of #37. |
+| 2026-09-25 | website health | Recorded that `cebe42b` is on the production branch and https://redlinelabs.shop is still the older cache. |

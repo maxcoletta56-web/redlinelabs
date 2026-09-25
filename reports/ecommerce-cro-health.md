@@ -45,12 +45,25 @@
 
 ## Current status
 
-_Baseline pending first audit._ Checkout uses Stripe **embedded** mode with dynamically
-built `price_data` line items and on-the-fly coupons; production enforces **live** keys
-(test keys ignored). Cart is client-side. Record conversion friction and defects here per run.
+25 September 2026, coordinator handoff (not a full CRO pass). Git at `cebe42b` ignores
+client store credit: `serverStoreCreditCents()` returns `0`, and checkout copy says that
+balance is not deducted from the card charge. Age and research-use confirmation are
+required before a session is created. Do not open a second fix and do not apply a
+browser `storeCreditCents` value as a Stripe coupon.
+
+https://redlinelabs.shop is still an older cache. Its homepage FAQ still says store
+credit applies automatically at checkout. See `reports/website-health.md`. The live
+domain, not this file, is what customers are charged against until that cache is replaced.
+
+Checkout uses Stripe **embedded** mode with dynamically built `price_data` line items and
+on-the-fly promo coupons; production enforces **live** keys (test keys ignored). Cart is
+client-side. A full conversion pass is still outstanding. The checklist item that says
+store credit should apply at checkout disagrees with the merged code until credit is
+loaded from server records.
 
 ## Change log
 
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
+| 2026-09-25 | website health | Noted that #37 ignores client store credit in git, and that the live FAQ still describes the old behaviour. |
