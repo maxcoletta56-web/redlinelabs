@@ -1,101 +1,80 @@
-# Website Health Report
+# Redlinelabs Website Health
 
-> **Purpose:** This report is owned by the **Website Health specialist agent**. It tracks the overall
-> operational health of the Redline Labs storefront (`https://redlinelabs.shop`) — that the site
-> builds, deploys, renders, and serves its core pages and flows without errors. It is the
-> first place to look when "the site is broken" and the umbrella owner for issues that do not
-> clearly belong to one of the other specialist reports.
+Last Updated: 26 September 2026
 
-Last Updated: 25 September 2026
+Overall Status: Production is running the Payoneer checkout build (`bb25410`, deployment `6677791011`, state success). Stripe no longer creates charges. A completed Payoneer payment was not recorded on the merged pull request, and this environment cannot open `https://redlinelabs.shop` (TLS fails with `SSL_ERROR_SYSCALL`). Treat live checkout as unverified. The storefront is still the Redline Labs black and gold design. Do not redeploy or purge the domain from this pass.
 
-Overall Status: The live site at https://redlinelabs.shop/ is up, Stripe live checkout is configured, and the main catalogue pages return 200. Checkout on this branch no longer treats a browser store-credit balance as a Stripe coupon. That fix is not on production until it is reviewed and deployed. The current design system is Redline Labs black and gold.
+## Critical Issues
 
-## Scope / responsibilities
+- Live checkout can be down. Pull request `#49` removed Stripe and now requires `PAYONEER_MERCHANT_CODE` and `PAYONEER_PAYMENT_TOKEN`. Without both, `GET /api/checkout` reports `configured: false`, the checkout button stays disabled, and `POST` returns 503. The pull request test plan (sandbox payment, 503 check, cart clear) was still unchecked at merge. This environment cannot read Vercel environment names or the live site, so it cannot tell whether those two variables are set. Do not print or pull their values.
 
-- Successful production build (`next build`) and Vercel deployment health.
-- Availability and correct rendering of core routes: home (`/`), catalogue (`/shop`),
-  product pages (`/product/[slug]`), cart (`/cart`), checkout (`/checkout`), account
-  (`/account`), and the policy pages.
-- Global layout, navigation (`Header`, `Footer`), providers, and error/not-found handling.
-- Console errors, hydration mismatches, broken images, and broken internal links.
-- Third-party embeds that affect page health (e.g. the optional AssistLoop chat widget).
-- Redirects declared in `next.config.ts` resolving correctly.
+## High Priority Issues
 
-## Out of scope (see sibling reports)
+- Guest checkout does not collect a shipping address. The shipping policy says checkout collects an Australian address before Payoneer takes payment. The form only offers saved addresses for a signed-in account. The Payoneer list body (`src/lib/checkout-session.ts`) sends country `AU`, customer name, email, amount, and callback URLs. It does not send a street, suburb, state, or postcode. Stripe previously required billing and Australian shipping. A guest can pay with no ship-to stored for fulfilment. Orders are still written in the browser, not on the server.
+- Payment confirmation depends on the customer returning within 30 minutes. The receipt (email, lines, shipping, list URL) sits in the httpOnly cookie `rl_payoneer_checkout`. `POST /api/checkout/notify` answers `{ status: "ok" }` and stores nothing. `/checkout/success` shows "Payment not confirmed" when that cookie is missing, or when `session_id` is present and is not the transaction id, the list long id, or the list transaction id. The cart clears only after Payoneer status `charged` or `paid`.
+- `reports/security-compliance-health.md` still documents Stripe keys as the checkout secret. `reports/ecommerce-cro-health.md` still describes embedded Stripe in its current status and only adds a one-line changelog. Leave those reports to their owners. Do not put Stripe back.
 
-- Search/structured-data specifics → `seo-aeo-health.md`
-- Catalogue/product data correctness → `catalogue-merchandising-health.md`
-- Cart/checkout conversion tuning → `ecommerce-cro-health.md`
-- Automated tests & performance budgets → `qa-performance-health.md`
-- Secrets, headers, compliance → `security-compliance-health.md`
+## Medium Priority Issues
 
-## Key files & signals
+- `env.example` told operators to set `STRIPE_REQUIRE_LIVE`. The code reads `PAYONEER_REQUIRE_LIVE`. That comment is corrected in this pass. CI (`.github/workflows/ci.yml`) still injects Stripe placeholder key names. The build does not read them.
+- Checkout no longer imports Stripe. `src/lib/stripe.ts` is gone. `src/lib/stripe-keys.ts`, `stripeCouponParams` in `src/lib/promo.ts`, and their tests remain. They do not affect the Payoneer charge.
+- A charged list is trusted without comparing Payoneer's amount and currency to the catalogue total in the receipt.
+- `POST /api/checkout` does not pass `shipping` into `createPayoneerCheckout`. The checkout page uses the server action, which does pass a saved address.
+- `npm run lint` passes with one warning: `src/app/global-error.tsx` uses `window.location.assign("/")`.
+- `npm test` warns that `package.json` has no `"type": "module"`.
+- Content-Security-Policy is still report-only. `form-action` allows the Payoneer hosted page hosts. The browser leaves via `window.location.assign`, which that directive does not govern.
+- Local `next build` in this environment has been failing on the Inter font fetch from `fonts.googleapis.com` (egress). Not re-run this pass. GitHub Actions run `36236155123` on `#49` completed lint, typecheck, and build successfully.
 
-- `next.config.ts` — image `remotePatterns`, redirects.
-- `src/app/layout.tsx` — root layout, global chrome, metadata base.
-- `src/app/not-found.tsx`, `src/components/RouteFallback.tsx` — error surfaces.
-- `src/components/Header.tsx`, `src/components/Footer.tsx` — global navigation.
-- Vercel deployment logs and Preview URLs per branch/PR.
+## Low Priority Issues
 
-## Health checklist
+- `SITE_HEALTH.md` still describes Stripe.js and embedded checkout.
+- Dead code carried forward from 25 September and still present: root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`.
+- Catalogue image failures, slug spelling, and JSON-LD stock flags stay with the catalogue and SEO reports. Not re-tested today.
 
-- [x] `npm run build` completes with all routes generated. Local build on 25 September 2026 succeeded, including `/product/bacterial-water`. CI on the base branch now runs lint, typecheck, and build.
-- [x] Home, catalogue, and a sample product page return HTTP 200. Production probe the same day: home, shop, about, FAQ, contact, cart, checkout, account, four policy pages, and `/product/bpc-157` returned 200.
-- [x] No console/hydration errors on core pages. Local browser pass reported no console issues.
-- [x] Header/footer links resolve (no 404s). Those routes returned 200. Mobile menu showed Home, Shop, About, FAQ, and Contact.
-- [ ] Declared redirects (`/product/bac-water`, `/product/product-bacterial-water`) 308 to the canonical slug. Not re-checked in this pass.
-- [ ] Remote product images load from the allow-listed host. One sampled BPC-157 image returned 200. Image failures for other listings belong in `catalogue-merchandising-health.md`.
+## Changes Made
 
-## Current status
+- Recorded the Payoneer production deploy and the checkout gaps above.
+- `env.example` now names `PAYONEER_REQUIRE_LIVE` instead of `STRIPE_REQUIRE_LIVE`.
+- `reports/project-overview.md` now points at `src/app/actions/checkout.ts`, counts 43 unit tests, and names `PAYONEER_REQUIRE_LIVE`.
+- No visual change. Header, gold and black palette, catalogue data, and the DGC20 promo are unchanged. No production deploy was triggered from this pass.
 
-Production is serving the site. It is behind the repository: `GET /product/bacterial-water` returned 404 on 25 September 2026 and that URL was absent from the live sitemap, while the listing is already in `src/data/products.json`. The homepage cache `age` was about 4.5 days. Publishing that listing is a deploy of existing catalogue commits, not part of the checkout change.
+## Tests Performed
 
-AssistLoop is enabled in production. The homepage HTML preloads `https://assistloop.ai/assistloop-widget.js`.
+- `npm test`: 43 passed, 0 failed, including `src/lib/payoneer.test.ts`.
+- `npm run lint`: passed, with the `global-error.tsx` warning above.
+- `npm run typecheck`: passed.
+- GitHub Actions on `bb25410` (run `36236155123`): lint, typecheck, and build succeeded before merge.
+- Vercel production deployment `6677791011` for `bb25410`: success. Preview for the pull request also succeeded.
+- `curl` to `https://redlinelabs.shop` failed with `SSL_ERROR_SYSCALL`. No page was loaded. No card payment was submitted.
 
-`npx tsc --noEmit` used to fail with `Cannot find name 'LayoutProps'` until `next build` generated route types. The base branch now types the root layout `children` as `ReactNode`, so that failure is closed on this merge.
+## Build Status
 
-Contact is a `mailto:` composer. The newsletter form says it does not start a mailing list. Both render and do what they say.
+The production build of the Payoneer commit succeeded on GitHub Actions and on Vercel. This environment did not run `next build` again. The parent commit's CI build is the evidence for that code. Documentation edits in this pass are not part of the Next.js compile.
 
-### Handed to sibling reports
+## Outstanding Work
 
-These came out of the same pass. They stay listed here so the audit is not dropped, and the owning report should record them.
-
-- `ecommerce-cro-health.md`: checkout used to create a Stripe coupon from a browser store-credit amount. Account balances live only in `localStorage`. This branch ignores that amount and no longer subtracts it from “Due now”. The CRO checklist still says store credit should apply at checkout; that item disagrees with this code.
-- `ecommerce-cro-health.md`: the live checkout path did not require age and research-use confirmation on the server. The server action and `POST /api/checkout` now reject a session unless both are true. Account, FAQ, checkout, and the restock control no longer promise email alerts or an automatic credit deduction.
-- `security-compliance-health.md`: accounts, orders, addresses, and stock alerts are browser-local. There is no Stripe webhook. `GET /api/checkout/session` returns email and shipping to anyone with the Checkout Session id. Live homepage headers were HSTS only, plus `Access-Control-Allow-Origin: *`.
-- `seo-aeo-health.md`: product JSON-LD marks every listing `InStock`. FAQ content has no `FAQPage` schema. Slugs include `products-dsip`, `product-tb-1`, and the misspelling `products-kisspepien`.
-- `catalogue-merchandising-health.md`: listing titles mix case. Catalogue photos are remote `i0.wp.com` files with a `/brand/vial.png` fallback.
-- `qa-performance-health.md`: no product analytics in the repo. Draft pull request `#22` is Vercel Speed Insights. The test runner warns that `package.json` has no `"type": "module"`. Dead code: root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`, default `public/*.svg` files, and unused `public/brand/hero.png` and `public/brand/logo.png`.
-
-### Changes on this branch
-
-- Checkout no longer turns a browser store-credit balance into a Stripe coupon.
-- Checkout requires age and research-use confirmation before creating a session.
-- Checkout, account, FAQ, and the product restock control match that behaviour.
-- No visual redesign. Header, gold/black palette, catalogue data, and the DGC20 coupon behaviour are unchanged.
-
-### Tests performed
-
-- `npm test`: 32 passed, 0 failed.
-- `npm run lint`: passed.
-- `npm run build` (Next.js 16.3.4): passed. Static product paths include `/product/bacterial-water`.
-- `npx tsc --noEmit` after that build: passed. Re-run after this merge because the base branch added `npm run typecheck` and changed `src/app/layout.tsx`.
-- Local browser pass against `next start`: FAQ account answer, account benefit cards, BPC-157 restock line, shop search `bpc`, checkout summary with store credit $0.00, and the mobile menu at 390px. No card payment was submitted.
-
-### Build status
-
-Local production build succeeded on 25 September 2026 before this merge. This branch has not been deployed. Production was not updated.
-
-### Outstanding work
-
-- Review and, only when explicitly requested, deploy the checkout fix. Production still applies client-supplied store credit until then.
-- Decide whether Bacterial Water should be published by deploying the existing catalogue commits.
+- Confirm on Vercel that production has `PAYONEER_MERCHANT_CODE` and `PAYONEER_PAYMENT_TOKEN`, then complete one sandbox or live payment and a return to `/checkout/success`. Do not paste the values into the repo, a report, or a pull request.
+- Collect an Australian shipping address for every checkout, including guests, and send it to Payoneer with the list. Hand this to the e-commerce report. Do not invent the list address fields without the Payoneer list schema.
+- Decide whether `POST /api/checkout/notify` should verify a Payoneer notification before any order is accepted. Today it cannot accept one.
+- Security report: replace the Stripe secret table with the Payoneer variable names. Do not log values.
+- Re-check `/product/bacterial-water` on the live site when egress allows it. Later production deploys may have published the listing that was cached as 404 on 25 September. Do not purge the cache from here.
 - Keep the Redline Labs black and gold storefront. A historical branch named `cursor/metro-uniforms-about-151c` is not the current brand.
-- Use a Vercel preview for this branch. Do not promote it to production without an explicit request.
+
+## Recommendations
+
+- Leave checkout code as it is until a Payoneer sandbox payment is possible. A wrong list payload would turn a missing address into a failed charge.
+- After credentials are confirmed, add the shipping address on our form first, then add only the address fields Payoneer's list API documents.
+- Point CI placeholders at `PAYONEER_MERCHANT_CODE` and `PAYONEER_PAYMENT_TOKEN` (empty), and delete the unused Stripe key helpers in a separate change so promo tests are updated with them.
+- Use a Vercel preview for that follow-up. Do not promote it to production without an explicit request.
+
+## Scope
+
+This report is the umbrella for build, deploy, and core route health: home, shop, product, cart, checkout, account, and policy pages, plus header, footer, and error pages. Search and schema belong in `seo-aeo-health.md`. Catalogue data belongs in `catalogue-merchandising-health.md`. Cart and conversion tuning belong in `ecommerce-cro-health.md`. Test budgets belong in `qa-performance-health.md`. Secrets and compliance belong in `security-compliance-health.md`.
 
 ## Change log
 
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
-| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. Render and deploy findings stay here. Checkout, security, SEO, catalogue, and test findings are handed to the sibling reports. |
+| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. |
+| 2026-09-26 | website health | Payoneer is the production checkout. Recorded the unverified credential cutover, the missing guest shipping address, and the no-op payment notification. |
