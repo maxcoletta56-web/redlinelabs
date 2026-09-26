@@ -4,6 +4,8 @@ export type CartLineInput = {
   qty: number;
 };
 
+export type CheckoutPaymentMethod = "card" | "bank_transfer";
+
 export type CheckoutBody = {
   email: string;
   firstName?: string;
@@ -12,6 +14,7 @@ export type CheckoutBody = {
   researchUse: boolean;
   items: CartLineInput[];
   promoCode?: string | null;
+  paymentMethod: CheckoutPaymentMethod;
 };
 
 export type ParseResult<T> =
@@ -72,6 +75,10 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
   const lastName = readString(row.lastName);
   const promoCode = row.promoCode == null ? null : readString(row.promoCode);
   if (promoCode && promoCode.length > 40) return fail("That promo code is not valid");
+  const paymentRaw = readString(row.paymentMethod) || "card";
+  if (paymentRaw !== "card" && paymentRaw !== "bank_transfer") {
+    return fail("Choose card or bank transfer");
+  }
   return {
     success: true,
     data: {
@@ -82,6 +89,7 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
       researchUse: true,
       items,
       promoCode,
+      paymentMethod: paymentRaw,
     },
   };
 }
