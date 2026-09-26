@@ -14,16 +14,9 @@ import {
 } from "@/lib/payoneer";
 import { lookupPromo, promoDiscountCents } from "@/lib/promo";
 import { absoluteUrl } from "@/lib/seo";
+import type { ShippingAddressInput } from "@/lib/shipping";
 
-export type ShippingAddressInput = {
-  name: string;
-  line1: string;
-  line2?: string;
-  city: string;
-  state: string;
-  postal_code: string;
-  country?: string;
-};
+export type { ShippingAddressInput };
 
 export type PayoneerReceipt = {
   transactionId: string;

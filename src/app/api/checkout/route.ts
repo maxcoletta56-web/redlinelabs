@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
-import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-session";
-import { resolvePayoneer } from "@/lib/payoneer";
+import { createCheckoutOrder } from "@/lib/checkout-order";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { checkoutBodySchema } from "@/lib/validation";
+import { resolveWhopEnvironment, resolveWhop } from "@/lib/whop-config";
+import { whopConfigured } from "@/lib/whop";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const resolved = resolvePayoneer(process.env);
+  const resolved = resolveWhop(process.env);
   return NextResponse.json({
-    configured: payoneerConfigured(),
-    mode: resolved?.mode ?? null,
+    configured: whopConfigured(),
+    environment: resolved?.environment ?? resolveWhopEnvironment(process.env),
   });
 }
 
 export async function POST(request: Request) {
-  if (!payoneerConfigured()) {
+  const limited = rateLimit(`checkout:${clientKey(request)}`, 8, 10 * 60 * 1000);
+  if (!limited.ok) {
     return NextResponse.json(
-      {
-        error:
-          "Payoneer is not configured. Add PAYONEER_MERCHANT_CODE and PAYONEER_PAYMENT_TOKEN. Production uses the live Payoneer API.",
-      },
-      { status: 503 },
+      { error: "Too many checkout attempts. Try again in a few minutes." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(limited.retryAfterMs / 1000)) } },
     );
   }
 
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const redirectUrl = await createPayoneerCheckout({
+    const prepared = await createCheckoutOrder({
       items: parsed.data.items,
       email: parsed.data.email,
       firstName: parsed.data.firstName,
@@ -46,11 +48,16 @@ export async function POST(request: Request) {
       promoCode: parsed.data.promoCode,
       ageConfirmed: true,
       researchUse: true,
+      paymentMethod: parsed.data.paymentMethod,
     });
-    return NextResponse.json({ redirectUrl });
+    return NextResponse.json(prepared);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Payoneer checkout failed";
-    const status = message.includes("Cart is empty") || message.includes("quantity") ? 400 : 502;
+    const message = error instanceof Error ? error.message : "Checkout failed";
+    const status = message.includes("not configured")
+      ? 503
+      : message.includes("Cart is empty") || message.includes("quantity") || message.includes("total")
+        ? 400
+        : 502;
     return NextResponse.json({ error: message }, { status });
   }
 }
