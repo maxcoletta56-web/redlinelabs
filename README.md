@@ -1,6 +1,6 @@
 # Redline Labs storefront
 
-Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and Payoneer Checkout.
+Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and checkout.
 
 ## Run locally
 
@@ -19,7 +19,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - About, contact, FAQ, shipping, refund, privacy, and terms pages
 - Research-use-only notices throughout
 
-Checkout charges through Payoneer. The server creates a payment list with `PAYONEER_MERCHANT_CODE` and `PAYONEER_PAYMENT_TOKEN`, then sends the customer to Payoneer’s hosted payment page. Production uses the live Payoneer API. Contact and newsletter forms are still front-end demonstrations.
+Card checkout uses Whop’s embedded checkout on `/checkout`. The server prices the cart from the catalogue (including 10% off orders of $200 or more), saves the order as pending, and creates a Whop checkout configuration in AUD. Bank transfer stays on the same page. Sandbox is the default until `WHOP_ENV=production`. `WHOP_API_KEY` stays on the server. Contact and newsletter forms are still front-end demonstrations.
 
 ## Stack
 

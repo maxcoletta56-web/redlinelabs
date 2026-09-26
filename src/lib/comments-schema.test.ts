@@ -5,12 +5,17 @@ import {
   commentsSchemaSql,
   neonQuery,
   neonSqlEndpoint,
+  ordersSchemaSql,
   statementForNeon,
 } from "../../scripts/ensure-comments-table.mjs";
 
 test("comments schema is the requested table", () => {
   assert.equal(commentsSchemaSql(), "CREATE TABLE IF NOT EXISTS comments (comment TEXT);");
   assert.equal(statementForNeon(commentsSchemaSql()), "CREATE TABLE IF NOT EXISTS comments (comment TEXT)");
+  assert.equal(
+    statementForNeon(ordersSchemaSql()),
+    "CREATE TABLE IF NOT EXISTS orders (\n  id TEXT PRIMARY KEY,\n  payload TEXT NOT NULL\n)",
+  );
 });
 
 test("neon sql endpoint uses the direct host", () => {

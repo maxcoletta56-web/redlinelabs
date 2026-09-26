@@ -29,7 +29,7 @@ export default function ShippingPolicyPage() {
       <h2>Shipping Timeframes</h2>
       <p>
         Delivery times vary depending on the destination. Checkout collects an
-        Australian shipping address before Payoneer takes payment and does not offer
+        Australian shipping address before taking payment and does not offer
         shipping-method selection. Estimated delivery dates, when given by
         support or a carrier, are for reference only and are not guaranteed.
       </p>

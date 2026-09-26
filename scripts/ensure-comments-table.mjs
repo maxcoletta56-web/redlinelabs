@@ -3,9 +3,14 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const schemaPath = join(dirname(fileURLToPath(import.meta.url)), "../db/comments.sql");
+const ordersSchemaPath = join(dirname(fileURLToPath(import.meta.url)), "../db/orders.sql");
 
 export function commentsSchemaSql() {
   return readFileSync(schemaPath, "utf8").trim();
+}
+
+export function ordersSchemaSql() {
+  return readFileSync(ordersSchemaPath, "utf8").trim();
 }
 
 /** Neon’s HTTP SQL endpoint accepts one statement and rejects a trailing semicolon. */
@@ -54,23 +59,29 @@ function columnSummary(result) {
     .join(", ");
 }
 
+async function applyTable(connectionString, label, schemaSql) {
+  await neonQuery(connectionString, statementForNeon(schemaSql));
+  const columns = await neonQuery(
+    connectionString,
+    `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '${label}' ORDER BY ordinal_position`,
+  );
+  console.log(`${label} table: ${columnSummary(columns)}`);
+}
+
 async function main() {
   const connectionString = commentsDatabaseUrl();
   if (!connectionString) {
     console.log("comments table: skipped (DATABASE_URL is not set)");
+    console.log("orders table: skipped (DATABASE_URL is not set)");
     return;
   }
 
   try {
-    await neonQuery(connectionString, statementForNeon(commentsSchemaSql()));
-    const columns = await neonQuery(
-      connectionString,
-      "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'comments' ORDER BY ordinal_position",
-    );
-    console.log(`comments table: ${columnSummary(columns)}`);
+    await applyTable(connectionString, "comments", commentsSchemaSql());
+    await applyTable(connectionString, "orders", ordersSchemaSql());
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("comments table: failed to apply db/comments.sql");
+    console.error("database schema: failed to apply db/comments.sql or db/orders.sql");
     console.error(message.replaceAll(connectionString, "[redacted]"));
     process.exitCode = 1;
   }
