@@ -2,23 +2,16 @@ import { neon } from "@neondatabase/serverless";
 
 export const COMMENT_MAX_LENGTH = 500;
 
-const CREATE_COMMENTS = `CREATE TABLE IF NOT EXISTS comments (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  comment text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-)`;
+/** Matches db/comments.sql. Neon rejects a trailing semicolon on this endpoint. */
+const CREATE_COMMENTS = "CREATE TABLE IF NOT EXISTS comments (comment TEXT)";
 
 const INSERT_COMMENT = "INSERT INTO comments (comment) VALUES ($1)";
 
-const LIST_COMMENTS = `SELECT id, comment, created_at
-FROM comments
-ORDER BY created_at DESC
-LIMIT 50`;
+const LIST_COMMENTS = "SELECT comment FROM comments";
 
 export type StoredComment = {
   id: string;
   comment: string;
-  createdAt: string;
 };
 
 export type CommentList = {
@@ -51,16 +44,6 @@ export function parseComment(
     return { ok: false, error: "Keep the comment under 500 characters." };
   }
   return { ok: true, comment };
-}
-
-export function formatCommentTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en-AU", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Australia/Sydney",
-  }).format(date);
 }
 
 export function getSql(): Sql | null {
@@ -96,22 +79,11 @@ export async function insertComment(comment: string, sql: Sql | null = getSql())
   await sql.query(INSERT_COMMENT, [comment]);
 }
 
-function readComment(row: unknown): StoredComment | null {
+function readComment(row: unknown, index: number): StoredComment | null {
   if (!row || typeof row !== "object") return null;
-  const record = row as Record<string, unknown>;
-  const id = record.id;
-  const comment = record.comment;
-  const created = record.created_at;
-  if ((typeof id !== "string" && typeof id !== "number") || typeof comment !== "string") {
-    return null;
-  }
-  const createdAt =
-    created instanceof Date
-      ? created.toISOString()
-      : typeof created === "string"
-        ? created
-        : "";
-  return { id: String(id), comment, createdAt };
+  const comment = (row as Record<string, unknown>).comment;
+  if (typeof comment !== "string") return null;
+  return { id: String(index), comment };
 }
 
 function rowsOf(result: unknown): unknown[] {

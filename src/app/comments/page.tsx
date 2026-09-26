@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { CommentForm } from "./comment-form";
 import { PageIntro } from "@/components/PageIntro";
-import { formatCommentTime, listComments } from "@/lib/comments";
+import { listComments } from "@/lib/comments";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
@@ -40,11 +40,6 @@ export default async function CommentsPage() {
           {result.comments.map((item) => (
             <li key={item.id} className="surface p-5">
               <p className="text-[15px] leading-7 break-words text-[#f3f1ea]">{item.comment}</p>
-              {item.createdAt ? (
-                <p className="mt-2 text-[12px] tracking-[0.04em] text-[#8f8c84]">
-                  <time dateTime={item.createdAt}>{formatCommentTime(item.createdAt)}</time>
-                </p>
-              ) : null}
             </li>
           ))}
         </ul>

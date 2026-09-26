@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  formatCommentTime,
-  insertComment,
-  listComments,
-  parseComment,
-  type Sql,
-} from "./comments.ts";
+import { insertComment, listComments, parseComment, type Sql } from "./comments.ts";
 
 test("parseComment trims text and rejects empty or oversized values", () => {
   assert.deepEqual(parseComment("  hello  "), { ok: true, comment: "hello" });
@@ -34,7 +28,7 @@ test("insertComment binds the comment as a parameter", async () => {
   };
   const payload = "'); DROP TABLE comments; --";
   await insertComment(payload, sql);
-  assert.match(calls[0]?.query ?? "", /CREATE TABLE IF NOT EXISTS comments/);
+  assert.equal(calls[0]?.query, "CREATE TABLE IF NOT EXISTS comments (comment TEXT)");
   assert.equal(calls[1]?.query, "INSERT INTO comments (comment) VALUES ($1)");
   assert.deepEqual(calls[1]?.params, [payload]);
   assert.equal(calls[1]?.query.includes(payload), false);
@@ -50,10 +44,7 @@ test("listComments maps rows and reports a missing database", async () => {
   const sql: Sql = {
     query: async (query) => {
       if (query.startsWith("SELECT")) {
-        return [
-          { id: 4, comment: "stored", created_at: "2026-09-26T06:30:00.000Z" },
-          { id: "skip" },
-        ];
+        return [{ comment: "stored" }, { id: "skip" }];
       }
       return [];
     },
@@ -61,13 +52,5 @@ test("listComments maps rows and reports a missing database", async () => {
   const listed = await listComments(sql);
   assert.equal(listed.configured, true);
   assert.equal(listed.error, null);
-  assert.deepEqual(listed.comments, [
-    { id: "4", comment: "stored", createdAt: "2026-09-26T06:30:00.000Z" },
-  ]);
-});
-
-test("formatCommentTime uses an Australia/Sydney clock", () => {
-  assert.equal(formatCommentTime("not-a-date"), "");
-  assert.match(formatCommentTime("2026-09-26T06:30:00.000Z"), /26 Sept 2026/);
-  assert.match(formatCommentTime("2026-09-26T06:30:00.000Z"), /4:30 pm/);
+  assert.deepEqual(listed.comments, [{ id: "0", comment: "stored" }]);
 });
