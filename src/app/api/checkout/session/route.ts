@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, stripeConfigured } from "@/lib/stripe";
+import { loadPayoneerReceipt, payoneerConfigured } from "@/lib/checkout-session";
 import { checkoutSessionQuerySchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
-  if (!stripeConfigured()) {
-    return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
+  if (!payoneerConfigured()) {
+    return NextResponse.json({ error: "Payoneer is not configured" }, { status: 503 });
   }
 
   const parsed = checkoutSessionQuerySchema.safeParse({
@@ -13,45 +13,44 @@ export async function GET(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Missing checkout session" }, { status: 400 });
   }
-  const sessionId = parsed.data.session_id;
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.data.price.product"],
-    });
-    const shipping = session.collected_information?.shipping_details ?? null;
-    const lineItems = (session.line_items?.data ?? []).map((item) => {
-      const product = item.price?.product;
-      const metadata =
-        product && typeof product !== "string" && "metadata" in product
-          ? product.metadata
-          : {};
-      return {
-        slug: metadata.slug ?? null,
-        name: item.description,
-        option: metadata.option || null,
-        sku: metadata.sku ?? null,
-        qty: item.quantity,
-        unit_amount: item.price?.unit_amount ?? item.amount_total,
-      };
-    });
+    const loaded = await loadPayoneerReceipt(parsed.data.session_id);
+    if (!loaded) {
+      return NextResponse.json({ error: "Checkout session was not found" }, { status: 404 });
+    }
+    const { receipt, list, paid } = loaded;
     return NextResponse.json({
-      id: session.id,
-      status: session.status,
-      payment_status: session.payment_status,
-      email: session.customer_details?.email ?? session.customer_email,
-      amount_total: session.amount_total,
-      amount_subtotal: session.amount_subtotal,
-      currency: session.currency,
-      store_credit_cents: Number(session.metadata?.store_credit_cents ?? 0),
-      promo_code: session.metadata?.promo_code || null,
-      promo_percent_off: Number(session.metadata?.promo_percent_off ?? 0),
-      line_items: lineItems,
-      shipping: shipping
+      id: receipt.transactionId,
+      status: paid ? "complete" : list.statusCode,
+      payment_status: paid ? "paid" : list.statusCode,
+      email: receipt.email,
+      amount_total: receipt.amountCents,
+      amount_subtotal: receipt.subtotalCents,
+      currency: receipt.currency,
+      store_credit_cents: 0,
+      promo_code: receipt.promoCode || null,
+      promo_percent_off: receipt.promoPercentOff,
+      line_items: receipt.lines.map((line) => ({
+        slug: line.slug,
+        name: line.name,
+        option: line.option,
+        sku: line.sku,
+        qty: line.qty,
+        unit_amount: line.unitAmountCents,
+      })),
+      shipping: receipt.shipping
         ? {
-            name: shipping.name,
-            phone: session.customer_details?.phone ?? null,
-            address: shipping.address,
+            name: receipt.shipping.name,
+            phone: null,
+            address: {
+              line1: receipt.shipping.line1,
+              line2: receipt.shipping.line2 ?? null,
+              city: receipt.shipping.city,
+              state: receipt.shipping.state,
+              postal_code: receipt.shipping.postal_code,
+              country: receipt.shipping.country ?? "AU",
+            },
           }
         : null,
     });

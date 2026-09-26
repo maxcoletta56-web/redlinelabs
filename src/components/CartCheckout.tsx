@@ -1,25 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import { startCartCheckoutSession } from "@/app/actions/stripe";
+import { useEffect, useState } from "react";
+import { startCartCheckoutSession } from "@/app/actions/checkout";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import type { CartLineInput } from "@/lib/order";
-
-function sessionIdFromClientSecret(secret: string) {
-  const marker = "_secret_";
-  const index = secret.indexOf(marker);
-  return index === -1 ? null : secret.slice(0, index);
-}
 
 export function CartCheckout({
   items,
   email,
   firstName,
   lastName,
-  publishableKey,
   shipping,
   promoCode,
   ageConfirmed,
@@ -29,18 +19,16 @@ export function CartCheckout({
   email: string;
   firstName: string;
   lastName: string;
-  publishableKey: string;
   shipping?: ShippingAddressInput | null;
   promoCode?: string | null;
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
-  const router = useRouter();
-  const sessionIdRef = useRef<string | null>(null);
-  const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchClientSecret = useCallback(async () => {
-    const secret = await startCartCheckoutSession({
+  useEffect(() => {
+    let cancelled = false;
+    startCartCheckoutSession({
       items,
       email,
       firstName,
@@ -49,25 +37,30 @@ export function CartCheckout({
       promoCode,
       ageConfirmed,
       researchUse,
-    });
-    sessionIdRef.current = sessionIdFromClientSecret(secret);
-    return secret;
+    })
+      .then((redirectUrl) => {
+        if (!cancelled) window.location.assign(redirectUrl);
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        setError(reason instanceof Error ? reason.message : "Payoneer checkout failed");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [items, email, firstName, lastName, shipping, promoCode, ageConfirmed, researchUse]);
 
-  const onComplete = useCallback(() => {
-    const sessionId = sessionIdRef.current;
-    router.push(sessionId ? `/checkout/success?session_id=${sessionId}` : "/checkout/success");
-  }, [router]);
+  if (error) {
+    return (
+      <p className="text-sm leading-6 text-[#d4af37]" role="alert">
+        {error}
+      </p>
+    );
+  }
 
   return (
-    <div id="checkout">
-      <EmbeddedCheckoutProvider
-        key={promoCode ?? "none"}
-        stripe={stripePromise}
-        options={{ fetchClientSecret, onComplete }}
-      >
-        <EmbeddedCheckout />
-      </EmbeddedCheckoutProvider>
-    </div>
+    <p className="text-sm leading-6 text-[#8f8c84]" role="status">
+      Redirecting to Payoneer to take payment.
+    </p>
   );
 }

@@ -105,7 +105,7 @@ export default function CartPage() {
               </div>
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              Checkout is charged through Stripe. Apply a coupon for 20% off the
+              Checkout is charged through Payoneer. Apply a coupon for 20% off the
               total order amount. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy

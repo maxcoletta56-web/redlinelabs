@@ -383,7 +383,7 @@ function AccountDashboard({
             </h2>
             <p className="max-w-2xl text-[14px] leading-6 text-[#8f8c84]">
               Auto-fill at checkout, edit any time. The default address is sent
-              through to Stripe as the shipping details.
+              through with the order before Payoneer takes payment.
             </p>
           </div>
           {editing === null && (

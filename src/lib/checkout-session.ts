@@ -1,7 +1,19 @@
-import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
-import { lookupPromo, promoDiscountCents, stripeCouponParams } from "@/lib/promo";
-import { stripe, stripeConfigured, stripeMode } from "@/lib/stripe";
-import { serverStoreCreditCents } from "@/lib/store-credit";
+import "server-only";
+
+import { createHash, randomUUID } from "node:crypto";
+import { cookies } from "next/headers";
+import { lineLabel, resolveCartLines, type CartLineInput, type ResolvedLine } from "@/lib/order";
+import {
+  audAmount,
+  createPayoneerList,
+  hostedPaymentPageUrl,
+  payoneerListIsPaid,
+  readPayoneerList,
+  resolvePayoneer,
+  type PayoneerList,
+} from "@/lib/payoneer";
+import { lookupPromo, promoDiscountCents } from "@/lib/promo";
+import { absoluteUrl } from "@/lib/seo";
 
 export type ShippingAddressInput = {
   name: string;
@@ -13,7 +25,30 @@ export type ShippingAddressInput = {
   country?: string;
 };
 
-export async function createEmbeddedCheckoutSession(input: {
+export type PayoneerReceipt = {
+  transactionId: string;
+  listUrl: string;
+  email: string;
+  amountCents: number;
+  subtotalCents: number;
+  currency: "aud";
+  lines: ResolvedLine[];
+  shipping: ShippingAddressInput | null;
+  promoCode: string;
+  promoPercentOff: number;
+};
+
+const RECEIPT_COOKIE = "rl_payoneer_checkout";
+
+function customerNumber(email: string) {
+  return createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 20);
+}
+
+export function payoneerConfigured() {
+  return Boolean(resolvePayoneer(process.env));
+}
+
+export async function createPayoneerCheckout(input: {
   items: CartLineInput[];
   email?: string;
   firstName?: string;
@@ -23,8 +58,9 @@ export async function createEmbeddedCheckoutSession(input: {
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
-  if (!stripeConfigured()) {
-    throw new Error("Stripe is not configured");
+  const config = resolvePayoneer(process.env);
+  if (!config) {
+    throw new Error("Payoneer is not configured");
   }
   if (!input.ageConfirmed || !input.researchUse) {
     throw new Error("Age and research-use confirmation are required");
@@ -32,99 +68,83 @@ export async function createEmbeddedCheckoutSession(input: {
 
   const lines = resolveCartLines(input.items);
   const promo = lookupPromo(input.promoCode);
-  const name = [input.firstName, input.lastName].filter(Boolean).join(" ").trim();
-  const email = input.email?.trim();
+  const email = input.email?.trim() ?? "";
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
   const promoOffCents = promoDiscountCents(subtotalCents, promo);
-  const storeCreditCents = serverStoreCreditCents();
+  const amountCents = subtotalCents - promoOffCents;
+  const transactionId = `rl_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
+  const firstName = input.firstName?.trim() || "Customer";
+  const lastName = input.lastName?.trim() || "Account";
 
-  let customerId: string | undefined;
-  if (email) {
-    const existing = await stripe.customers.list({ email, limit: 1 });
-    const shipping = input.shipping
-      ? {
-          name: input.shipping.name || name || email,
-          address: {
-            line1: input.shipping.line1,
-            line2: input.shipping.line2 || undefined,
-            city: input.shipping.city,
-            state: input.shipping.state,
-            postal_code: input.shipping.postal_code,
-            country: input.shipping.country || "AU",
-          },
-        }
-      : undefined;
-    if (existing.data[0]) {
-      const updated = await stripe.customers.update(existing.data[0].id, {
-        name: name || existing.data[0].name || undefined,
-        shipping,
-      });
-      customerId = updated.id;
-    } else {
-      const created = await stripe.customers.create({
-        email,
-        name: name || undefined,
-        shipping,
-      });
-      customerId = created.id;
-    }
-  }
-
-  const coupon = stripeCouponParams({
-    promo,
-    promoOffCents,
-    storeCreditCents,
-  });
-  const discounts = coupon
-    ? [
-        {
-          coupon: (await stripe.coupons.create(coupon)).id,
-        },
-      ]
-    : undefined;
-
-  const session = await stripe.checkout.sessions.create({
-    ui_mode: "embedded_page",
-    redirect_on_completion: "never",
-    line_items: lines.map((line) => ({
-      price_data: {
-        currency: "aud",
-        product_data: {
-          name: lineLabel(line),
-          metadata: {
-            slug: line.slug,
-            sku: line.sku,
-            option: line.option ?? "",
-          },
-        },
-        unit_amount: line.unitAmountCents,
-      },
-      quantity: line.qty,
-    })),
-    mode: "payment",
-    ...(customerId
-      ? { customer: customerId, client_reference_id: email }
-      : email
-        ? { customer_email: email, client_reference_id: email }
-        : {}),
-    ...(discounts ? { discounts } : {}),
-    billing_address_collection: "required",
-    shipping_address_collection: { allowed_countries: ["AU"] },
-    metadata: {
-      customer_name: name,
-      age_confirmed: input.ageConfirmed ? "true" : "false",
-      research_use: input.researchUse ? "true" : "false",
-      store_credit_cents: String(storeCreditCents),
-      promo_code: promo?.code ?? "",
-      promo_percent_off: promo ? String(promo.percentOff) : "0",
-      promo_discount_cents: String(promoOffCents),
-      stripe_mode: stripeMode() ?? "",
+  const list = await createPayoneerList(config, {
+    transactionId,
+    country: "AU",
+    customer: {
+      number: customerNumber(email || transactionId),
+      email: email || undefined,
+      name: { firstName, lastName },
+    },
+    payment: {
+      amount: audAmount(amountCents),
+      currency: "AUD",
+      reference: lines.map((line) => lineLabel(line)).join(", ").slice(0, 120),
+    },
+    style: { hostedVersion: "v3" },
+    callback: {
+      returnUrl: absoluteUrl(`/checkout/success?session_id=${transactionId}`),
+      cancelUrl: absoluteUrl("/checkout"),
+      notificationUrl: absoluteUrl("/api/checkout/notify"),
     },
   });
 
-  if (!session.client_secret) {
-    throw new Error("Stripe did not return a client secret");
-  }
+  const receipt: PayoneerReceipt = {
+    transactionId,
+    listUrl: list.listUrl,
+    email,
+    amountCents,
+    subtotalCents,
+    currency: "aud",
+    lines,
+    shipping: input.shipping ?? null,
+    promoCode: promo?.code ?? "",
+    promoPercentOff: promo?.percentOff ?? 0,
+  };
+  const jar = await cookies();
+  jar.set(RECEIPT_COOKIE, Buffer.from(JSON.stringify(receipt), "utf8").toString("base64url"), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 30,
+  });
 
-  return session.client_secret;
+  return hostedPaymentPageUrl(config.mode, list.listUrl);
+}
+
+function readReceipt(value: string | undefined): PayoneerReceipt | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as PayoneerReceipt;
+    if (!parsed?.transactionId || !parsed.listUrl || !Array.isArray(parsed.lines)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadPayoneerReceipt(sessionId?: string | null): Promise<{
+  receipt: PayoneerReceipt;
+  list: PayoneerList;
+  paid: boolean;
+} | null> {
+  const config = resolvePayoneer(process.env);
+  if (!config) return null;
+  const jar = await cookies();
+  const receipt = readReceipt(jar.get(RECEIPT_COOKIE)?.value);
+  if (!receipt) return null;
+
+  const list = await readPayoneerList(config, receipt.listUrl);
+  const identifiers = [receipt.transactionId, list.longId, list.transactionId].filter(Boolean);
+  if (sessionId && !identifiers.includes(sessionId)) return null;
+  return { receipt, list, paid: payoneerListIsPaid(list.statusCode) };
 }

@@ -4,15 +4,15 @@ import { productRedirects } from "./src/lib/slugs";
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
-  "form-action 'self' mailto:",
+  "form-action 'self' mailto: https://resources.live.oscato.com https://resources.sandbox.oscato.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://assistloop.ai https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://i0.wp.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://assistloop.ai https://vitals.vercel-insights.com https://va.vercel-scripts.com",
-  "frame-src https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com",
+  "connect-src 'self' https://assistloop.ai https://vitals.vercel-insights.com https://va.vercel-scripts.com",
+  "frame-src 'none'",
 ].join("; ");
 
 const securityHeaders = [
