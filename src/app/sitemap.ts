@@ -8,6 +8,7 @@ const publicRoutes = [
   "/about",
   "/faq",
   "/contact",
+  "/comments",
   "/shipping-policy",
   "/refund-policy",
   "/privacy-policy",
