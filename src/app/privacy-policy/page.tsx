@@ -37,8 +37,7 @@ export default function PrivacyPolicyPage() {
         and stock alerts), and communications submitted through our website.
         Account sign-in, saved addresses, stock alerts, and order history for
         this storefront are stored in your browser (local storage) on this
-        device, in addition to any data Stripe collects to process payment and
-        shipping.
+        device, in addition to any data Payoneer collects to process payment.
       </p>
       <h2>How Information Is Used</h2>
       <p>

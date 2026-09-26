@@ -54,3 +54,4 @@ built `price_data` line items and on-the-fly coupons; production enforces **live
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
+| 2026-09-26 | checkout | Checkout charges through Payoneer hosted payment (`POST /api/lists`). Stripe is no longer used to take payment. |

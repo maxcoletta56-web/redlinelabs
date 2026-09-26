@@ -1,6 +1,6 @@
 # Redline Labs storefront
 
-Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and Stripe Checkout.
+Modern rebuild of the [redlinelabs.shop](https://redlinelabs.shop) catalogue as a Next.js app: dark gold branding, full product catalog, cart, and Payoneer Checkout.
 
 ## Run locally
 
@@ -19,7 +19,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - About, contact, FAQ, shipping, refund, privacy, and terms pages
 - Research-use-only notices throughout
 
-Checkout charges through Stripe. Production uses live keys (`sk_live_` / `pk_live_`); test keys are ignored on the live site. Contact and newsletter forms are still front-end demonstrations.
+Checkout charges through Payoneer. The server creates a payment list with `PAYONEER_MERCHANT_CODE` and `PAYONEER_PAYMENT_TOKEN`, then sends the customer to Payoneer’s hosted payment page. Production uses the live Payoneer API. Contact and newsletter forms are still front-end demonstrations.
 
 ## Stack
 

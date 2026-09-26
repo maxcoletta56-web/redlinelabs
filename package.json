@@ -13,14 +13,11 @@
     "test": "node --experimental-strip-types --test src/lib/*.test.ts"
   },
   "dependencies": {
-    "@stripe/react-stripe-js": "^6.10.0",
-    "@stripe/stripe-js": "^9.16.0",
     "ai": "^7.0.99",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1",
-    "stripe": "^22.6.2"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

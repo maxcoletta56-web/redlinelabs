@@ -13,7 +13,7 @@
 Redline Labs is a modern, custom-built e-commerce storefront for research chemicals,
 serving Australia and deployed at **https://redlinelabs.shop**. It is a rebuild of the
 original catalogue as a Next.js application with dark-gold branding, a full product
-catalogue, a persistent cart, and Stripe Checkout.
+catalogue, a persistent cart, and Payoneer Checkout.
 
 - **Repository:** `github.com/maxcoletta56-web/redlinelabs`
 - **Production site:** `https://redlinelabs.shop`
@@ -39,9 +39,9 @@ catalogue, a persistent cart, and Stripe Checkout.
 | **Lint** | `npm run lint` → `eslint` (flat config, `eslint-config-next` core-web-vitals + TS) |
 | **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts` (**31** tests) |
 | **Deployment** | **Vercel** (Git-connected, zero-config Next.js preset) |
-| **Vercel config** | No `vercel.json` — relies on Vercel's automatic Next.js framework detection. `VERCEL_ENV` is consumed by the app to enforce live Stripe keys in production. |
+| **Vercel config** | No `vercel.json` — relies on Vercel's automatic Next.js framework detection. `VERCEL_ENV` is consumed by the app to use the live Payoneer API in production. |
 | **E-commerce platform** | **Custom** — no Shopify/WooCommerce/Medusa. Cart is client-side (localStorage); catalogue is a static JSON file. |
-| **Payment integration** | **Stripe** — embedded checkout (`ui_mode: "embedded_page"`). `@stripe/stripe-js` + `@stripe/react-stripe-js` (client), `stripe` Node SDK (server). Live-only in production; test keys ignored. |
+| **Payment integration** | **Payoneer Checkout** — server creates a LIST (`POST /api/lists`) and redirects to the hosted payment page. Live API in production. |
 | **Product data source** | `src/data/products.json` (~**30** products), typed via `src/lib/products.ts` |
 | **Analytics** | **None integrated** (no GA4, Vercel Analytics, Plausible, or PostHog). Privacy policy references cookies/analytics generically. AssistLoop is a chat widget, not analytics. |
 | **SEO implementation** | Next.js Metadata API (global + per-page `generateMetadata`), JSON-LD (`Organization`, `WebSite`+`SearchAction`, per-product `Product`/`Offer`/`AggregateOffer`), dynamic `sitemap.ts`, `robots.ts`, OpenGraph/Twitter cards. Site social images are `src/app/opengraph-image.png` and `src/app/twitter-image.png`. Product pages also pass the catalogue image. |
@@ -58,15 +58,15 @@ catalogue, a persistent cart, and Stripe Checkout.
 │   │   ├── shop/           # Catalogue (search / category / sort)
 │   │   ├── product/[slug]/ # Product detail (SSG via generateStaticParams)
 │   │   ├── cart/ checkout/ account/  # Buying journey + account
-│   │   ├── api/checkout/   # Checkout API (Stripe session)
+│   │   ├── api/checkout/   # Checkout API (Payoneer list)
 │   │   ├── actions/stripe.ts         # Server action entry point
 │   │   ├── sitemap.ts robots.ts      # SEO crawl surfaces
 │   │   └── <policy pages> # about, faq, contact, privacy, refund, shipping, terms
 │   ├── components/         # UI components (Header, Footer, Cart*, Product*, JsonLd, …)
 │   ├── lib/                # Business logic + unit tests (*.test.ts)
-│   │   ├── products.ts     # Catalogue types/helpers      stripe*.ts  # Stripe + key resolution
+│   │   ├── products.ts     # Catalogue types/helpers      payoneer.ts # Payoneer list + hosted page
 │   │   ├── cart.tsx        # Cart state (localStorage)     promo*.ts   # Promotions
-│   │   ├── checkout-session.ts  # Stripe embedded session  seo.ts      # SEO helpers
+│   │   ├── checkout-session.ts  # Payoneer checkout session seo.ts     # SEO helpers
 │   │   └── account-data.ts store-credit.ts company.ts …
 │   └── data/products.json  # Product catalogue (source of truth)
 ├── next.config.ts          # Image remotePatterns + redirects
@@ -77,18 +77,17 @@ catalogue, a persistent cart, and Stripe Checkout.
 
 ### Environment variables (names only — never log values)
 
-All Stripe secrets are read from the environment; nothing is hard-coded. `.env*` is
+Payoneer credentials are read from the environment; nothing is hard-coded. `.env*` is
 git-ignored. See `reports/security-compliance-health.md` for the full table.
 
-- `STRIPE_SECRET_KEY` / `REDLINE_STRIPE_SECRET_KEY` — server-only secret.
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (+ aliases) — client publishable key.
+- `PAYONEER_MERCHANT_CODE` / `PAYONEER_PAYMENT_TOKEN` — server-only Payoneer Checkout credentials.
+- `PAYONEER_ENV` — optional `live` or `sandbox`. Production ignores sandbox.
 - `NEXT_PUBLIC_SITE_URL` — optional; defaults to `https://redlinelabs.shop`.
 - `NEXT_PUBLIC_ASSISTLOOP_AGENT_ID` — optional chat widget.
-- `STRIPE_REQUIRE_LIVE` — optional force-live flag.
-- `VERCEL_ENV` — injected by Vercel; `production` enforces live Stripe keys.
+- `VERCEL_ENV` — injected by Vercel; `production` uses the live Payoneer API.
 
-> The app runs **without any secrets** for browsing/catalogue/cart. Only Stripe checkout
-> requires keys, and it **degrades gracefully to a 503** when they are absent.
+> The app runs **without any secrets** for browsing/catalogue/cart. Only Payoneer checkout
+> requires credentials, and it **degrades gracefully to a 503** when they are absent.
 
 ---
 
@@ -120,9 +119,9 @@ agent makes a change.
    (no `vercel.json`). On every push it builds automatically:
    - **Preview deployments** for each branch/PR — a unique URL where changes are validated
      before merge. In Preview, `VERCEL_ENV` is `preview`, so the app does **not** force live
-     Stripe keys.
+     Payoneer credentials.
    - **Production deployment** when changes reach the production branch — `VERCEL_ENV` is
-     `production`, which makes the app enforce **live** Stripe keys and serve
+     `production`, which makes the app use the **live** Payoneer API and serve
      `https://redlinelabs.shop`.
 
 **The golden rule:** production changes only happen by merging to the production branch, and
@@ -175,7 +174,7 @@ Follow these steps in order for **every** maintenance task. Do not skip steps.
 | `website-health.md` | Overall build/deploy/render health; umbrella for cross-cutting issues |
 | `seo-aeo-health.md` | Metadata, structured data, sitemap/robots, AEO answerability |
 | `catalogue-merchandising-health.md` | Product data integrity + merchandising surfaces |
-| `ecommerce-cro-health.md` | Cart, promotions, checkout, Stripe, conversion |
+| `ecommerce-cro-health.md` | Cart, promotions, checkout, Payoneer, conversion |
 | `qa-performance-health.md` | Lint/type/test/build gates + Core Web Vitals |
 | `security-compliance-health.md` | Secrets, payment safety, dependencies, headers, compliance |
 
@@ -189,3 +188,4 @@ Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue
 | --- | --- |
 | 2026-09-25 | Overview added in `#38`. |
 | 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
+| 2026-09-26 | Checkout charges through Payoneer hosted payment instead of Stripe. |
