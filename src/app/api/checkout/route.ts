@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-session";
 import { resolvePayoneer } from "@/lib/payoneer";
 import { checkoutBodySchema } from "@/lib/validation";
+import { resolveWhop, whopConfigured } from "@/lib/whop";
 
 export async function GET() {
   const resolved = resolvePayoneer(process.env);
+  const whop = resolveWhop(process.env);
   return NextResponse.json({
-    configured: payoneerConfigured(),
+    configured: payoneerConfigured() || whopConfigured(),
+    payoneer: payoneerConfigured(),
+    whop: whopConfigured(),
     mode: resolved?.mode ?? null,
+    whopEnvironment: whop?.mode ?? null,
   });
 }
 

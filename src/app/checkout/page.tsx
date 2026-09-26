@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
+import { WhopCardCheckout } from "@/components/WhopCardCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
@@ -33,7 +34,8 @@ export default function CheckoutPage() {
   const { promo } = usePromo();
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [providers, setProviders] = useState<{ whop: boolean; payoneer: boolean } | null>(null);
+  const [method, setMethod] = useState<"card" | "bank" | null>(null);
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
@@ -45,11 +47,17 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
+      .then((data: { whop?: boolean; payoneer?: boolean; configured?: boolean }) => {
+        const next = {
+          whop: Boolean(data.whop),
+          payoneer: Boolean(data.payoneer ?? data.configured),
+        };
+        setProviders(next);
+        setMethod(next.whop ? "card" : "bank");
       })
       .catch(() => {
-        setConfigured(false);
+        setProviders({ whop: false, payoneer: false });
+        setMethod("card");
       });
   }, []);
 
@@ -215,9 +223,9 @@ export default function CheckoutPage() {
               </fieldset>
             )}
             <p className="text-sm leading-6 text-[#8f8c84]">
-              Payment continues on Payoneer. Payoneer collects the card, and the
-              charge is sent to the Payoneer merchant account. You return here
-              after payment.
+              Card payments stay on this page with Whop. Bank transfer keeps the
+              existing Payoneer checkout. The amount is calculated on the server
+              from the catalogue, including 10% off orders of $200 or more.
             </p>
             <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
@@ -233,38 +241,100 @@ export default function CheckoutPage() {
                 {error}
               </p>
             )}
-            {configured === false && (
+            {providers && !providers.whop && !providers.payoneer && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
-                Payoneer checkout is not configured. Add{" "}
-                <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-                <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>.
-                Production uses the live Payoneer API.
+                Card checkout needs <code className="text-[#d4af37]">WHOP_API_KEY</code> and{" "}
+                <code className="text-[#d4af37]">WHOP_COMPANY_ID</code>. Bank transfer needs the
+                Payoneer merchant code and payment token.
               </p>
             )}
-            <button type="submit" className="btn" disabled={configured !== true}>
+            <button type="submit" className="btn" disabled={!providers}>
               Continue to payment
             </button>
           </form>
         ) : (
           <div className="space-y-4">
             <p className="text-sm leading-6 text-[#8f8c84]">
-              Paying as {email}. Card details are handled by Payoneer.
-              {promo
-                ? ` ${promo.percentOff}% off the total order amount is applied.`
-                : ""}
+              Paying as {email}.
+              {totals.volumeDiscountCents > 0 ? " 10% off this order is included." : ""}
+              {promo ? ` ${promo.percentOff}% off the remaining total is applied.` : ""}
             </p>
-            <div className="surface overflow-hidden p-3">
-              <CartCheckout
-                items={cartItems}
-                email={email}
-                firstName={firstName}
-                lastName={lastName}
-                shipping={shipping}
-                promoCode={promo?.code ?? null}
-                ageConfirmed
-                researchUse
-              />
-            </div>
+            <fieldset>
+              <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                Payment method
+              </legend>
+              <div className="space-y-2">
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "card"}
+                    disabled={!providers?.whop}
+                    onChange={() => setMethod("card")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Card</span>
+                    <span className="text-[#8f8c84]">Whop checkout on this page, including 3D Secure.</span>
+                  </span>
+                </label>
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "bank"}
+                    disabled={!providers?.payoneer}
+                    onChange={() => setMethod("bank")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Bank transfer</span>
+                    <span className="text-[#8f8c84]">
+                      The existing Payoneer checkout. You return here after payment.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+            {method === "card" && providers?.whop && (
+              <div className="surface overflow-hidden p-3">
+                <WhopCardCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              </div>
+            )}
+            {method === "card" && providers && !providers.whop && (
+              <p className="text-sm leading-6 text-[#d4af37]" role="status">
+                Card checkout needs WHOP_API_KEY and WHOP_COMPANY_ID on the server.
+              </p>
+            )}
+            {method === "bank" && providers?.payoneer && (
+              <div className="surface overflow-hidden p-3">
+                <h2 className="mb-2 text-[13px] font-semibold tracking-[0.12em] uppercase">Bank transfer</h2>
+                <CartCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              </div>
+            )}
+            {method === "bank" && providers && !providers.payoneer && (
+              <p className="text-sm leading-6 text-[#d4af37]" role="status">
+                Bank transfer needs PAYONEER_MERCHANT_CODE and PAYONEER_PAYMENT_TOKEN.
+              </p>
+            )}
             <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
             </button>
@@ -289,11 +359,19 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
-        {totals.discountCents > 0 && (
+        {totals.volumeDiscountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders of $200 or more</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+            </span>
+          </div>
+        )}
+        {totals.promoDiscountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(totals.discountCents))}
+              −{formatPrice(centsToDollars(totals.promoDiscountCents))}
             </span>
           </div>
         )}
@@ -304,7 +382,7 @@ export default function CheckoutPage() {
         {browserCreditCents > 0 && (
           <p className="mt-2 text-xs leading-5 text-[#8f8c84]">
             This browser shows {formatPrice(centsToDollars(browserCreditCents))} saved
-            credit. It is not deducted from the Payoneer charge.
+            credit. It is not deducted from the card or bank-transfer charge.
           </p>
         )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
@@ -312,10 +390,9 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Store credit saved in this browser is not deducted from the Payoneer
-          charge. Apply a coupon for 20% off the total order amount. Prices
-          charged by Payoneer are taken from the catalogue, not from the browser
-          cart. See the{" "}
+          Store credit saved in this browser is not deducted from the charge.
+          Orders of $200 or more include 10% off, calculated on the server.
+          Apply a coupon for 20% off the remaining total. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}

@@ -131,11 +131,19 @@ export function CartDrawer() {
               </span>
             </div>
             <PromoCodeForm id="drawer-checkout-code" />
-            {totals.discountCents > 0 && (
+            {totals.volumeDiscountCents > 0 && (
+              <div className="mb-4 flex justify-between text-sm">
+                <span>10% off $200+</span>
+                <span className="text-[#d4af37]">
+                  −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+                </span>
+              </div>
+            )}
+            {totals.promoDiscountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
                 <span>{promo?.percentOff}% off total</span>
                 <span className="text-[#d4af37]">
-                  −{formatPrice(centsToDollars(totals.discountCents))}
+                  −{formatPrice(centsToDollars(totals.promoDiscountCents))}
                 </span>
               </div>
             )}

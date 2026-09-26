@@ -88,14 +88,20 @@ function asOrder(session: SessionPayload): OrderRecord | null {
   };
 }
 
-export function CapturePaidOrder({ sessionId }: { sessionId?: string }) {
+export function CapturePaidOrder({
+  sessionId,
+  href,
+}: {
+  sessionId?: string;
+  href?: string;
+}) {
   const { captureOrder } = useAccount();
   const captured = useRef(false);
 
   useEffect(() => {
     if (!sessionId || captured.current) return;
     let cancelled = false;
-    fetch(`/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`)
+    fetch(href ?? `/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: SessionPayload | null) => {
         if (cancelled || !data) return;
@@ -110,7 +116,7 @@ export function CapturePaidOrder({ sessionId }: { sessionId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, captureOrder]);
+  }, [sessionId, href, captureOrder]);
 
   return null;
 }

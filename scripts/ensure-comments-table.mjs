@@ -3,9 +3,17 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const schemaPath = join(dirname(fileURLToPath(import.meta.url)), "../db/comments.sql");
+const ordersSchemaPath = join(dirname(fileURLToPath(import.meta.url)), "../db/orders.sql");
 
 export function commentsSchemaSql() {
   return readFileSync(schemaPath, "utf8").trim();
+}
+
+export function ordersSchemaStatements() {
+  return readFileSync(ordersSchemaPath, "utf8")
+    .split(/;\s*\n/)
+    .map((statement) => statementForNeon(statement))
+    .filter(Boolean);
 }
 
 /** Neon’s HTTP SQL endpoint accepts one statement and rejects a trailing semicolon. */
@@ -23,14 +31,14 @@ export function neonSqlEndpoint(connectionString) {
   return `https://${hostname}/sql`;
 }
 
-export async function neonQuery(connectionString, query) {
+export async function neonQuery(connectionString, query, params = []) {
   const response = await fetch(neonSqlEndpoint(connectionString), {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "neon-connection-string": connectionString,
     },
-    body: JSON.stringify({ query, params: [] }),
+    body: JSON.stringify({ query, params }),
   });
   const body = await response.text();
   if (!response.ok) {
@@ -63,6 +71,9 @@ async function main() {
 
   try {
     await neonQuery(connectionString, statementForNeon(commentsSchemaSql()));
+    for (const statement of ordersSchemaStatements()) {
+      await neonQuery(connectionString, statement);
+    }
     const columns = await neonQuery(
       connectionString,
       "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'comments' ORDER BY ordinal_position",

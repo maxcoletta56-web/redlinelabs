@@ -88,11 +88,19 @@ export default function CartPage() {
               </span>
             </div>
             <PromoCodeForm id="cart-checkout-code" />
-            {totals.discountCents > 0 && (
+            {totals.volumeDiscountCents > 0 && (
+              <div className="mb-4 flex justify-between text-sm">
+                <span>10% off orders of $200 or more</span>
+                <span className="text-[#d4af37]">
+                  −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+                </span>
+              </div>
+            )}
+            {totals.promoDiscountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
                 <span>{promo?.percentOff}% off total</span>
                 <span className="text-[#d4af37]">
-                  −{formatPrice(centsToDollars(totals.discountCents))}
+                  −{formatPrice(centsToDollars(totals.promoDiscountCents))}
                 </span>
               </div>
             )}
@@ -105,8 +113,9 @@ export default function CartPage() {
               </div>
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              Checkout is charged through Payoneer. Apply a coupon for 20% off the
-              total order amount. Dispatch notes are on the{" "}
+              Card payments use Whop on the checkout page. Orders of $200 or more
+              include 10% off. Apply a coupon for 20% off the remaining total.
+              Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
               </Link>

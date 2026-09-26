@@ -39,6 +39,32 @@ export function promoDiscountCents(subtotalCents: number, promo: CheckoutPromo |
   return Math.max(0, subtotalCents - applyPercentOff(subtotalCents, promo.percentOff));
 }
 
+/** Orders at or above this catalogue subtotal receive VOLUME_DISCOUNT_PERCENT off. */
+export const VOLUME_DISCOUNT_MIN_CENTS = 20_000;
+export const VOLUME_DISCOUNT_PERCENT = 10;
+
+export function volumeDiscountCents(subtotalCents: number) {
+  const subtotal = Math.max(0, Math.round(subtotalCents));
+  if (subtotal < VOLUME_DISCOUNT_MIN_CENTS) return 0;
+  return subtotal - applyPercentOff(subtotal, VOLUME_DISCOUNT_PERCENT);
+}
+
+/** Catalogue subtotal, then 10% off at $200+, then any promo code on the remainder. */
+export function priceOrderCents(subtotalCents: number, promo: CheckoutPromo | null) {
+  const catalogCents = Math.max(0, Math.round(subtotalCents));
+  const volumeOff = volumeDiscountCents(catalogCents);
+  const afterVolume = catalogCents - volumeOff;
+  const promoOff = promoDiscountCents(afterVolume, promo);
+  const discountCents = volumeOff + promoOff;
+  return {
+    catalogCents,
+    volumeDiscountCents: volumeOff,
+    promoDiscountCents: promoOff,
+    discountCents,
+    discountedCents: catalogCents - discountCents,
+  };
+}
+
 export function stripeCouponParams({
   promo,
   promoOffCents,
@@ -78,10 +104,5 @@ export function checkoutTotals({
   promo: CheckoutPromo | null;
 }) {
   const catalogCents = items.reduce((sum, item) => sum + toCents(item.price) * item.qty, 0);
-  const discountCents = promoDiscountCents(catalogCents, promo);
-  return {
-    catalogCents,
-    discountedCents: catalogCents - discountCents,
-    discountCents,
-  };
+  return priceOrderCents(catalogCents, promo);
 }
