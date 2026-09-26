@@ -1,0 +1,13 @@
+{
+  "name": "@neondatabase/serverless",
+  "version": "1.1.0",
+  "description": "Vendored @neondatabase/serverless 1.1.0 (MIT) from https://github.com/neondatabase/serverless",
+  "exports": {
+    "require": "./index.js",
+    "import": "./index.mjs"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=19.0.0"
+  }
+}
