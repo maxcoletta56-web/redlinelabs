@@ -1,4 +1,4 @@
-import { getProduct, optionLabel, type Product, type Variant } from "@/lib/products";
+import { getProduct, optionLabel, type Product, type Variant } from "./products.ts";
 
 export type CartLineInput = {
   slug: string;
