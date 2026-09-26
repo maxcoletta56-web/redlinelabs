@@ -37,7 +37,7 @@ catalogue, a persistent cart, and Payoneer Checkout.
 | **Build command** | `npm run build` → `next build` (also runs the TypeScript type-check) |
 | **Dev command** | `npm run dev` → `next dev` (serves on `http://localhost:3000`) |
 | **Lint** | `npm run lint` → `eslint` (flat config, `eslint-config-next` core-web-vitals + TS) |
-| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts` (**31** tests) |
+| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts` (**43** tests) |
 | **Deployment** | **Vercel** (Git-connected, zero-config Next.js preset) |
 | **Vercel config** | No `vercel.json` — relies on Vercel's automatic Next.js framework detection. `VERCEL_ENV` is consumed by the app to use the live Payoneer API in production. |
 | **E-commerce platform** | **Custom** — no Shopify/WooCommerce/Medusa. Cart is client-side (localStorage); catalogue is a static JSON file. |
@@ -59,7 +59,7 @@ catalogue, a persistent cart, and Payoneer Checkout.
 │   │   ├── product/[slug]/ # Product detail (SSG via generateStaticParams)
 │   │   ├── cart/ checkout/ account/  # Buying journey + account
 │   │   ├── api/checkout/   # Checkout API (Payoneer list)
-│   │   ├── actions/stripe.ts         # Server action entry point
+│   │   ├── actions/checkout.ts       # Server action entry point
 │   │   ├── sitemap.ts robots.ts      # SEO crawl surfaces
 │   │   └── <policy pages> # about, faq, contact, privacy, refund, shipping, terms
 │   ├── components/         # UI components (Header, Footer, Cart*, Product*, JsonLd, …)
@@ -82,6 +82,7 @@ git-ignored. See `reports/security-compliance-health.md` for the full table.
 
 - `PAYONEER_MERCHANT_CODE` / `PAYONEER_PAYMENT_TOKEN` — server-only Payoneer Checkout credentials.
 - `PAYONEER_ENV` — optional `live` or `sandbox`. Production ignores sandbox.
+- `PAYONEER_REQUIRE_LIVE` — optional. Set to `1` to require the live API outside production.
 - `NEXT_PUBLIC_SITE_URL` — optional; defaults to `https://redlinelabs.shop`.
 - `NEXT_PUBLIC_ASSISTLOOP_AGENT_ID` — optional chat widget.
 - `VERCEL_ENV` — injected by Vercel; `production` uses the live Payoneer API.
@@ -189,3 +190,4 @@ Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue
 | 2026-09-25 | Overview added in `#38`. |
 | 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
 | 2026-09-26 | Checkout charges through Payoneer hosted payment instead of Stripe. |
+| 2026-09-26 | Server action path is `src/app/actions/checkout.ts`. Unit tests on that commit: 43 passing. |
