@@ -1,6 +1,6 @@
-import catalog from "@/data/products.json";
-import { canonicalProductSlug } from "./slugs";
-import { isDoseOption, optionLabel, variantGroupLabel } from "./variant-label";
+import catalog from "../data/products.json" with { type: "json" };
+import { canonicalProductSlug } from "./slugs.ts";
+import { isDoseOption, optionLabel, variantGroupLabel } from "./variant-label.ts";
 
 export { isDoseOption, optionLabel, variantGroupLabel };
 
