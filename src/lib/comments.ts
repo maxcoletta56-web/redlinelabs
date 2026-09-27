@@ -1,4 +1,7 @@
-import { neon } from "@neondatabase/serverless";
+import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
+
+export { getSql };
+export type { Sql };
 
 export const COMMENT_MAX_LENGTH = 500;
 
@@ -20,19 +23,12 @@ export type CommentList = {
   error: string | null;
 };
 
-export type Sql = {
-  query: (query: string, params?: unknown[]) => Promise<unknown>;
-};
-
 export class CommentsUnavailableError extends Error {
   constructor() {
     super("DATABASE_URL is not set");
     this.name = "CommentsUnavailableError";
   }
 }
-
-const ready = new WeakMap<Sql, Promise<void>>();
-let cached: { url: string; sql: Sql } | null = null;
 
 export function parseComment(
   value: FormDataEntryValue | null,
@@ -46,31 +42,8 @@ export function parseComment(
   return { ok: true, comment };
 }
 
-export function getSql(): Sql | null {
-  const url = process.env.DATABASE_URL;
-  if (!url) return null;
-  if (cached?.url === url) return cached.sql;
-  const client = neon(url);
-  const sql: Sql = {
-    query: (query, params) => client.query(query, params ?? []),
-  };
-  cached = { url, sql };
-  return sql;
-}
-
 export async function ensureCommentsTable(sql: Sql) {
-  let pending = ready.get(sql);
-  if (!pending) {
-    pending = sql
-      .query(CREATE_COMMENTS)
-      .then(() => undefined)
-      .catch((error: unknown) => {
-        ready.delete(sql);
-        throw error;
-      });
-    ready.set(sql, pending);
-  }
-  await pending;
+  await ensureTable(sql, "comments", CREATE_COMMENTS);
 }
 
 export async function insertComment(comment: string, sql: Sql | null = getSql()) {
@@ -84,14 +57,6 @@ function readComment(row: unknown, index: number): StoredComment | null {
   const comment = (row as Record<string, unknown>).comment;
   if (typeof comment !== "string") return null;
   return { id: String(index), comment };
-}
-
-function rowsOf(result: unknown): unknown[] {
-  if (Array.isArray(result)) return result;
-  if (result && typeof result === "object" && Array.isArray((result as { rows?: unknown }).rows)) {
-    return (result as { rows: unknown[] }).rows;
-  }
-  return [];
 }
 
 export async function listComments(sql: Sql | null = getSql()): Promise<CommentList> {
