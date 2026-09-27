@@ -30,6 +30,11 @@ function columnsOf(url, table) {
   );
 }
 
+/** A backfilled column lands last, so compare the set when order is not the point. */
+function columnSetOf(url, table) {
+  return columnsOf(url, table).split(",").sort().join(",");
+}
+
 function legacyTables(url) {
   return psql(
     url,
@@ -111,7 +116,11 @@ psql(
    INSERT INTO orders (reference, subtotal_cents, total_cents) VALUES ('RL-OLD-0001', 100, 100);`,
 );
 migrate(partial);
-check("missing columns backfilled", columnsOf(partial, "orders"), ORDERS);
+check(
+  "missing columns backfilled",
+  columnSetOf(partial, "orders"),
+  ORDERS.split(",").sort().join(","),
+);
 check("no rename happened", legacyTables(partial), "");
 check("existing row kept", psql(partial, "SELECT reference FROM orders"), "RL-OLD-0001");
 check("checkout insert succeeds", psql(partial, INSERT_ORDER), "RL-TEST-0001");

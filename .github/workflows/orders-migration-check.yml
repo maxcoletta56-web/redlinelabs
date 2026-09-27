@@ -29,6 +29,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+      - run: npm ci
       - name: Verify against postgres
         continue-on-error: true
         env:
@@ -42,8 +44,8 @@ jobs:
             node scripts/verify-orders-migration.mjs
             echo "verification exit: $?"
             echo "=== unit tests ==="
-            node --experimental-strip-types --test src/lib/orders-migration.test.ts src/lib/orders-schema.test.ts
-            echo "tests exit: $?"
+            node --experimental-strip-types --test src/lib/orders-migration.test.ts src/lib/orders-schema.test.ts 2>&1 | grep -Ev "^( |#)" 
+            echo "tests exit: ${PIPESTATUS[0]}"
           } > /tmp/verification.log 2>&1
           cat /tmp/verification.log
       - name: Publish the log
