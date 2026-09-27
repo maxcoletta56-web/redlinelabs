@@ -72,7 +72,7 @@ export default async function OrderPage({ params }: Props) {
 
   return (
     <div className="wrap max-w-[760px] py-16">
-      <ClearCartOnSuccess />
+      <ClearCartOnSuccess onceKey={order.reference} />
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
