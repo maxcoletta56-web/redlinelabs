@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-session";
 import { resolvePayoneer } from "@/lib/payoneer";
+import { resolveWhop } from "@/lib/whop-config";
 import { checkoutBodySchema } from "@/lib/validation";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  const resolved = resolvePayoneer(process.env);
+  const payoneer = resolvePayoneer(process.env);
+  const whop = resolveWhop(process.env);
   return NextResponse.json({
     configured: payoneerConfigured(),
-    mode: resolved?.mode ?? null,
+    mode: payoneer?.mode ?? null,
+    card: Boolean(whop),
+    environment: whop?.environment ?? null,
+    bankTransfer: true,
   });
 }
 

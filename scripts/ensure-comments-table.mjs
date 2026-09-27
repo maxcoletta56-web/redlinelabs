@@ -2,10 +2,16 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const schemaPath = join(dirname(fileURLToPath(import.meta.url)), "../db/comments.sql");
+const schemaDir = join(dirname(fileURLToPath(import.meta.url)), "../db");
+const schemaPath = join(schemaDir, "comments.sql");
+const ordersSchemaPath = join(schemaDir, "shop_orders.sql");
 
 export function commentsSchemaSql() {
   return readFileSync(schemaPath, "utf8").trim();
+}
+
+export function shopOrdersSchemaSql() {
+  return readFileSync(ordersSchemaPath, "utf8").trim();
 }
 
 /** Neon’s HTTP SQL endpoint accepts one statement and rejects a trailing semicolon. */
@@ -58,6 +64,7 @@ async function main() {
   const connectionString = commentsDatabaseUrl();
   if (!connectionString) {
     console.log("comments table: skipped (DATABASE_URL is not set)");
+    console.log("shop orders table: skipped (DATABASE_URL is not set)");
     return;
   }
 
@@ -68,9 +75,15 @@ async function main() {
       "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'comments' ORDER BY ordinal_position",
     );
     console.log(`comments table: ${columnSummary(columns)}`);
+    await neonQuery(connectionString, statementForNeon(shopOrdersSchemaSql()));
+    const orderColumns = await neonQuery(
+      connectionString,
+      "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'shop_orders' ORDER BY ordinal_position",
+    );
+    console.log(`shop orders table: ${columnSummary(orderColumns)}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("comments table: failed to apply db/comments.sql");
+    console.error("database schema: failed to apply db/comments.sql or db/shop_orders.sql");
     console.error(message.replaceAll(connectionString, "[redacted]"));
     process.exitCode = 1;
   }

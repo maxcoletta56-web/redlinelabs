@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CartCheckout } from "@/components/CartCheckout";
+import { WhopCardCheckout } from "@/components/WhopCardCheckout";
+import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
@@ -28,13 +29,26 @@ function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
   };
 }
 
+type BankOrder = {
+  orderId: string;
+  amountCents: number;
+  accountName: string | null;
+  bsb: string | null;
+  accountNumber: string | null;
+  reference: string;
+};
+
 export default function CheckoutPage() {
   const { items } = useCart();
   const { promo } = usePromo();
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
-  const [ready, setReady] = useState(false);
+  const [cardConfigured, setCardConfigured] = useState<boolean | null>(null);
+  const [environment, setEnvironment] = useState<"sandbox" | "production" | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "bank_transfer">("card");
+  const [stage, setStage] = useState<"details" | "card" | "bank">("details");
+  const [bankOrder, setBankOrder] = useState<BankOrder | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
     lastName?: string;
@@ -45,11 +59,14 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
+      .then((data: { card?: boolean; environment?: "sandbox" | "production" | null }) => {
+        setCardConfigured(Boolean(data.card));
+        setEnvironment(data.environment ?? null);
+        if (!data.card) setPaymentMethod("bank_transfer");
       })
       .catch(() => {
-        setConfigured(false);
+        setCardConfigured(false);
+        setPaymentMethod("bank_transfer");
       });
   }, []);
 
@@ -80,7 +97,7 @@ export default function CheckoutPage() {
     [selectedAddress],
   );
 
-  if (items.length === 0) {
+  if (items.length === 0 && stage !== "bank") {
     return (
       <div className="wrap max-w-[700px] py-20 text-center">
         <Breadcrumbs items={[{ href: "/", label: "Home" }, { href: "/cart", label: "Cart" }, { label: "Checkout" }]} />
@@ -108,7 +125,7 @@ export default function CheckoutPage() {
       <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="order-2 lg:order-1">
 
-        {hydrated && !user && (
+        {hydrated && !user && stage === "details" && (
           <aside className="surface mb-8 p-5" role="note">
             <p className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
               Account required for profile benefits
@@ -123,7 +140,7 @@ export default function CheckoutPage() {
           </aside>
         )}
 
-        {!ready ? (
+        {stage === "details" ? (
           <form
             className="space-y-4"
             onSubmit={(event) => {
@@ -134,12 +151,36 @@ export default function CheckoutPage() {
                 setError("Age and research-use confirmation are required");
                 return;
               }
-              setCustomer({
-                firstName,
-                lastName,
-                email,
-              });
-              setReady(true);
+              if (paymentMethod === "card") {
+                setStage("card");
+                return;
+              }
+              setSubmitting(true);
+              fetch("/api/checkout/bank-transfer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  items: cartItems,
+                  email,
+                  firstName,
+                  lastName,
+                  shipping,
+                  promoCode: promo?.code ?? null,
+                  ageConfirmed: true,
+                  researchUse: true,
+                  paymentMethod: "bank_transfer",
+                }),
+              })
+                .then(async (response) => {
+                  const data = (await response.json()) as BankOrder & { error?: string };
+                  if (!response.ok) throw new Error(data.error || "Bank transfer order failed");
+                  setBankOrder(data);
+                  setStage("bank");
+                })
+                .catch((reason: unknown) => {
+                  setError(reason instanceof Error ? reason.message : "Bank transfer order failed");
+                })
+                .finally(() => setSubmitting(false));
             }}
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -207,18 +248,52 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-[#8f8c84]">
-                  This address is saved with the order before Payoneer takes payment.{" "}
+                  This address is saved with the order before payment.{" "}
                   <Link href="/account#addresses" className="text-[#d4af37]">
                     Edit addresses
                   </Link>
                 </p>
               </fieldset>
             )}
-            <p className="text-sm leading-6 text-[#8f8c84]">
-              Payment continues on Payoneer. Payoneer collects the card, and the
-              charge is sent to the Payoneer merchant account. You return here
-              after payment.
-            </p>
+            <fieldset>
+              <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                Payment
+              </legend>
+              <div className="space-y-2">
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={paymentMethod === "card"}
+                    disabled={cardConfigured === false}
+                    onChange={() => setPaymentMethod("card")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Card</span>
+                    <span className="text-[#8f8c84]">
+                      Pay on this page with Whop. Card details stay in the embedded checkout.
+                      {environment === "sandbox" ? " Sandbox mode is on." : ""}
+                    </span>
+                  </span>
+                </label>
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={paymentMethod === "bank_transfer"}
+                    onChange={() => setPaymentMethod("bank_transfer")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Bank transfer</span>
+                    <span className="text-[#8f8c84]">
+                      Place the order as pending and pay by bank transfer using the order ID as the reference.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
             <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
               I confirm I am 18 years of age or older.
@@ -233,28 +308,34 @@ export default function CheckoutPage() {
                 {error}
               </p>
             )}
-            {configured === false && (
+            {cardConfigured === false && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
-                Payoneer checkout is not configured. Add{" "}
-                <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-                <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>.
-                Production uses the live Payoneer API.
+                Card checkout is not configured. Add WHOP_API_KEY and WHOP_COMPANY_ID.
+                Bank transfer is still available.
               </p>
             )}
-            <button type="submit" className="btn" disabled={configured !== true}>
-              Continue to payment
+            <button
+              type="submit"
+              className="btn"
+              disabled={submitting || (paymentMethod === "card" && cardConfigured !== true)}
+            >
+              {submitting
+                ? "Preparing…"
+                : paymentMethod === "card"
+                  ? "Continue to card payment"
+                  : "Place bank transfer order"}
             </button>
           </form>
-        ) : (
+        ) : stage === "card" ? (
           <div className="space-y-4">
             <p className="text-sm leading-6 text-[#8f8c84]">
-              Paying as {email}. Card details are handled by Payoneer.
+              Paying as {email}. The amount is calculated on the server from the catalogue.
               {promo
-                ? ` ${promo.percentOff}% off the total order amount is applied.`
+                ? ` ${promo.percentOff}% off the remaining total is applied.`
                 : ""}
             </p>
             <div className="surface overflow-hidden p-3">
-              <CartCheckout
+              <WhopCardCheckout
                 items={cartItems}
                 email={email}
                 firstName={firstName}
@@ -265,11 +346,45 @@ export default function CheckoutPage() {
                 researchUse
               />
             </div>
-            <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
+            <button type="button" className="btn-ghost" onClick={() => setStage("details")}>
               Edit details
             </button>
           </div>
-        )}
+        ) : bankOrder ? (
+          <div className="surface space-y-3 p-5 text-sm leading-6 text-[#8f8c84]">
+            <ClearCartOnSuccess />
+            <p className="font-medium text-white">Bank transfer</p>
+            <p>
+              Order {bankOrder.orderId} is pending. Transfer {formatPrice(bankOrder.amountCents / 100)} AUD
+              and use the order ID as the reference.
+            </p>
+            {bankOrder.accountName && bankOrder.bsb && bankOrder.accountNumber ? (
+              <dl className="space-y-2">
+                <div className="flex justify-between gap-4">
+                  <dt>Account name</dt>
+                  <dd className="text-[#d4af37]">{bankOrder.accountName}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt>BSB</dt>
+                  <dd className="text-[#d4af37]">{bankOrder.bsb}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt>Account number</dt>
+                  <dd className="text-[#d4af37]">{bankOrder.accountNumber}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt>Reference</dt>
+                  <dd className="text-[#d4af37]">{bankOrder.reference}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p>
+                Account details are not published on this environment yet. Use the order ID as the
+                reference and contact support if you need the account number.
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
       <aside className="surface order-1 h-fit p-6 lg:order-2">
         <h2 className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase">Summary</h2>
@@ -289,11 +404,19 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
-        {totals.discountCents > 0 && (
+        {totals.volumeDiscountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders of $200+</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+            </span>
+          </div>
+        )}
+        {totals.promoDiscountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(totals.discountCents))}
+              −{formatPrice(centsToDollars(totals.promoDiscountCents))}
             </span>
           </div>
         )}
@@ -304,7 +427,7 @@ export default function CheckoutPage() {
         {browserCreditCents > 0 && (
           <p className="mt-2 text-xs leading-5 text-[#8f8c84]">
             This browser shows {formatPrice(centsToDollars(browserCreditCents))} saved
-            credit. It is not deducted from the Payoneer charge.
+            credit. It is not deducted from the charge.
           </p>
         )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
@@ -312,10 +435,9 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Store credit saved in this browser is not deducted from the Payoneer
-          charge. Apply a coupon for 20% off the total order amount. Prices
-          charged by Payoneer are taken from the catalogue, not from the browser
-          cart. See the{" "}
+          Store credit saved in this browser is not deducted from the charge.
+          Orders of $200 or more take 10% off before a coupon. Prices charged
+          by Whop are taken from the catalogue, not from the browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}

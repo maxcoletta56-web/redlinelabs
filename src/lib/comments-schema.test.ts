@@ -1,16 +1,22 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { CREATE_SHOP_ORDERS } from "./shop-orders-sql.ts";
 import {
   commentsSchemaSql,
   neonQuery,
   neonSqlEndpoint,
+  shopOrdersSchemaSql,
   statementForNeon,
 } from "../../scripts/ensure-comments-table.mjs";
 
 test("comments schema is the requested table", () => {
   assert.equal(commentsSchemaSql(), "CREATE TABLE IF NOT EXISTS comments (comment TEXT);");
   assert.equal(statementForNeon(commentsSchemaSql()), "CREATE TABLE IF NOT EXISTS comments (comment TEXT)");
+});
+
+test("shop orders schema matches the runtime table", () => {
+  assert.equal(statementForNeon(shopOrdersSchemaSql()), CREATE_SHOP_ORDERS);
 });
 
 test("neon sql endpoint uses the direct host", () => {

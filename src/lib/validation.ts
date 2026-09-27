@@ -4,6 +4,18 @@ export type CartLineInput = {
   qty: number;
 };
 
+export type CheckoutShipping = {
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country?: string;
+};
+
+export type CheckoutPaymentMethod = "card" | "bank_transfer";
+
 export type CheckoutBody = {
   email: string;
   firstName?: string;
@@ -12,6 +24,8 @@ export type CheckoutBody = {
   researchUse: boolean;
   items: CartLineInput[];
   promoCode?: string | null;
+  shipping?: CheckoutShipping | null;
+  paymentMethod?: CheckoutPaymentMethod;
 };
 
 export type ParseResult<T> =
@@ -49,6 +63,36 @@ export function parseCartLine(value: unknown): ParseResult<CartLineInput> {
 
 export const cartLineSchema = { safeParse: parseCartLine };
 
+function parseShipping(value: unknown): ParseResult<CheckoutShipping | null> {
+  if (value == null) return { success: true, data: null };
+  const row = asRecord(value);
+  if (!row) return fail("Shipping address is invalid");
+  const name = readString(row.name);
+  const line1 = readString(row.line1);
+  const city = readString(row.city);
+  const state = readString(row.state);
+  const postal = readString(row.postal_code);
+  if (!name && !line1 && !city && !state && !postal) return { success: true, data: null };
+  if (!name || !line1 || !city || !state || !postal) return fail("Shipping address is incomplete");
+  if ([name, line1, city, state, postal].some((part) => part.length > 120)) {
+    return fail("Shipping address is invalid");
+  }
+  const line2 = readString(row.line2);
+  const country = readString(row.country) || "AU";
+  return {
+    success: true,
+    data: {
+      name,
+      line1,
+      line2: line2 || undefined,
+      city,
+      state,
+      postal_code: postal,
+      country,
+    },
+  };
+}
+
 export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
   const row = asRecord(value);
   if (!row) return fail("Invalid checkout payload");
@@ -72,6 +116,12 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
   const lastName = readString(row.lastName);
   const promoCode = row.promoCode == null ? null : readString(row.promoCode);
   if (promoCode && promoCode.length > 40) return fail("That promo code is not valid");
+  const shipping = parseShipping(row.shipping);
+  if (!shipping.success) return shipping;
+  const paymentRaw = readString(row.paymentMethod);
+  const paymentMethod =
+    paymentRaw === "" ? undefined : paymentRaw === "card" || paymentRaw === "bank_transfer" ? paymentRaw : null;
+  if (paymentMethod === null) return fail("Choose card or bank transfer");
   return {
     success: true,
     data: {
@@ -82,6 +132,8 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
       researchUse: true,
       items,
       promoCode,
+      shipping: shipping.data,
+      paymentMethod,
     },
   };
 }
