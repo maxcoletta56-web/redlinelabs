@@ -111,8 +111,8 @@ export const faqs: FaqItem[] = [
   },
   {
     q: "Is there a checkout discount?",
-    text: "Yes. Apply a coupon on the cart or checkout page. Current codes take 20% off the total order amount. Product prices stay as listed.",
-    a: "Yes. Apply a coupon on the cart or checkout page. Current codes take 20% off the total order amount. Product prices stay as listed.",
+    text: "Orders of $200 or more take 10% off the catalogue total. A coupon such as DGC20 then takes its percent off the remainder. Product prices stay as listed.",
+    a: "Orders of $200 or more take 10% off the catalogue total. A coupon such as DGC20 then takes its percent off the remainder. Product prices stay as listed.",
   },
 ];
 

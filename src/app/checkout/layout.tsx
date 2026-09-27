@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Checkout",
   description:
-    "Pay for Redline Labs research chemicals through Payoneer. Research-use confirmation is required. Checkout pages are not indexed.",
+    "Pay for Redline Labs research chemicals by card with Whop or by bank transfer. Research-use confirmation is required. Checkout pages are not indexed.",
   path: "/checkout",
   index: false,
 });

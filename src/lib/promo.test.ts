@@ -40,8 +40,35 @@ test("takes 20 percent off the order total, not each line", () => {
     promo: lookupPromo("DGC20"),
   });
   assert.equal(totals.catalogCents, 6666);
+  assert.equal(totals.volumeDiscountCents, 0);
   assert.equal(totals.discountedCents, orderTotal);
   assert.equal(totals.discountCents, 1333);
+});
+
+test("takes 10 percent off orders of $200 or more before a coupon", () => {
+  const below = checkoutTotals({
+    items: [{ price: 199.99, qty: 1 }],
+    promo: null,
+  });
+  assert.equal(below.catalogCents, 19999);
+  assert.equal(below.volumeDiscountCents, 0);
+  assert.equal(below.discountedCents, 19999);
+
+  const volume = checkoutTotals({
+    items: [{ price: 200, qty: 1 }],
+    promo: null,
+  });
+  assert.equal(volume.volumeDiscountCents, 2000);
+  assert.equal(volume.discountedCents, 18000);
+
+  const stacked = checkoutTotals({
+    items: [{ price: 250, qty: 1 }],
+    promo: lookupPromo("DGC20"),
+  });
+  assert.equal(stacked.catalogCents, 25000);
+  assert.equal(stacked.volumeDiscountCents, 2500);
+  assert.equal(stacked.promoDiscountCents, 4500);
+  assert.equal(stacked.discountedCents, 18000);
 });
 
 test("creates a 20 percent coupon for DGC20 on the order total", () => {
@@ -63,7 +90,7 @@ test("creates a 20 percent coupon for DGC20 on the order total", () => {
   assert.equal(stripeCouponParams({ promo: null, promoOffCents: 0, storeCreditCents: 0 }), null);
 });
 
-test("applies store credit after 20 percent off the total", () => {
+test("applies store credit after the volume discount and 20 percent off", () => {
   const totals = checkoutTotals({
     items: [
       { price: 89, qty: 2 },
@@ -72,9 +99,11 @@ test("applies store credit after 20 percent off the total", () => {
     promo: lookupPromo("DGC20"),
   });
   assert.equal(totals.catalogCents, 30300);
-  assert.equal(totals.discountedCents, 24240);
-  assert.equal(totals.discountCents, 6060);
+  assert.equal(totals.volumeDiscountCents, 3030);
+  assert.equal(totals.promoDiscountCents, 5454);
+  assert.equal(totals.discountedCents, 21816);
+  assert.equal(totals.discountCents, 8484);
   const creditCents = creditToApplyCents(1000, totals.discountedCents);
   assert.equal(creditCents, 1000);
-  assert.equal(totals.discountedCents - creditCents, 23240);
+  assert.equal(totals.discountedCents - creditCents, 20816);
 });
