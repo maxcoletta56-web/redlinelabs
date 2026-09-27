@@ -1,101 +1,68 @@
-# Website Health Report
+# Redlinelabs Website Health
 
-> **Purpose:** This report is owned by the **Website Health specialist agent**. It tracks the overall
-> operational health of the Redline Labs storefront (`https://redlinelabs.shop`) — that the site
-> builds, deploys, renders, and serves its core pages and flows without errors. It is the
-> first place to look when "the site is broken" and the umbrella owner for issues that do not
-> clearly belong to one of the other specialist reports.
+Last Updated: 27 September 2026
 
-Last Updated: 25 September 2026
+Overall Status: Production deploy of `59caa08` (merge of pull request #68) completed on Vercel. Checkout now defaults to Australian bank transfer / PayID. GitHub CI (lint, typecheck, build) is green. This environment cannot open a TLS connection to `https://redlinelabs.shop`, so the live checkout configuration was not confirmed. If `PAYID_ADDRESS` and `PAYID_ACCOUNT_NAME` are unset on the Vercel production project, the checkout button stays disabled.
 
-Overall Status: The live site at https://redlinelabs.shop/ is up, Stripe live checkout is configured, and the main catalogue pages return 200. Checkout on this branch no longer treats a browser store-credit balance as a Stripe coupon. That fix is not on production until it is reviewed and deployed. The current design system is Redline Labs black and gold.
+## Critical Issues
 
-## Scope / responsibilities
+- **Confirm the bank-transfer environment before treating checkout as live.** `NEXT_PUBLIC_PAYMENTS_PROVIDER` defaults to `bank_transfer` when unset. Checkout is offered only when `PAYID_ADDRESS`, `PAYID_ACCOUNT_NAME`, and `DATABASE_URL` are all set (`bankTransferConfigured`). The previous production rail was Payoneer. The PayID variables are new. This run could not read Vercel environment values or the live `/api/checkout` response. Until those three names are set, customers cannot place an order. Do not point the flag back at `stripe` to paper over a missing PayID: that flag selects the Payoneer card rail, and pull request #68 switched off that rail because live card charges were blocked.
 
-- Successful production build (`next build`) and Vercel deployment health.
-- Availability and correct rendering of core routes: home (`/`), catalogue (`/shop`),
-  product pages (`/product/[slug]`), cart (`/cart`), checkout (`/checkout`), account
-  (`/account`), and the policy pages.
-- Global layout, navigation (`Header`, `Footer`), providers, and error/not-found handling.
-- Console errors, hydration mismatches, broken images, and broken internal links.
-- Third-party embeds that affect page health (e.g. the optional AssistLoop chat widget).
-- Redirects declared in `next.config.ts` resolving correctly.
+## High Priority Issues
 
-## Out of scope (see sibling reports)
+- **`/order/[reference]` is the payment-instruction page and it is public.** Anyone with the reference sees the customer name, email, shipping address, line items, amount, PayID, and account name. References are six characters from a 32-character alphabet (about 30 bits) so they can be retyped into a transfer description. There is no rate limit on the page. Owned by `security-compliance-health.md`. Do not add an account wall without a replacement way to show payment instructions; this repo still has no transactional email.
+- **`POST /api/checkout` does not store a shipping address.** The checkout page uses `startCartCheckoutSession`, which does store shipping. The HTTP route omits it. Owned by `ecommerce-cro-health.md`.
+- **`POST /api/checkout` returns the thrown error message to the client.** The server action replaces that with a fixed sentence. A database error on the HTTP route can leak into the JSON body. Owned by `security-compliance-health.md`.
+- **Payment instructions are not emailed.** `src/lib/bank-transfer-checkout.ts` records that. The order page tells the customer to bookmark it. Owned by `ecommerce-cro-health.md`.
 
-- Search/structured-data specifics → `seo-aeo-health.md`
-- Catalogue/product data correctness → `catalogue-merchandising-health.md`
-- Cart/checkout conversion tuning → `ecommerce-cro-health.md`
-- Automated tests & performance budgets → `qa-performance-health.md`
-- Secrets, headers, compliance → `security-compliance-health.md`
+## Medium Priority Issues
 
-## Key files & signals
+- GitHub Actions runs lint, typecheck, and `next build`. It does not run `npm test`. That is how `account-data.test.ts` stayed red after pull request #62 removed the `.ts` extension Node's test runner needs. The import is restored on this branch.
+- `npm test` prints `MODULE_TYPELESS_PACKAGE_JSON` because `package.json` has no `"type": "module"`.
+- When bank transfer is not configured, the checkout page tells the customer to add `PAYID_ADDRESS`, `PAYID_ACCOUNT_NAME`, and `DATABASE_URL`. That copy is an operator message on a customer page.
+- Catalogue, SEO, and older dead-code notes from 25 September are unchanged and still belong to the sibling reports.
 
-- `next.config.ts` — image `remotePatterns`, redirects.
-- `src/app/layout.tsx` — root layout, global chrome, metadata base.
-- `src/app/not-found.tsx`, `src/components/RouteFallback.tsx` — error surfaces.
-- `src/components/Header.tsx`, `src/components/Footer.tsx` — global navigation.
-- Vercel deployment logs and Preview URLs per branch/PR.
+## Low Priority Issues
 
-## Health checklist
+- Root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`, default `public/*.svg` files, and unused `public/brand/hero.png` and `public/brand/logo.png` are still unused.
+- `SITE_HEALTH.md` still notes Next.js `16.3.4` versus the `16.3.6` ImageResponse advisory. This storefront does not import `next/og`. Bump when the registry is reachable and `npm audit` can run.
 
-- [x] `npm run build` completes with all routes generated. Local build on 25 September 2026 succeeded, including `/product/bacterial-water`. CI on the base branch now runs lint, typecheck, and build.
-- [x] Home, catalogue, and a sample product page return HTTP 200. Production probe the same day: home, shop, about, FAQ, contact, cart, checkout, account, four policy pages, and `/product/bpc-157` returned 200.
-- [x] No console/hydration errors on core pages. Local browser pass reported no console issues.
-- [x] Header/footer links resolve (no 404s). Those routes returned 200. Mobile menu showed Home, Shop, About, FAQ, and Contact.
-- [ ] Declared redirects (`/product/bac-water`, `/product/product-bacterial-water`) 308 to the canonical slug. Not re-checked in this pass.
-- [ ] Remote product images load from the allow-listed host. One sampled BPC-157 image returned 200. Image failures for other listings belong in `catalogue-merchandising-health.md`.
+## Changes Made
 
-## Current status
+- Order page passes `onceKey={order.reference}` to `ClearCartOnSuccess`. The first visit for that reference still empties the cart and promo code. A later visit, including a bookmark used to check payment status, leaves a newer cart alone. The Payoneer success page still clears on every visit because it has no order key.
+- `src/lib/account-data.ts` imports `./variant-label.ts` again so `npm test` can load it. The same extension is already used by `orders.ts` and `comments.ts`, and CI `next build` accepted those.
 
-Production is serving the site. It is behind the repository: `GET /product/bacterial-water` returned 404 on 25 September 2026 and that URL was absent from the live sitemap, while the listing is already in `src/data/products.json`. The homepage cache `age` was about 4.5 days. Publishing that listing is a deploy of existing catalogue commits, not part of the checkout change.
+## Tests Performed
 
-AssistLoop is enabled in production. The homepage HTML preloads `https://assistloop.ai/assistloop-widget.js`.
+- `node --experimental-strip-types --test src/lib/cart-clear.test.ts src/lib/account-data.test.ts`: 11 passed.
+- Full `src/lib/*.test.ts` run in this environment: 68 passed, 3 failed. The failures are `comments.test.ts`, `orders.test.ts`, and `orders-schema.test.ts`, all `ERR_MODULE_NOT_FOUND` for `@neondatabase/serverless`. `npm ci` could not install that package (`ECONNRESET` during TLS). They are not assertion failures.
+- GitHub Actions on `59caa08`: lint, typecheck, and build succeeded (run 36327474807).
+- Vercel production deployment of `59caa08` completed. Deployment URL was recorded on the GitHub deployment status. A TLS probe of `https://redlinelabs.shop` and of the `vercel.app` host failed in this environment with `SSL_ERROR_SYSCALL`, which matches the earlier network limit. No browser pass was possible here.
+- No card payment and no bank transfer was submitted.
 
-`npx tsc --noEmit` used to fail with `Cannot find name 'LayoutProps'` until `next build` generated route types. The base branch now types the root layout `children` as `ReactNode`, so that failure is closed on this merge.
+## Build Status
 
-Contact is a `mailto:` composer. The newsletter form says it does not start a mailing list. Both render and do what they say.
+The production commit `59caa08` built on GitHub Actions and Vercel. Local `npm ci` failed twice with `ECONNRESET` while downloading `@neondatabase/serverless`, so `npm run lint`, `npm run typecheck`, and `npm run build` could not be run in this environment. GitHub Actions remains the gate for those three. Production was not redeployed by this run. The fix is on a branch for review.
 
-### Handed to sibling reports
+## Outstanding Work
 
-These came out of the same pass. They stay listed here so the audit is not dropped, and the owning report should record them.
+- Set `PAYID_ADDRESS`, `PAYID_ACCOUNT_NAME`, and confirm `DATABASE_URL` on the Vercel production project, then redeploy so the build-time payments flag and the PayID details match. Confirm `GET /api/checkout` returns `configured: true` before calling checkout healthy.
+- Set `ADMIN_API_SECRET` before using `GET /api/admin/orders` or `POST /api/admin/orders/[reference]/paid`. Leave it unset to keep those routes closed. Never commit the value.
+- Security agent: decide whether the public order page should keep showing email and street address, and whether lookups need a rate limit.
+- E-commerce agent: pass shipping through `POST /api/checkout`, and decide how payment instructions are delivered if the customer loses the order URL.
+- Add `npm test` to `.github/workflows/ci.yml` so a red unit test cannot merge on a green lint/build.
+- Keep the Redline Labs black and gold storefront. Do not apply a Metro Uniforms redesign.
 
-- `ecommerce-cro-health.md`: checkout used to create a Stripe coupon from a browser store-credit amount. Account balances live only in `localStorage`. This branch ignores that amount and no longer subtracts it from “Due now”. The CRO checklist still says store credit should apply at checkout; that item disagrees with this code.
-- `ecommerce-cro-health.md`: the live checkout path did not require age and research-use confirmation on the server. The server action and `POST /api/checkout` now reject a session unless both are true. Account, FAQ, checkout, and the restock control no longer promise email alerts or an automatic credit deduction.
-- `security-compliance-health.md`: accounts, orders, addresses, and stock alerts are browser-local. There is no Stripe webhook. `GET /api/checkout/session` returns email and shipping to anyone with the Checkout Session id. Live homepage headers were HSTS only, plus `Access-Control-Allow-Origin: *`.
-- `seo-aeo-health.md`: product JSON-LD marks every listing `InStock`. FAQ content has no `FAQPage` schema. Slugs include `products-dsip`, `product-tb-1`, and the misspelling `products-kisspepien`.
-- `catalogue-merchandising-health.md`: listing titles mix case. Catalogue photos are remote `i0.wp.com` files with a `/brand/vial.png` fallback.
-- `qa-performance-health.md`: no product analytics in the repo. Draft pull request `#22` is Vercel Speed Insights. The test runner warns that `package.json` has no `"type": "module"`. Dead code: root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`, default `public/*.svg` files, and unused `public/brand/hero.png` and `public/brand/logo.png`.
+## Recommendations
 
-### Changes on this branch
-
-- Checkout no longer turns a browser store-credit balance into a Stripe coupon.
-- Checkout requires age and research-use confirmation before creating a session.
-- Checkout, account, FAQ, and the product restock control match that behaviour.
-- No visual redesign. Header, gold/black palette, catalogue data, and the DGC20 coupon behaviour are unchanged.
-
-### Tests performed
-
-- `npm test`: 32 passed, 0 failed.
-- `npm run lint`: passed.
-- `npm run build` (Next.js 16.3.4): passed. Static product paths include `/product/bacterial-water`.
-- `npx tsc --noEmit` after that build: passed. Re-run after this merge because the base branch added `npm run typecheck` and changed `src/app/layout.tsx`.
-- Local browser pass against `next start`: FAQ account answer, account benefit cards, BPC-157 restock line, shop search `bpc`, checkout summary with store credit $0.00, and the mobile menu at 390px. No card payment was submitted.
-
-### Build status
-
-Local production build succeeded on 25 September 2026 before this merge. This branch has not been deployed. Production was not updated.
-
-### Outstanding work
-
-- Review and, only when explicitly requested, deploy the checkout fix. Production still applies client-supplied store credit until then.
-- Decide whether Bacterial Water should be published by deploying the existing catalogue commits.
-- Keep the Redline Labs black and gold storefront. A historical branch named `cursor/metro-uniforms-about-151c` is not the current brand.
-- Use a Vercel preview for this branch. Do not promote it to production without an explicit request.
+- Treat a missing PayID configuration as a checkout outage, not as a copy tweak.
+- Keep one Neon client (`src/lib/db.ts`). Do not add another.
+- Leave the card rail behind `NEXT_PUBLIC_PAYMENTS_PROVIDER=stripe`. Switching it requires a rebuild because the flag is inlined at build time.
 
 ## Change log
 
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
-| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. Render and deploy findings stay here. Checkout, security, SEO, catalogue, and test findings are handed to the sibling reports. |
+| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. |
+| 2026-09-27 | website health | Recorded the bank-transfer production deploy, the unverified PayID configuration, and the order-page cart clear. |
