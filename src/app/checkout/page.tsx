@@ -11,6 +11,7 @@ import { useAccount } from "@/lib/account";
 import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
+import { paymentsProvider } from "@/lib/payments-provider";
 import { checkoutTotals } from "@/lib/promo";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -28,7 +29,47 @@ function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
   };
 }
 
+const PROVIDER_COPY = {
+  bank_transfer: {
+    intro:
+      "Payment is by Australian bank transfer or PayID. The next screen shows the PayID address, the amount, and the reference to quote in the transfer description.",
+    paying: "Ordering as",
+    payingDetail: "Payment instructions appear on the next screen.",
+    addressNote: "This address is saved with the order before payment instructions are shown.",
+    creditNote: "It is not deducted from the bank transfer total.",
+    summaryNote:
+      "Store credit saved in this browser is not deducted from the bank transfer total. Apply a coupon for 20% off the total order amount. The amount owed is taken from the catalogue, not from the browser cart.",
+    setup: (
+      <>
+        Bank transfer checkout is not configured. Add{" "}
+        <code className="text-[#d4af37]">PAYID_ADDRESS</code>,{" "}
+        <code className="text-[#d4af37]">PAYID_ACCOUNT_NAME</code>, and{" "}
+        <code className="text-[#d4af37]">DATABASE_URL</code>.
+      </>
+    ),
+  },
+  stripe: {
+    intro:
+      "Payment continues on the card processor. It collects the card, and the charge is sent to the merchant account. You return here after payment.",
+    paying: "Paying as",
+    payingDetail: "Card details are handled by the card processor.",
+    addressNote: "This address is saved with the order before the card processor takes payment.",
+    creditNote: "It is not deducted from the card charge.",
+    summaryNote:
+      "Store credit saved in this browser is not deducted from the card charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
+    setup: (
+      <>
+        Payoneer checkout is not configured. Add{" "}
+        <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
+        <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>. Production uses the live
+        Payoneer API.
+      </>
+    ),
+  },
+} as const;
+
 export default function CheckoutPage() {
+  const copy = PROVIDER_COPY[paymentsProvider()];
   const { items } = useCart();
   const { promo } = usePromo();
   const { user, hydrated } = useAccount();
@@ -115,7 +156,7 @@ export default function CheckoutPage() {
             </p>
             <p className="mt-2 text-sm leading-6 text-[#8f8c84]">
               Sign in to keep order history and saved addresses in this browser.
-              Store credit on the account page is not deducted from the card charge.
+              Store credit on the account page is not deducted from the order total.
             </p>
             <Link href="/account?next=/checkout" className="btn mt-4">
               Sign in or create account
@@ -207,18 +248,14 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-[#8f8c84]">
-                  This address is saved with the order before Payoneer takes payment.{" "}
+                  {copy.addressNote}{" "}
                   <Link href="/account#addresses" className="text-[#d4af37]">
                     Edit addresses
                   </Link>
                 </p>
               </fieldset>
             )}
-            <p className="text-sm leading-6 text-[#8f8c84]">
-              Payment continues on Payoneer. Payoneer collects the card, and the
-              charge is sent to the Payoneer merchant account. You return here
-              after payment.
-            </p>
+            <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
               I confirm I am 18 years of age or older.
@@ -235,10 +272,7 @@ export default function CheckoutPage() {
             )}
             {configured === false && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
-                Payoneer checkout is not configured. Add{" "}
-                <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-                <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>.
-                Production uses the live Payoneer API.
+                {copy.setup}
               </p>
             )}
             <button type="submit" className="btn" disabled={configured !== true}>
@@ -248,7 +282,7 @@ export default function CheckoutPage() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm leading-6 text-[#8f8c84]">
-              Paying as {email}. Card details are handled by Payoneer.
+              {copy.paying} {email}. {copy.payingDetail}
               {promo
                 ? ` ${promo.percentOff}% off the total order amount is applied.`
                 : ""}
@@ -304,7 +338,7 @@ export default function CheckoutPage() {
         {browserCreditCents > 0 && (
           <p className="mt-2 text-xs leading-5 text-[#8f8c84]">
             This browser shows {formatPrice(centsToDollars(browserCreditCents))} saved
-            credit. It is not deducted from the Payoneer charge.
+            credit. {copy.creditNote}
           </p>
         )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
@@ -312,10 +346,7 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Store credit saved in this browser is not deducted from the Payoneer
-          charge. Apply a coupon for 20% off the total order amount. Prices
-          charged by Payoneer are taken from the catalogue, not from the browser
-          cart. See the{" "}
+          {copy.summaryNote} See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}
