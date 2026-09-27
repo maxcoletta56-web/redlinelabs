@@ -1,0 +1,39 @@
+name: orders migration check
+
+on:
+  push:
+    branches:
+      - rlorders-table-schema-migration-35a1
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    name: apply the migration to a real postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Print the generated migration
+        run: node -e "import('./scripts/orders-migration.mjs').then((m) => console.log(m.ordersMigrationSql()))"
+      - name: Verify against postgres
+        run: node scripts/verify-orders-migration.mjs
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      - name: Unit tests
+        run: node --experimental-strip-types --test src/lib/orders-migration.test.ts src/lib/orders-schema.test.ts
