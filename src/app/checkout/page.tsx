@@ -34,6 +34,7 @@ export default function CheckoutPage() {
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
@@ -45,11 +46,17 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
+      .then((data: { configured?: boolean; publishableKey?: string | null }) => {
+        const key =
+          typeof data.publishableKey === "string" && data.publishableKey.startsWith("pk_")
+            ? data.publishableKey
+            : null;
+        setPublishableKey(key);
+        setConfigured(Boolean(data.configured) && Boolean(key));
       })
       .catch(() => {
         setConfigured(false);
+        setPublishableKey(null);
       });
   }, []);
 
@@ -74,10 +81,6 @@ export default function CheckoutPage() {
         qty: item.qty,
       })),
     [items],
-  );
-  const shipping = useMemo(
-    () => (selectedAddress ? shippingFromAddress(selectedAddress) : null),
-    [selectedAddress],
   );
 
   if (items.length === 0) {
@@ -207,7 +210,7 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-[#8f8c84]">
-                  This address is saved with the order before Payoneer takes payment.{" "}
+                  Stripe will auto-fill this Australian shipping address.{" "}
                   <Link href="/account#addresses" className="text-[#d4af37]">
                     Edit addresses
                   </Link>
@@ -215,9 +218,9 @@ export default function CheckoutPage() {
               </fieldset>
             )}
             <p className="text-sm leading-6 text-[#8f8c84]">
-              Payment continues on Payoneer. Payoneer collects the card, and the
-              charge is sent to the Payoneer merchant account. You return here
-              after payment.
+              Payment stays on this page. Stripe collects the card and Australian
+              shipping address inside the embedded checkout. After a card payment
+              it does not redirect away.
             </p>
             <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
@@ -235,10 +238,12 @@ export default function CheckoutPage() {
             )}
             {configured === false && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
-                Payoneer checkout is not configured. Add{" "}
-                <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-                <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>.
-                Production uses the live Payoneer API.
+                Stripe live checkout is not configured. Add{" "}
+                <code className="text-[#d4af37]">STRIPE_SECRET_KEY</code>{" "}
+                (<code className="text-[#d4af37]">sk_live_...</code>) and{" "}
+                <code className="text-[#d4af37]">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>{" "}
+                (<code className="text-[#d4af37]">pk_live_...</code>). Test keys
+                are ignored on the live site.
               </p>
             )}
             <button type="submit" className="btn" disabled={configured !== true}>
@@ -248,22 +253,29 @@ export default function CheckoutPage() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm leading-6 text-[#8f8c84]">
-              Paying as {email}. Card details are handled by Payoneer.
+              Paying as {email}. Card details are handled by Stripe.
               {promo
                 ? ` ${promo.percentOff}% off the total order amount is applied.`
                 : ""}
             </p>
             <div className="surface overflow-hidden p-3">
-              <CartCheckout
-                items={cartItems}
-                email={email}
-                firstName={firstName}
-                lastName={lastName}
-                shipping={shipping}
-                promoCode={promo?.code ?? null}
-                ageConfirmed
-                researchUse
-              />
+              {publishableKey ? (
+                <CartCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  publishableKey={publishableKey}
+                  shipping={selectedAddress ? shippingFromAddress(selectedAddress) : null}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              ) : (
+                <p className="text-sm leading-6 text-[#d4af37]" role="status">
+                  Stripe checkout is not available.
+                </p>
+              )}
             </div>
             <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
@@ -304,7 +316,7 @@ export default function CheckoutPage() {
         {browserCreditCents > 0 && (
           <p className="mt-2 text-xs leading-5 text-[#8f8c84]">
             This browser shows {formatPrice(centsToDollars(browserCreditCents))} saved
-            credit. It is not deducted from the Payoneer charge.
+            credit. It is not deducted from the card charge.
           </p>
         )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
@@ -312,9 +324,9 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          Store credit saved in this browser is not deducted from the Payoneer
+          Store credit saved in this browser is not deducted from the card
           charge. Apply a coupon for 20% off the total order amount. Prices
-          charged by Payoneer are taken from the catalogue, not from the browser
+          charged by Stripe are taken from the catalogue, not from the browser
           cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy

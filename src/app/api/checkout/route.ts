@@ -1,22 +1,24 @@
 import { NextResponse } from "next/server";
-import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-session";
-import { resolvePayoneer } from "@/lib/payoneer";
+import { createEmbeddedCheckoutSession } from "@/lib/checkout-session";
+import { stripeResolved } from "@/lib/stripe";
 import { checkoutBodySchema } from "@/lib/validation";
 
 export async function GET() {
-  const resolved = resolvePayoneer(process.env);
+  const resolved = stripeResolved();
   return NextResponse.json({
-    configured: payoneerConfigured(),
+    configured: Boolean(resolved),
     mode: resolved?.mode ?? null,
+    publishableKey: resolved?.publishable ?? null,
   });
 }
 
 export async function POST(request: Request) {
-  if (!payoneerConfigured()) {
+  const resolved = stripeResolved();
+  if (!resolved) {
     return NextResponse.json(
       {
         error:
-          "Payoneer is not configured. Add PAYONEER_MERCHANT_CODE and PAYONEER_PAYMENT_TOKEN. Production uses the live Payoneer API.",
+          "Stripe is not configured with matching live keys. Add STRIPE_SECRET_KEY (sk_live_...) and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (pk_live_...).",
       },
       { status: 503 },
     );
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const redirectUrl = await createPayoneerCheckout({
+    const clientSecret = await createEmbeddedCheckoutSession({
       items: parsed.data.items,
       email: parsed.data.email,
       firstName: parsed.data.firstName,
@@ -47,9 +49,9 @@ export async function POST(request: Request) {
       ageConfirmed: true,
       researchUse: true,
     });
-    return NextResponse.json({ redirectUrl });
+    return NextResponse.json({ clientSecret, mode: resolved.mode });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Payoneer checkout failed";
+    const message = error instanceof Error ? error.message : "Stripe checkout failed";
     const status = message.includes("Cart is empty") || message.includes("quantity") ? 400 : 502;
     return NextResponse.json({ error: message }, { status });
   }

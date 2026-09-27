@@ -1,6 +1,6 @@
 "use server";
 
-import { createPayoneerCheckout, type ShippingAddressInput } from "@/lib/checkout-session";
+import { createEmbeddedCheckoutSession, type ShippingAddressInput } from "@/lib/checkout-session";
 import { checkoutBodySchema } from "@/lib/validation";
 
 export async function startCartCheckoutSession(input: {
@@ -26,7 +26,7 @@ export async function startCartCheckoutSession(input: {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid checkout payload");
   }
 
-  return createPayoneerCheckout({
+  return createEmbeddedCheckoutSession({
     items: parsed.data.items,
     email: parsed.data.email,
     firstName: parsed.data.firstName,
