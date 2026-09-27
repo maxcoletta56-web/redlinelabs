@@ -5,6 +5,7 @@ import {
   findOrder,
   insertOrder,
   listRecentOrders,
+  markOrderFailed,
   markOrderPaid,
   readOrderRow,
   type NewOrder,
@@ -59,6 +60,7 @@ test("insert binds every order field as a parameter", async () => {
   assert.match(insert?.query ?? "", /ON CONFLICT \(reference\) DO NOTHING/);
   assert.deepEqual(insert?.params, [
     reference,
+    "awaiting_payment",
     "aud",
     20000,
     16000,
@@ -138,6 +140,21 @@ test("rows with an unusable reference or status are not trusted", () => {
     readOrderRow({ reference: "RL-7F3K2Q", status: "refunded" })?.status,
     "awaiting_payment",
   );
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "pending" })?.status, "pending");
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "failed" })?.status, "failed");
+});
+
+test("marking failed does not downgrade a paid order", async () => {
+  const { calls, sql } = recorder((call) => {
+    if (call.query.startsWith("UPDATE") && call.query.includes("status = 'failed'")) return [];
+    if (call.query.startsWith("SELECT")) {
+      return [{ reference: "RL-7F3K2Q", status: "paid", paid_at: "2026-09-27T01:02:03Z" }];
+    }
+    return [];
+  });
+  const updated = await markOrderFailed("RL-7F3K2Q", sql);
+  assert.match(calls[1]?.query ?? "", /status IN \('pending', 'failed'\)/);
+  assert.equal(updated?.status, "paid");
 });
 
 test("item and shipping snapshots survive a jsonb round trip as text", () => {

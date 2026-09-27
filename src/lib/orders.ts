@@ -1,7 +1,7 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "paid", "failed"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -51,6 +51,8 @@ export type NewOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  /** Bank transfer stays `awaiting_payment`. Card checkout inserts `pending`. */
+  status?: OrderStatus;
 };
 
 export class OrdersUnavailableError extends Error {
@@ -98,7 +100,7 @@ const ORDER_COLUMNS = [
 
 const INSERT_ORDER =
   "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) " +
+  "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
@@ -107,6 +109,15 @@ const LIST_ORDERS = `SELECT ${ORDER_COLUMNS} FROM orders ORDER BY orders.created
 
 const MARK_ORDER_PAID =
   `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()) WHERE reference = $1 ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+/** Does not downgrade a paid order, and does not touch a bank-transfer order. */
+const MARK_ORDER_FAILED =
+  `UPDATE orders SET status = 'failed' WHERE reference = $1 AND status IN ('pending', 'failed') ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+const REOPEN_FAILED_ORDER =
+  `UPDATE orders SET status = 'pending' WHERE reference = $1 AND status = 'failed' ` +
   `RETURNING ${ORDER_COLUMNS}`;
 
 export function ensureOrdersTable(sql: Sql) {
@@ -215,8 +226,13 @@ export async function insertOrder(
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const reference = generateOrderReference();
+    const status = order.status ?? "awaiting_payment";
+    if (!(ORDER_STATUSES as readonly string[]).includes(status)) {
+      throw new Error("Unsupported order status");
+    }
     const result = await sql.query(INSERT_ORDER, [
       reference,
+      status,
       order.currency,
       order.subtotalCents,
       order.totalCents,
@@ -269,4 +285,37 @@ export async function markOrderPaid(
   await ensureOrdersTable(sql);
   const result = await sql.query(MARK_ORDER_PAID, [normalized]);
   return readOrderRow(rowsOf(result)[0]) ?? null;
+}
+
+/**
+ * Marks a card order failed. A paid order is left paid. A bank-transfer order
+ * (`awaiting_payment`) is left alone so a card webhook cannot hide its PayID.
+ */
+export async function markOrderFailed(
+  reference: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_ORDER_FAILED, [normalized]);
+  const updated = readOrderRow(rowsOf(result)[0]);
+  if (updated) return updated;
+  return findOrder(normalized, sql);
+}
+
+/** Lets a failed card order be charged again without creating a second order. */
+export async function reopenFailedOrder(
+  reference: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(REOPEN_FAILED_ORDER, [normalized]);
+  const updated = readOrderRow(rowsOf(result)[0]);
+  if (updated) return updated;
+  return findOrder(normalized, sql);
 }

@@ -8,6 +8,7 @@ import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { findOrder, type StoredOrder } from "@/lib/orders";
 import { formatPrice } from "@/lib/products";
+import { volumeDiscountCents } from "@/lib/promo";
 import { pageMetadata } from "@/lib/seo";
 
 /** Payment clears out of band, so the status must never be served from a cache. */
@@ -39,13 +40,20 @@ function formatDate(iso: string | null) {
 }
 
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
+  const label =
+    order.status === "paid"
+      ? "Payment received"
+      : order.status === "pending"
+        ? "Card payment processing"
+        : order.status === "failed"
+          ? "Card payment failed"
+          : "Awaiting payment";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : "Awaiting payment"}
+      {label}
     </p>
   );
 }
@@ -72,7 +80,7 @@ export default async function OrderPage({ params }: Props) {
 
   return (
     <div className="wrap max-w-[760px] py-16">
-      <ClearCartOnSuccess />
+      {(paid || order.status === "awaiting_payment") && <ClearCartOnSuccess />}
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
@@ -87,7 +95,11 @@ export default async function OrderPage({ params }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+          : order.status === "pending"
+            ? `The card payment for this order is still being confirmed. A receipt is emailed to ${order.email} when it succeeds.`
+            : order.status === "failed"
+              ? "The card payment did not complete. You can try the card again from checkout. This order has not been paid."
+              : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
@@ -109,11 +121,23 @@ export default async function OrderPage({ params }: Props) {
             </li>
           ))}
         </ul>
+        {volumeDiscountCents(order.subtotalCents) > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders of $200 or more</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(volumeDiscountCents(order.subtotalCents) / 100)}
+            </span>
+          </div>
+        )}
         {order.promoCode && (
           <div className="mb-3 flex justify-between text-sm">
             <span>Promo code {order.promoCode}</span>
             <span className="text-[#d4af37]">
-              −{formatPrice((order.subtotalCents - order.totalCents) / 100)}
+              −
+              {formatPrice(
+                Math.max(0, order.subtotalCents - volumeDiscountCents(order.subtotalCents) - order.totalCents) /
+                  100,
+              )}
             </span>
           </div>
         )}
@@ -157,7 +181,7 @@ export default async function OrderPage({ params }: Props) {
         </dl>
       </section>
 
-      {!paid && (
+      {order.status === "awaiting_payment" && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"
