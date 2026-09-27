@@ -4,6 +4,8 @@ import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-sessi
 import { paymentsProvider } from "@/lib/payments-provider";
 import { resolvePayoneer } from "@/lib/payoneer";
 import { checkoutBodySchema } from "@/lib/validation";
+import { whopCheckoutConfigured, whopEnvironment } from "@/lib/whop-env";
+import { openWhopCardCheckout } from "@/lib/whop-checkout";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
@@ -17,29 +19,18 @@ const PAYONEER_SETUP =
 
 export async function GET() {
   const provider = paymentsProvider();
-  if (provider === "bank_transfer") {
-    return NextResponse.json({
-      provider,
-      configured: bankTransferConfigured(),
-      mode: null,
-    });
-  }
   return NextResponse.json({
     provider,
-    configured: payoneerConfigured(),
-    mode: resolvePayoneer(process.env)?.mode ?? null,
+    configured: bankTransferConfigured() || whopCheckoutConfigured(),
+    bankTransferConfigured: bankTransferConfigured(),
+    cardConfigured: whopCheckoutConfigured(),
+    cardEnvironment: whopEnvironment(),
+    mode: provider === "bank_transfer" ? null : resolvePayoneer(process.env)?.mode ?? null,
   });
 }
 
 export async function POST(request: Request) {
   const provider = paymentsProvider();
-  const configured = provider === "bank_transfer" ? bankTransferConfigured() : payoneerConfigured();
-  if (!configured) {
-    return NextResponse.json(
-      { error: provider === "bank_transfer" ? BANK_TRANSFER_SETUP : PAYONEER_SETUP },
-      { status: 503 },
-    );
-  }
 
   let json: unknown;
   try {
@@ -56,7 +47,54 @@ export async function POST(request: Request) {
     );
   }
 
+  const paymentMethod =
+    json && typeof json === "object" && !Array.isArray(json) && "paymentMethod" in json
+      ? String((json as { paymentMethod?: unknown }).paymentMethod ?? "")
+      : "";
+
+  if (paymentMethod === "card") {
+    if (!whopCheckoutConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "Card checkout is not configured. Add WHOP_API_KEY, WHOP_COMPANY_ID, WHOP_WEBHOOK_SECRET, and DATABASE_URL.",
+        },
+        { status: 503 },
+      );
+    }
+  } else {
+    const configured = provider === "bank_transfer" ? bankTransferConfigured() : payoneerConfigured();
+    if (!configured) {
+      return NextResponse.json(
+        { error: provider === "bank_transfer" ? BANK_TRANSFER_SETUP : PAYONEER_SETUP },
+        { status: 503 },
+      );
+    }
+  }
+
   try {
+    if (paymentMethod === "card") {
+      const origin = new URL(request.url).origin;
+      const session = await openWhopCardCheckout({
+        items: parsed.data.items,
+        email: parsed.data.email,
+        firstName: parsed.data.firstName,
+        lastName: parsed.data.lastName,
+        promoCode: parsed.data.promoCode,
+        ageConfirmed: true,
+        researchUse: true,
+        origin,
+      });
+      return NextResponse.json({
+        provider: "whop",
+        reference: session.reference,
+        sessionId: session.sessionId,
+        planId: session.planId,
+        environment: session.environment,
+        returnUrl: session.returnUrl,
+      });
+    }
+
     if (provider === "bank_transfer") {
       const order = await createBankTransferOrder({
         items: parsed.data.items,
