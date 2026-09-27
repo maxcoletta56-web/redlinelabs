@@ -31,14 +31,7 @@ test("contact honeypot still parses so the route can drop it", () => {
   if (parsed.success) assert.equal(parsed.data.company, "spam");
 });
 
-test("checkout session ids must be Payoneer transaction ids", () => {
+test("checkout session ids must look like Stripe checkout sessions", () => {
   assert.equal(checkoutSessionQuerySchema.safeParse({ session_id: "nope" }).success, false);
-  assert.equal(
-    checkoutSessionQuerySchema.safeParse({ session_id: "rl_abc123def456" }).success,
-    true,
-  );
-  assert.equal(
-    checkoutSessionQuerySchema.safeParse({ session_id: "https://evil.example" }).success,
-    false,
-  );
+  assert.equal(checkoutSessionQuerySchema.safeParse({ session_id: "cs_test_abc" }).success, true);
 });

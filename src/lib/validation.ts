@@ -91,7 +91,7 @@ export const checkoutBodySchema = { safeParse: parseCheckoutBody };
 export function parseCheckoutSessionQuery(value: unknown): ParseResult<{ session_id: string }> {
   const row = asRecord(value);
   const sessionId = readString(row?.session_id);
-  if (!/^[A-Za-z0-9_-]{6,80}$/.test(sessionId)) {
+  if (!/^cs_[a-zA-Z0-9_]+$/.test(sessionId)) {
     return fail("Missing checkout session");
   }
   return { success: true, data: { session_id: sessionId } };
