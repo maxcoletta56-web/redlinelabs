@@ -12,6 +12,7 @@ export type CheckoutBody = {
   researchUse: boolean;
   items: CartLineInput[];
   promoCode?: string | null;
+  paymentMethod: "card" | "bank_transfer";
 };
 
 export type ParseResult<T> =
@@ -72,6 +73,7 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
   const lastName = readString(row.lastName);
   const promoCode = row.promoCode == null ? null : readString(row.promoCode);
   if (promoCode && promoCode.length > 40) return fail("That promo code is not valid");
+  const paymentMethod = row.paymentMethod === "bank_transfer" ? "bank_transfer" : "card";
   return {
     success: true,
     data: {
@@ -82,6 +84,7 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
       researchUse: true,
       items,
       promoCode,
+      paymentMethod,
     },
   };
 }
