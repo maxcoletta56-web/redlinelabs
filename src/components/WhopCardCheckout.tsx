@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { startBankTransferCheckout } from "@/app/actions/checkout";
+import { useRouter } from "next/navigation";
+import { startWhopCardCheckout } from "@/app/actions/checkout";
+import { WhopCheckoutElement } from "@/components/WhopCheckoutElement";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import type { CartLineInput } from "@/lib/order";
 import { withTimeout } from "@/lib/with-timeout";
 
-/** Longer than the server-side provider timeout so the server message wins. */
 const SUBMIT_TIMEOUT_MS = 25_000;
 
-export function CartCheckout({
+type Session = {
+  sessionId: string;
+  planId: string;
+  environment: "sandbox" | "production";
+  reference: string;
+  returnUrl: string;
+};
+
+export function WhopCardCheckout({
   items,
   email,
   firstName,
@@ -29,13 +38,15 @@ export function CartCheckout({
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     withTimeout(
-      startBankTransferCheckout({
+      startWhopCardCheckout({
         items,
         email,
         firstName,
@@ -50,15 +61,21 @@ export function CartCheckout({
     )
       .then((result) => {
         if (cancelled) return;
-        if (result.ok) {
-          window.location.assign(result.redirectUrl);
+        if (!result.ok) {
+          setError(result.error);
           return;
         }
-        setError(result.error);
+        setSession({
+          sessionId: result.sessionId,
+          planId: result.planId,
+          environment: result.environment,
+          reference: result.reference,
+          returnUrl: result.returnUrl,
+        });
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
-        console.error("checkout submit failed", reason);
+        console.error("whop checkout failed", reason);
         setError(
           reason instanceof Error && reason.name === "TimeoutError"
             ? "Checkout is taking longer than expected. Nothing has been charged."
@@ -79,6 +96,7 @@ export function CartCheckout({
           className="btn"
           onClick={() => {
             setError(null);
+            setSession(null);
             setAttempt((count) => count + 1);
           }}
         >
@@ -95,9 +113,37 @@ export function CartCheckout({
     );
   }
 
+  if (!session) {
+    return (
+      <p className="text-sm leading-6 text-[#8f8c84]" role="status">
+        Preparing the secure card form.
+      </p>
+    );
+  }
+
   return (
-    <p className="text-sm leading-6 text-[#8f8c84]" role="status">
-      Creating your order and payment instructions.
-    </p>
+    <WhopCheckoutElement
+      sessionId={session.sessionId}
+      planId={session.planId}
+      returnUrl={session.returnUrl}
+      environment={session.environment}
+      email={email}
+      shipping={
+        shipping
+          ? {
+              name: shipping.name,
+              line1: shipping.line1,
+              line2: shipping.line2,
+              city: shipping.city,
+              state: shipping.state,
+              postalCode: shipping.postal_code,
+              country: shipping.country,
+            }
+          : null
+      }
+      onComplete={() => {
+        router.push(`/checkout/complete?status=success&order=${encodeURIComponent(session.reference)}`);
+      }}
+    />
   );
 }

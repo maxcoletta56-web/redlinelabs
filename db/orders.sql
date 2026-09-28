@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS orders (
   email TEXT NOT NULL,
   items JSONB NOT NULL,
   shipping JSONB,
+  volume_discount_cents INTEGER NOT NULL DEFAULT 0,
+  payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
+  whop_checkout_id TEXT,
+  whop_payment_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ
 );

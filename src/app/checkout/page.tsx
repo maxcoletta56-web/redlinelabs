@@ -7,11 +7,11 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field } from "@/components/Field";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
+import { WhopCardCheckout } from "@/components/WhopCardCheckout";
 import { useAccount } from "@/lib/account";
 import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
 import { checkoutTotals } from "@/lib/promo";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -29,52 +29,20 @@ function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
   };
 }
 
-const PROVIDER_COPY = {
-  bank_transfer: {
-    intro:
-      "Payment is by Australian bank transfer or PayID. The next screen shows the PayID address, the amount, and the reference to quote in the transfer description.",
-    paying: "Ordering as",
-    payingDetail: "Payment instructions appear on the next screen.",
-    addressNote: "This address is saved with the order before payment instructions are shown.",
-    creditNote: "It is not deducted from the bank transfer total.",
-    summaryNote:
-      "Store credit saved in this browser is not deducted from the bank transfer total. Apply a coupon for 20% off the total order amount. The amount owed is taken from the catalogue, not from the browser cart.",
-    setup: (
-      <>
-        Bank transfer checkout is not configured. Add{" "}
-        <code className="text-[#d4af37]">PAYID_ADDRESS</code>,{" "}
-        <code className="text-[#d4af37]">PAYID_ACCOUNT_NAME</code>, and{" "}
-        <code className="text-[#d4af37]">DATABASE_URL</code>.
-      </>
-    ),
-  },
-  stripe: {
-    intro:
-      "Payment continues on the card processor. It collects the card, and the charge is sent to the merchant account. You return here after payment.",
-    paying: "Paying as",
-    payingDetail: "Card details are handled by the card processor.",
-    addressNote: "This address is saved with the order before the card processor takes payment.",
-    creditNote: "It is not deducted from the card charge.",
-    summaryNote:
-      "Store credit saved in this browser is not deducted from the card charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
-    setup: (
-      <>
-        Payoneer checkout is not configured. Add{" "}
-        <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-        <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>. Production uses the live
-        Payoneer API.
-      </>
-    ),
-  },
-} as const;
+type PaymentMethod = "card" | "bank_transfer";
+
+type CheckoutAvailability = {
+  bankTransfer: boolean;
+  card: boolean;
+};
 
 export default function CheckoutPage() {
-  const copy = PROVIDER_COPY[paymentsProvider()];
   const { items } = useCart();
   const { promo } = usePromo();
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [availability, setAvailability] = useState<CheckoutAvailability | null>(null);
+  const [method, setMethod] = useState<PaymentMethod>("card");
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
@@ -86,11 +54,16 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
+      .then((data: CheckoutAvailability) => {
+        const next = {
+          bankTransfer: Boolean(data.bankTransfer),
+          card: Boolean(data.card),
+        };
+        setAvailability(next);
+        if (!next.card && next.bankTransfer) setMethod("bank_transfer");
       })
       .catch(() => {
-        setConfigured(false);
+        setAvailability({ bankTransfer: false, card: false });
       });
   }, []);
 
@@ -106,6 +79,11 @@ export default function CheckoutPage() {
   });
   const browserCreditCents = user?.storeCreditCents ?? 0;
   const payable = centsToDollars(totals.discountedCents);
+  const methodReady = availability
+    ? method === "card"
+      ? availability.card
+      : availability.bankTransfer
+    : false;
 
   const cartItems = useMemo(
     () =>
@@ -248,14 +226,54 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-[#8f8c84]">
-                  {copy.addressNote}{" "}
+                  This address is saved with the order.{" "}
                   <Link href="/account#addresses" className="text-[#d4af37]">
                     Edit addresses
                   </Link>
                 </p>
               </fieldset>
             )}
-            <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
+            <fieldset>
+              <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                Payment method
+              </legend>
+              <div className="space-y-2">
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "card"}
+                    onChange={() => setMethod("card")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Card</span>
+                    <span className="text-[#8f8c84]">
+                      Pay on this page with Whop. The card form stays here, including 3D Secure.
+                    </span>
+                  </span>
+                </label>
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "bank_transfer"}
+                    onChange={() => setMethod("bank_transfer")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Bank transfer or PayID</span>
+                    <span className="text-[#8f8c84]">
+                      The next screen shows the PayID, the amount, and the reference to quote.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+            <p className="text-sm leading-6 text-[#8f8c84]">
+              Orders of $200 or more take 10% off before a coupon. The amount is calculated from
+              the catalogue on the server.
+            </p>
             <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
               I confirm I am 18 years of age or older.
@@ -270,34 +288,63 @@ export default function CheckoutPage() {
                 {error}
               </p>
             )}
-            {configured === false && (
+            {availability && !methodReady && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
-                {copy.setup}
+                {method === "card" ? (
+                  <>
+                    Card checkout is not configured. Add{" "}
+                    <code className="text-[#d4af37]">WHOP_API_KEY</code>,{" "}
+                    <code className="text-[#d4af37]">WHOP_WEBHOOK_SECRET</code>, and{" "}
+                    <code className="text-[#d4af37]">DATABASE_URL</code>.
+                  </>
+                ) : (
+                  <>
+                    Bank transfer checkout is not configured. Add{" "}
+                    <code className="text-[#d4af37]">PAYID_ADDRESS</code>,{" "}
+                    <code className="text-[#d4af37]">PAYID_ACCOUNT_NAME</code>, and{" "}
+                    <code className="text-[#d4af37]">DATABASE_URL</code>.
+                  </>
+                )}
               </p>
             )}
-            <button type="submit" className="btn" disabled={configured !== true}>
+            <button type="submit" className="btn" disabled={!methodReady}>
               Continue to payment
             </button>
           </form>
         ) : (
           <div className="space-y-4">
             <p className="text-sm leading-6 text-[#8f8c84]">
-              {copy.paying} {email}. {copy.payingDetail}
-              {promo
-                ? ` ${promo.percentOff}% off the total order amount is applied.`
-                : ""}
+              {method === "card" ? "Paying" : "Ordering"} as {email}.{" "}
+              {method === "card"
+                ? "Card details are entered in the Whop form below."
+                : "Payment instructions appear on the next screen."}
+              {totals.volumeDiscountCents > 0 ? " 10% off this order is included." : ""}
+              {promo ? ` ${promo.percentOff}% off the total order amount is applied.` : ""}
             </p>
             <div className="surface overflow-hidden p-3">
-              <CartCheckout
-                items={cartItems}
-                email={email}
-                firstName={firstName}
-                lastName={lastName}
-                shipping={shipping}
-                promoCode={promo?.code ?? null}
-                ageConfirmed
-                researchUse
-              />
+              {method === "card" ? (
+                <WhopCardCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              ) : (
+                <CartCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              )}
             </div>
             <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
@@ -323,6 +370,14 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
+        {totals.volumeDiscountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders $200+</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+            </span>
+          </div>
+        )}
         {totals.discountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
@@ -338,7 +393,7 @@ export default function CheckoutPage() {
         {browserCreditCents > 0 && (
           <p className="mt-2 text-xs leading-5 text-[#8f8c84]">
             This browser shows {formatPrice(centsToDollars(browserCreditCents))} saved
-            credit. {copy.creditNote}
+            credit. It is not deducted from the amount due.
           </p>
         )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
@@ -346,7 +401,9 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          {copy.summaryNote} See the{" "}
+          Store credit saved in this browser is not deducted. Orders of $200 or more take 10% off
+          before a coupon. Prices charged are taken from the catalogue, not from the browser cart.
+          See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}

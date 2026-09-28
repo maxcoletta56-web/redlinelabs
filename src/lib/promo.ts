@@ -34,6 +34,28 @@ export function applyPercentOff(amountCents: number, percentOff: number) {
   return Math.round((amount * (100 - percent)) / 100);
 }
 
+/** Catalogue orders of $200 or more take 10% off before a promo code. */
+export const VOLUME_DISCOUNT_MIN_CENTS = 20_000;
+export const VOLUME_DISCOUNT_PERCENT = 10;
+
+export function volumeDiscountCents(subtotalCents: number) {
+  const subtotal = Math.max(0, Math.round(subtotalCents));
+  if (subtotal < VOLUME_DISCOUNT_MIN_CENTS) return 0;
+  return subtotal - applyPercentOff(subtotal, VOLUME_DISCOUNT_PERCENT);
+}
+
+export function priceOrderCents(subtotalCents: number, promo: CheckoutPromo | null) {
+  const volumeOff = volumeDiscountCents(subtotalCents);
+  const afterVolume = Math.max(0, subtotalCents - volumeOff);
+  const promoOff = promoDiscountCents(afterVolume, promo);
+  return {
+    subtotalCents,
+    volumeDiscountCents: volumeOff,
+    promoDiscountCents: promoOff,
+    totalCents: afterVolume - promoOff,
+  };
+}
+
 export function promoDiscountCents(subtotalCents: number, promo: CheckoutPromo | null) {
   if (!promo) return 0;
   return Math.max(0, subtotalCents - applyPercentOff(subtotalCents, promo.percentOff));
@@ -78,10 +100,11 @@ export function checkoutTotals({
   promo: CheckoutPromo | null;
 }) {
   const catalogCents = items.reduce((sum, item) => sum + toCents(item.price) * item.qty, 0);
-  const discountCents = promoDiscountCents(catalogCents, promo);
+  const priced = priceOrderCents(catalogCents, promo);
   return {
     catalogCents,
-    discountedCents: catalogCents - discountCents,
-    discountCents,
+    volumeDiscountCents: priced.volumeDiscountCents,
+    discountedCents: priced.totalCents,
+    discountCents: priced.promoDiscountCents,
   };
 }

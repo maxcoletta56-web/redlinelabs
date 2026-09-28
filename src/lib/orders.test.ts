@@ -54,11 +54,12 @@ test("insert binds every order field as a parameter", async () => {
 
   assert.match(reference, /^RL-[A-Z2-9]{6}$/);
   assert.match(calls[0]?.query ?? "", /^CREATE TABLE IF NOT EXISTS orders/);
-  const insert = calls[1];
+  const insert = calls.find((call) => call.query.startsWith("INSERT"));
   assert.match(insert?.query ?? "", /^INSERT INTO orders /);
   assert.match(insert?.query ?? "", /ON CONFLICT \(reference\) DO NOTHING/);
   assert.deepEqual(insert?.params, [
     reference,
+    "awaiting_payment",
     "aud",
     20000,
     16000,
@@ -68,6 +69,8 @@ test("insert binds every order field as a parameter", async () => {
     "ada@example.com",
     JSON.stringify(order.items),
     null,
+    0,
+    "bank_transfer",
   ]);
 });
 
@@ -108,7 +111,8 @@ test("lookup normalises the reference before binding it", async () => {
   );
   const found = await findOrder("rl-7f3k2q", sql);
   assert.equal(found?.reference, "RL-7F3K2Q");
-  assert.deepEqual(calls[1]?.params, ["RL-7F3K2Q"]);
+  const select = calls.find((call) => call.query.startsWith("SELECT"));
+  assert.deepEqual(select?.params, ["RL-7F3K2Q"]);
 });
 
 test("marking paid is idempotent in SQL and returns the stored row", async () => {
@@ -118,7 +122,8 @@ test("marking paid is idempotent in SQL and returns the stored row", async () =>
       : [],
   );
   const updated = await markOrderPaid("RL-7F3K2Q", sql);
-  assert.match(calls[1]?.query ?? "", /paid_at = COALESCE\(paid_at, now\(\)\)/);
+  const update = calls.find((call) => call.query.startsWith("UPDATE"));
+  assert.match(update?.query ?? "", /paid_at = COALESCE\(paid_at, now\(\)\)/);
   assert.equal(updated?.status, "paid");
   assert.equal(updated?.paidAt, "2026-09-27T01:02:03Z");
 });
@@ -126,9 +131,10 @@ test("marking paid is idempotent in SQL and returns the stored row", async () =>
 test("listing caps the limit it sends to Postgres", async () => {
   const { calls, sql } = recorder(() => []);
   await listRecentOrders(10_000, sql);
-  assert.deepEqual(calls[1]?.params, [200]);
   await listRecentOrders(0, sql);
-  assert.deepEqual(calls[2]?.params, [1]);
+  const limited = calls.filter((call) => call.query.includes("LIMIT"));
+  assert.deepEqual(limited[0]?.params, [200]);
+  assert.deepEqual(limited[1]?.params, [1]);
 });
 
 test("rows with an unusable reference or status are not trusted", () => {
