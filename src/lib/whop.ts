@@ -50,7 +50,7 @@ export function resolveWhop(
   return {
     apiKey,
     webhookSecret,
-    environment: resolveWhopEnvironment(env.WHOP_ENV),
+    environment: resolveWhopEnvironment(env.WHOP_ENV ?? env.WHOP_ENVIRONMENT),
     companyId,
     productId,
   };
@@ -82,6 +82,8 @@ export function whopCheckoutPayload(input: WhopCheckoutPayloadInput) {
     currency: "aud",
     initial_price: centsToAud(input.totalCents),
     plan_type: "one_time",
+    title: `Order ${input.orderId}`,
+    visibility: "hidden",
     release_method: "buy_now",
     force_create_new_plan: true,
     three_ds_level: "frictionless_if_required",
@@ -95,9 +97,14 @@ export function whopCheckoutPayload(input: WhopCheckoutPayloadInput) {
 
   const body: Record<string, unknown> = {
     mode: "payment",
+    currency: "aud",
     plan,
     metadata: { orderId: input.orderId },
     redirect_url: input.returnUrl,
+    payment_method_configuration: {
+      enabled: ["card"],
+      include_platform_defaults: false,
+    },
   };
   if (input.companyId) body.account_id = input.companyId;
   return body;
@@ -145,6 +152,7 @@ export async function createWhopCheckoutConfiguration(
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
+      "Api-Version-Date": "2026-09-25",
       "Idempotency-Key": input.orderId,
     },
     body: JSON.stringify(whopCheckoutPayload(input)),
@@ -163,11 +171,19 @@ export async function createWhopCheckoutConfiguration(
   return readWhopCheckoutSession(parsed);
 }
 
+/**
+ * Whop dashboard secrets are stored as `ws_...`. The HMAC key is that string.
+ * A `whsec_` value is a Standard Webhooks secret: the remainder is base64.
+ */
 function webhookSecretKey(secret: string) {
-  const encoded = secret.startsWith("whsec_") ? secret.slice("whsec_".length) : secret;
-  const key = Buffer.from(encoded, "base64");
-  if (key.length === 0) throw new WhopSignatureError("Webhook secret is empty");
-  return key;
+  const trimmed = secret.trim();
+  if (!trimmed) throw new WhopSignatureError("Webhook secret is empty");
+  if (trimmed.startsWith("whsec_")) {
+    const key = Buffer.from(trimmed.slice("whsec_".length), "base64");
+    if (key.length === 0) throw new WhopSignatureError("Webhook secret is empty");
+    return key;
+  }
+  return Buffer.from(trimmed);
 }
 
 function signaturesMatch(candidate: string, expected: string) {

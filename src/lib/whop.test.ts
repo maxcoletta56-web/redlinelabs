@@ -50,6 +50,14 @@ test("card checkout stays closed until both Whop secrets are set", () => {
   assert.equal(config?.webhookSecret, "whsec_abc");
   assert.equal(config?.environment, "sandbox");
   assert.equal(config?.companyId, "biz_123");
+  assert.equal(
+    resolveWhop({
+      WHOP_API_KEY: "key",
+      WHOP_WEBHOOK_SECRET: "ws_secret",
+      WHOP_ENVIRONMENT: "production",
+    })?.environment,
+    "production",
+  );
 });
 
 test("checkout configuration prices the server total in AUD and ignores a browser price", () => {
@@ -103,12 +111,13 @@ test("creates the checkout configuration against the sandbox API", async () => {
   assert.equal(calls[0]?.url, "https://sandbox-api.whop.com/api/v1/checkout_configurations");
   const headers = calls[0]?.init.headers as Record<string, string>;
   assert.equal(headers.Authorization, "Bearer sandbox-key");
+  assert.equal(headers["Api-Version-Date"], "2026-09-25");
   assert.equal(headers["Idempotency-Key"], "RL-7F3K2Q");
   const body = JSON.parse(String(calls[0]?.init.body)) as { plan: { initial_price: number } };
   assert.equal(body.plan.initial_price, 180);
 });
 
-test("webhook signatures use the raw body", () => {
+test("webhook signatures use the raw body and a ws_ secret as stored", () => {
   const body = JSON.stringify({ type: "payment.succeeded", data: { id: "pay_abc12345" } });
   const payload = verifyWhopWebhook({
     body,
@@ -117,6 +126,36 @@ test("webhook signatures use the raw body", () => {
     nowMs: 1_735_689_600_000,
   });
   assert.equal((payload as { type: string }).type, "payment.succeeded");
+
+  const whopSecret = "ws_sandbox_secret";
+  const id = "msg_ws";
+  const timestamp = "1735689600";
+  const whopSignature = createHmac("sha256", whopSecret)
+    .update(`${id}.${timestamp}.${body}`)
+    .digest("base64");
+  const whopPayload = verifyWhopWebhook({
+    body,
+    headers: new Headers({
+      "webhook-id": id,
+      "webhook-timestamp": timestamp,
+      "webhook-signature": `v1,${whopSignature}`,
+    }),
+    secret: whopSecret,
+    nowMs: 1_735_689_600_000,
+  });
+  assert.equal((whopPayload as { type: string }).type, "payment.succeeded");
+  const encodedSecret = `whsec_${Buffer.from(whopSecret).toString("base64")}`;
+  const encodedPayload = verifyWhopWebhook({
+    body,
+    headers: new Headers({
+      "webhook-id": id,
+      "webhook-timestamp": timestamp,
+      "webhook-signature": `v1,${whopSignature}`,
+    }),
+    secret: encodedSecret,
+    nowMs: 1_735_689_600_000,
+  });
+  assert.equal((encodedPayload as { type: string }).type, "payment.succeeded");
 
   assert.throws(
     () =>
