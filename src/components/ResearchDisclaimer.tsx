@@ -1,5 +1,6 @@
-export const RESEARCH_DISCLAIMER =
-  "For laboratory research use only. Not for human or veterinary consumption. Not evaluated or approved for the diagnosis, treatment, cure, or prevention of any disease.";
+import { RESEARCH_DISCLAIMER } from "@/lib/company";
+
+export { RESEARCH_DISCLAIMER };
 
 export function ResearchDisclaimer({ className = "" }: { className?: string }) {
   return (
