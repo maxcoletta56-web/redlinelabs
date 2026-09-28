@@ -5,8 +5,10 @@ import {
   checkoutTotals,
   lookupPromo,
   normalizePromoCode,
+  orderChargeCents,
   promoDiscountCents,
   stripeCouponParams,
+  volumeDiscountCents,
 } from "./promo.ts";
 import { creditToApplyCents } from "./store-credit.ts";
 
@@ -20,6 +22,15 @@ test("DGC20 is a 20 percent checkout code", () => {
   assert.equal(normalizePromoCode("  dgc20  "), "DGC20");
   assert.equal(lookupPromo("SAVE20"), null);
   assert.equal(lookupPromo(""), null);
+});
+
+test("orders of $200 or more take 10 percent off before a coupon", () => {
+  assert.equal(volumeDiscountCents(19_999), 0);
+  assert.equal(volumeDiscountCents(20_000), 2_000);
+  const charge = orderChargeCents(22_000, lookupPromo("DGC20"));
+  assert.equal(charge.volumeOffCents, 2_200);
+  assert.equal(charge.promoOffCents, 3_960);
+  assert.equal(charge.totalCents, 15_840);
 });
 
 test("takes 20 percent off the order total, not each line", () => {
@@ -72,9 +83,11 @@ test("applies store credit after 20 percent off the total", () => {
     promo: lookupPromo("DGC20"),
   });
   assert.equal(totals.catalogCents, 30300);
-  assert.equal(totals.discountedCents, 24240);
-  assert.equal(totals.discountCents, 6060);
+  assert.equal(totals.volumeOffCents, 3030);
+  assert.equal(totals.promoOffCents, 5454);
+  assert.equal(totals.discountedCents, 21816);
+  assert.equal(totals.discountCents, 8484);
   const creditCents = creditToApplyCents(1000, totals.discountedCents);
   assert.equal(creditCents, 1000);
-  assert.equal(totals.discountedCents - creditCents, 23240);
+  assert.equal(totals.discountedCents - creditCents, 20816);
 });

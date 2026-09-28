@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
-import { paymentsProvider } from "@/lib/payments-provider";
+import { OrderDiscountLines } from "@/components/OrderDiscountLines";
 import { checkoutTotals } from "@/lib/promo";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -89,14 +89,12 @@ export default function CartPage() {
               </span>
             </div>
             <PromoCodeForm id="cart-checkout-code" />
-            {totals.discountCents > 0 && (
-              <div className="mb-4 flex justify-between text-sm">
-                <span>{promo?.percentOff}% off total</span>
-                <span className="text-[#d4af37]">
-                  −{formatPrice(centsToDollars(totals.discountCents))}
-                </span>
-              </div>
-            )}
+            <OrderDiscountLines
+              className="mb-4"
+              volumeOffCents={totals.volumeOffCents}
+              promoOffCents={totals.promoOffCents}
+              promoPercent={promo?.percentOff}
+            />
             {totals.discountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
                 <span>Due</span>
@@ -106,11 +104,8 @@ export default function CartPage() {
               </div>
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              {paymentsProvider() === "bank_transfer"
-                ? "Checkout is paid by Australian bank transfer or PayID."
-                : "Checkout is charged through the card processor."}{" "}
-              Apply a coupon for 20% off the
-              total order amount. Dispatch notes are on the{" "}
+              Checkout offers card payment on the page, or an Australian bank transfer or PayID.
+              Orders of $200 or more take 10% off before a coupon. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
               </Link>

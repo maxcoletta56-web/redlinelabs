@@ -7,6 +7,7 @@ import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { findOrder, type StoredOrder } from "@/lib/orders";
+import { volumeDiscountCents } from "@/lib/promo";
 import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
 
@@ -38,16 +39,11 @@ function formatDate(iso: string | null) {
   }).format(date);
 }
 
-function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
-  return (
-    <p
-      className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
-      role="status"
-    >
-      {paid ? "Payment received" : "Awaiting payment"}
-    </p>
-  );
+function statusLabel(order: StoredOrder) {
+  if (order.status === "paid") return "Payment received";
+  if (order.status === "failed") return "Payment failed";
+  if (order.status === "pending") return "Payment pending";
+  return "Awaiting payment";
 }
 
 export default async function OrderPage({ params }: Props) {
@@ -66,7 +62,11 @@ export default async function OrderPage({ params }: Props) {
   if (!order) notFound();
 
   const paid = order.status === "paid";
-  const bank = resolveBankTransfer(process.env);
+  const card = order.paymentMethod === "card";
+  const showTransfer = !card && order.status === "awaiting_payment";
+  const bank = showTransfer ? resolveBankTransfer(process.env) : null;
+  const volumeOff = volumeDiscountCents(order.subtotalCents);
+  const promoOff = Math.max(0, order.subtotalCents - volumeOff - order.totalCents);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
 
@@ -80,14 +80,23 @@ export default async function OrderPage({ params }: Props) {
           { label: `Order ${order.reference}` },
         ]}
       />
-      <StatusBadge order={order} />
+      <p
+        className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
+        role="status"
+      >
+        {statusLabel(order)}
+      </p>
       <h1 className="mt-3 mb-2 text-[2.15rem] font-semibold tracking-[-0.03em]">
         Order {order.reference}
       </h1>
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+          : order.status === "failed"
+            ? "The card payment did not complete. Return to checkout to try again. Nothing was captured."
+            : card
+              ? "The card payment is still being confirmed. This page updates when Whop reports the result, and a confirmation email is sent when it succeeds."
+              : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
@@ -109,12 +118,16 @@ export default async function OrderPage({ params }: Props) {
             </li>
           ))}
         </ul>
-        {order.promoCode && (
+        {volumeOff > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders of $200 or more</span>
+            <span className="text-[#d4af37]">−{formatPrice(volumeOff / 100)}</span>
+          </div>
+        )}
+        {order.promoCode && promoOff > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>Promo code {order.promoCode}</span>
-            <span className="text-[#d4af37]">
-              −{formatPrice((order.subtotalCents - order.totalCents) / 100)}
-            </span>
+            <span className="text-[#d4af37]">−{formatPrice(promoOff / 100)}</span>
           </div>
         )}
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
@@ -157,7 +170,7 @@ export default async function OrderPage({ params }: Props) {
         </dl>
       </section>
 
-      {!paid && (
+      {showTransfer && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"

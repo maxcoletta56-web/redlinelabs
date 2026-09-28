@@ -1,47 +1,46 @@
 import "server-only";
 
-import { resolveBankTransfer } from "@/lib/bank-transfer";
+import type { BankTransferShippingInput } from "@/lib/bank-transfer-checkout";
 import { lineLabel, type CartLineInput } from "@/lib/order";
 import {
+  abandonPendingOrder,
   insertOrder,
   ordersConfigured,
   type OrderItemSnapshot,
   type OrderShippingSnapshot,
 } from "@/lib/orders";
 import { quoteCart } from "@/lib/quote";
+import { absoluteUrl } from "@/lib/seo";
 import { withTimeout } from "@/lib/with-timeout";
+import { whopEnvironmentName, type WhopEnvironmentName } from "@/lib/whop-environment";
+import {
+  checkoutConfigurationBody,
+  createWhopCheckoutConfiguration,
+} from "@/lib/whop";
 
-export type BankTransferShippingInput = {
-  name?: string | null;
-  line1?: string | null;
-  line2?: string | null;
-  city?: string | null;
-  state?: string | null;
-  postal_code?: string | null;
-  country?: string | null;
-};
+const DATABASE_TIMEOUT_MS = 12_000;
 
-export type BankTransferOrder = {
+export type WhopCardCheckout = {
   reference: string;
-  redirectUrl: string;
+  sessionId: string;
+  planId: string;
+  environment: WhopEnvironmentName;
+  returnUrl: string;
   totalCents: number;
 };
 
-/** Long enough for a cold Neon compute to wake, short enough to surface a hang. */
-const DATABASE_TIMEOUT_MS = 12_000;
+export function whopCardConfigured(env: NodeJS.ProcessEnv = process.env) {
+  return Boolean(env.WHOP_API_KEY?.trim() && env.WHOP_COMPANY_ID?.trim() && ordersConfigured());
+}
 
-export function bankTransferConfigured() {
-  return Boolean(resolveBankTransfer(process.env)) && ordersConfigured();
+export function whopCardEnvironment(env: NodeJS.ProcessEnv = process.env): WhopEnvironmentName {
+  return whopEnvironmentName(env.WHOP_ENVIRONMENT);
 }
 
 function trimmed(value: string | null | undefined, max: number) {
   return (value ?? "").trim().slice(0, max);
 }
 
-/**
- * The address never affects the amount owed, so it is stored as typed after
- * trimming and length capping. Prices always come from the catalogue.
- */
 function normalizeShipping(
   shipping: BankTransferShippingInput | null | undefined,
 ): OrderShippingSnapshot | null {
@@ -58,7 +57,7 @@ function normalizeShipping(
   };
 }
 
-export async function createBankTransferOrder(input: {
+export async function createWhopCardCheckout(input: {
   items: CartLineInput[];
   email: string;
   firstName?: string;
@@ -67,9 +66,11 @@ export async function createBankTransferOrder(input: {
   promoCode?: string | null;
   ageConfirmed: boolean;
   researchUse: boolean;
-}): Promise<BankTransferOrder> {
-  if (!resolveBankTransfer(process.env)) {
-    throw new Error("Bank transfer is not configured");
+}): Promise<WhopCardCheckout> {
+  const apiKey = process.env.WHOP_API_KEY?.trim() ?? "";
+  const accountId = process.env.WHOP_COMPANY_ID?.trim() ?? "";
+  if (!apiKey || !accountId) {
+    throw new Error("Whop is not configured");
   }
   if (!ordersConfigured()) {
     throw new Error("Orders are unavailable until the database is configured");
@@ -79,11 +80,7 @@ export async function createBankTransferOrder(input: {
   }
 
   const quote = quoteCart(input.items, input.promoCode);
-  const { lines } = quote;
-  const subtotalCents = quote.subtotalCents;
-  const totalCents = quote.totalCents;
-
-  const items: OrderItemSnapshot[] = lines.map((line) => ({
+  const items: OrderItemSnapshot[] = quote.lines.map((line) => ({
     slug: line.slug,
     name: lineLabel(line),
     option: line.option,
@@ -96,23 +93,45 @@ export async function createBankTransferOrder(input: {
   const reference = await withTimeout(
     insertOrder({
       currency: "aud",
-      subtotalCents,
-      totalCents,
+      subtotalCents: quote.subtotalCents,
+      totalCents: quote.totalCents,
       promoCode: quote.promo?.code ?? null,
       firstName: trimmed(input.firstName, 120) || "Customer",
       lastName: trimmed(input.lastName, 120) || "Account",
       email: trimmed(input.email, 200).toLowerCase(),
       items,
       shipping: normalizeShipping(input.shipping),
+      status: "pending",
+      paymentMethod: "card",
     }),
     DATABASE_TIMEOUT_MS,
     "The order database",
   );
 
-  // TODO(payments): this repo has no transactional email sender. The contact
-  // route only hands the browser a mailto: link, so there is nothing to send
-  // the PayID instructions with. Once a sender is added, email the customer
-  // the same instructions that /order/[reference] renders.
-
-  return { reference, redirectUrl: `/order/${reference}`, totalCents };
+  const environment = whopCardEnvironment();
+  const returnUrl = absoluteUrl(`/checkout/complete?order=${reference}`);
+  try {
+    const session = await createWhopCheckoutConfiguration({
+      apiKey,
+      environment,
+      idempotencyKey: reference,
+      body: checkoutConfigurationBody({
+        accountId,
+        reference,
+        totalCents: quote.totalCents,
+        returnUrl,
+      }),
+    });
+    return {
+      reference,
+      sessionId: session.sessionId,
+      planId: session.planId,
+      environment,
+      returnUrl,
+      totalCents: quote.totalCents,
+    };
+  } catch (error) {
+    await abandonPendingOrder(reference).catch(() => undefined);
+    throw error;
+  }
 }

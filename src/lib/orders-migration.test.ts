@@ -25,6 +25,9 @@ const ORDERS_COLUMNS = [
   "shipping",
   "created_at",
   "paid_at",
+  "payment_method",
+  "whop_payment_id",
+  "confirmation_sent_at",
 ];
 
 type FakeState = { columns: string[]; legacyTables: string[] };
