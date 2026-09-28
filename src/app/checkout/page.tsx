@@ -12,7 +12,7 @@ import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { paymentsProvider } from "@/lib/payments-provider";
-import { checkoutTotals } from "@/lib/promo";
+import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
