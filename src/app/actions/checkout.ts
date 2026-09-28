@@ -1,9 +1,9 @@
 "use server";
 
 import { createBankTransferOrder } from "@/lib/bank-transfer-checkout";
-import { createPayoneerCheckout, type ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
+import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { checkoutBodySchema } from "@/lib/validation";
+import { createWhopCardCheckout, type WhopCardCheckout } from "@/lib/whop-checkout";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
@@ -18,7 +18,11 @@ export type CheckoutStart =
   | { ok: true; redirectUrl: string }
   | { ok: false; error: string };
 
-export async function startCartCheckoutSession(input: {
+export type CardCheckoutStart =
+  | { ok: true; checkout: WhopCardCheckout }
+  | { ok: false; error: string };
+
+export async function startBankTransferCheckout(input: {
   items: { slug: string; option?: string | null; qty: number }[];
   email: string;
   firstName: string;
@@ -41,25 +45,57 @@ export async function startCartCheckoutSession(input: {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" };
   }
 
-  const provider = paymentsProvider();
+  try {
+    const order = await createBankTransferOrder({
+      items: parsed.data.items,
+      email: parsed.data.email,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      shipping: input.shipping,
+      promoCode: parsed.data.promoCode,
+      ageConfirmed: true,
+      researchUse: true,
+    });
+    return { ok: true, redirectUrl: order.redirectUrl };
+  } catch (error) {
+    console.error("[checkout] bank transfer failed", {
+      slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
+      quantities: parsed.data.items.map((item) => item.qty),
+      promoCode: parsed.data.promoCode ?? null,
+      emailDomain: parsed.data.email.split("@")[1] ?? "unknown",
+      errorName: error instanceof Error ? error.name : "unknown",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    return { ok: false, error: "We could not create your order. Nothing has been charged." };
+  }
+}
+
+export async function startWhopCardCheckout(input: {
+  items: { slug: string; option?: string | null; qty: number }[];
+  email: string;
+  firstName: string;
+  lastName: string;
+  shipping?: ShippingAddressInput | null;
+  promoCode?: string | null;
+  ageConfirmed: boolean;
+  researchUse: boolean;
+}): Promise<CardCheckoutStart> {
+  const parsed = checkoutBodySchema.safeParse({
+    email: input.email,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    ageConfirmed: input.ageConfirmed,
+    researchUse: input.researchUse,
+    items: input.items,
+    promoCode: input.promoCode,
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" };
+  }
 
   try {
-    if (provider === "bank_transfer") {
-      const order = await createBankTransferOrder({
-        items: parsed.data.items,
-        email: parsed.data.email,
-        firstName: parsed.data.firstName,
-        lastName: parsed.data.lastName,
-        shipping: input.shipping,
-        promoCode: parsed.data.promoCode,
-        ageConfirmed: true,
-        researchUse: true,
-      });
-      return { ok: true, redirectUrl: order.redirectUrl };
-    }
-
-    const redirectUrl = await withTimeout(
-      createPayoneerCheckout({
+    const checkout = await withTimeout(
+      createWhopCardCheckout({
         items: parsed.data.items,
         email: parsed.data.email,
         firstName: parsed.data.firstName,
@@ -70,12 +106,11 @@ export async function startCartCheckoutSession(input: {
         researchUse: true,
       }),
       PROVIDER_TIMEOUT_MS,
-      "The card processor",
+      "Whop",
     );
-    return { ok: true, redirectUrl };
+    return { ok: true, checkout };
   } catch (error) {
-    console.error("[checkout] submit failed", {
-      provider,
+    console.error("[checkout] whop session failed", {
       slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
       quantities: parsed.data.items.map((item) => item.qty),
       promoCode: parsed.data.promoCode ?? null,
@@ -83,12 +118,6 @@ export async function startCartCheckoutSession(input: {
       errorName: error instanceof Error ? error.name : "unknown",
       errorMessage: error instanceof Error ? error.message : String(error),
     });
-    return {
-      ok: false,
-      error:
-        provider === "bank_transfer"
-          ? "We could not create your order. Nothing has been charged."
-          : "The card processor did not respond. Nothing has been charged.",
-    };
+    return { ok: false, error: "The card checkout did not start. Nothing has been charged." };
   }
 }
