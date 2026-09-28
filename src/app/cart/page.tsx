@@ -6,7 +6,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
 import { paymentsProvider } from "@/lib/payments-provider";
-import { checkoutTotals } from "@/lib/promo";
+import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";

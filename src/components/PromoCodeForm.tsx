@@ -4,9 +4,8 @@ import { useState } from "react";
 import { usePromo } from "@/lib/promo-state";
 
 export function PromoCodeForm({ id = "checkout-code" }: { id?: string }) {
-  const { promo, applyCode, clearCode } = usePromo();
+  const { promo, applyCode, clearCode, pending, error, clearError } = usePromo();
   const [value, setValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   if (promo) {
     return (
@@ -33,13 +32,10 @@ export function PromoCodeForm({ id = "checkout-code" }: { id?: string }) {
       className="mb-4 border-t border-[rgba(212,175,55,0.16)] pt-4"
       onSubmit={(event) => {
         event.preventDefault();
-        const next = applyCode(value);
-        if (!next) {
-          setError("That coupon is not valid");
-          return;
-        }
-        setError(null);
-        setValue("");
+        if (pending) return;
+        void applyCode(value).then((next) => {
+          if (next) setValue("");
+        });
       }}
     >
       <label
@@ -58,7 +54,7 @@ export function PromoCodeForm({ id = "checkout-code" }: { id?: string }) {
           value={value}
           onChange={(event) => {
             setValue(event.target.value);
-            if (error) setError(null);
+            if (error) clearError();
           }}
           autoComplete="off"
           autoCorrect="off"
@@ -69,7 +65,12 @@ export function PromoCodeForm({ id = "checkout-code" }: { id?: string }) {
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
         />
-        <button type="submit" className="btn-ghost min-h-11 shrink-0 px-4">
+        <button
+          type="submit"
+          className="btn-ghost min-h-11 shrink-0 px-4"
+          disabled={pending}
+          aria-busy={pending}
+        >
           Apply
         </button>
       </div>
