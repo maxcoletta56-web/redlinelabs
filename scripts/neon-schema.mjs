@@ -39,17 +39,18 @@ export async function neonQuery(connectionString, query) {
   return JSON.parse(body);
 }
 
-function columnSummary(result) {
+/** Neon returns rows as objects, or as arrays in array mode. Normalize both. */
+export function resultRows(result) {
   const fields = Array.isArray(result?.fields) ? result.fields : [];
   const rows = Array.isArray(result?.rows) ? result.rows : [];
-  if (fields.length > 0 && rows.length > 0 && Array.isArray(rows[0])) {
-    const nameIndex = fields.findIndex((field) => field.name === "column_name");
-    const typeIndex = fields.findIndex((field) => field.name === "data_type");
-    return rows
-      .map((row) => `${row[nameIndex]} ${row[typeIndex]}`)
-      .join(", ");
-  }
-  return rows
+  if (rows.length === 0 || !Array.isArray(rows[0])) return rows;
+  return rows.map((row) =>
+    Object.fromEntries(fields.map((field, index) => [field.name, row[index]])),
+  );
+}
+
+function columnSummary(result) {
+  return resultRows(result)
     .map((row) => `${row.column_name} ${row.data_type}`)
     .join(", ");
 }
