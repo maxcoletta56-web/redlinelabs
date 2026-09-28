@@ -7,6 +7,10 @@ export const JURISDICTION = "Hong Kong";
 export const REGISTRY = "Companies Registry of Hong Kong";
 export const COMPANY_EMAIL = "redlinelabsltd@pm.me";
 
+/** Shared with order emails so the research-use line cannot drift from the site. */
+export const RESEARCH_DISCLAIMER =
+  "For laboratory research use only. Not for human or veterinary consumption. Not evaluated or approved for the diagnosis, treatment, cure, or prevention of any disease.";
+
 /** One-line trust copy for tiles, asides, and contact intros. */
 export const REGISTERED_COMPANY_SHORT =
   "A verified registered private corporation incorporated in Hong Kong.";
