@@ -1,101 +1,58 @@
-# Website Health Report
+# Redlinelabs Website Health
 
-> **Purpose:** This report is owned by the **Website Health specialist agent**. It tracks the overall
-> operational health of the Redline Labs storefront (`https://redlinelabs.shop`) — that the site
-> builds, deploys, renders, and serves its core pages and flows without errors. It is the
-> first place to look when "the site is broken" and the umbrella owner for issues that do not
-> clearly belong to one of the other specialist reports.
+Last Updated: 28 September 2026
 
-Last Updated: 25 September 2026
+Overall Status: Production branch `cursor/redlinelabs-shop-1c01` is at `9a235ca` (merge of pull request #71). GitHub CI passed, and Vercel reported the production deployment of that commit as successful. The change migrates the Neon `orders` table at build time so bank-transfer checkout can insert a `reference`. This environment cannot open `https://redlinelabs.shop`, so a live checkout was not observed after the deploy. No application code was changed in this pass. The storefront brand remains Redline Labs black and gold.
 
-Overall Status: The live site at https://redlinelabs.shop/ is up, Stripe live checkout is configured, and the main catalogue pages return 200. Checkout on this branch no longer treats a browser store-credit balance as a Stripe coupon. That fix is not on production until it is reviewed and deployed. The current design system is Redline Labs black and gold.
+## Critical Issues
 
-## Scope / responsibilities
+None confirmed in this pass.
 
-- Successful production build (`next build`) and Vercel deployment health.
-- Availability and correct rendering of core routes: home (`/`), catalogue (`/shop`),
-  product pages (`/product/[slug]`), cart (`/cart`), checkout (`/checkout`), account
-  (`/account`), and the policy pages.
-- Global layout, navigation (`Header`, `Footer`), providers, and error/not-found handling.
-- Console errors, hydration mismatches, broken images, and broken internal links.
-- Third-party embeds that affect page health (e.g. the optional AssistLoop chat widget).
-- Redirects declared in `next.config.ts` resolving correctly.
+The last known production checkout failure was `POST /api/checkout` returning 500 because `column "reference" of relation "orders" does not exist`. A Stripe-era `orders` table made `CREATE TABLE IF NOT EXISTS` a no-op. Pull request #71 is the fix for that, and its production deployment completed. Treat checkout as unverified until the build log check in High Priority is done.
 
-## Out of scope (see sibling reports)
+## High Priority Issues
 
-- Search/structured-data specifics → `seo-aeo-health.md`
-- Catalogue/product data correctness → `catalogue-merchandising-health.md`
-- Cart/checkout conversion tuning → `ecommerce-cro-health.md`
-- Automated tests & performance budgets → `qa-performance-health.md`
-- Secrets, headers, compliance → `security-compliance-health.md`
+- Confirm the Vercel production build log for `9a235ca` prints an `orders table:` column list that includes `reference`. `scripts/ensure-orders-table.mjs` returns success and skips the migration when `DATABASE_URL` and `DATABASE_URL_UNPOOLED` are both unset, so a green build does not by itself prove the table changed. The request path in `src/lib/orders.ts` still runs `CREATE TABLE IF NOT EXISTS` only. That statement will not add `reference` to the old table.
+- `reports/project-overview.md` and `reports/ecommerce-cro-health.md` still describe the earlier Payoneer and Stripe embedded checkout. The live default rail is bank transfer (`DEFAULT_PAYMENTS_PROVIDER` in `src/lib/payments-provider.ts`). `vercel.json` sets the build command that runs the orders migration. Specialist agents should read those files against the current tree before editing checkout.
 
-## Key files & signals
+## Medium Priority Issues
 
-- `next.config.ts` — image `remotePatterns`, redirects.
-- `src/app/layout.tsx` — root layout, global chrome, metadata base.
-- `src/app/not-found.tsx`, `src/components/RouteFallback.tsx` — error surfaces.
-- `src/components/Header.tsx`, `src/components/Footer.tsx` — global navigation.
-- Vercel deployment logs and Preview URLs per branch/PR.
+- Schema repair for `orders` runs from the build (`package.json` `build` and `vercel.json` `buildCommand`), not from a customer request. A process that inserts orders without that build step can still hit the old table.
+- This environment's network allow-list does not include `redlinelabs.shop`, so homepage, cart, checkout, and mobile layout were not opened in a browser on this pass.
+- `node --test` still warns that `package.json` has no `"type": "module"` when it loads the TypeScript tests.
 
-## Health checklist
+## Low Priority Issues
 
-- [x] `npm run build` completes with all routes generated. Local build on 25 September 2026 succeeded, including `/product/bacterial-water`. CI on the base branch now runs lint, typecheck, and build.
-- [x] Home, catalogue, and a sample product page return HTTP 200. Production probe the same day: home, shop, about, FAQ, contact, cart, checkout, account, four policy pages, and `/product/bpc-157` returned 200.
-- [x] No console/hydration errors on core pages. Local browser pass reported no console issues.
-- [x] Header/footer links resolve (no 404s). Those routes returned 200. Mobile menu showed Home, Shop, About, FAQ, and Contact.
-- [ ] Declared redirects (`/product/bac-water`, `/product/product-bacterial-water`) 308 to the canonical slug. Not re-checked in this pass.
-- [ ] Remote product images load from the allow-listed host. One sampled BPC-157 image returned 200. Image failures for other listings belong in `catalogue-merchandising-health.md`.
+- The temporary Postgres verification workflow on the migration branch failed once, then passed. That harness was removed before merge and is not on `9a235ca`.
+- Earlier notes (25 September) called out dead files (`index.mts`, `src/components/Placeholder.tsx`, unused public SVGs) and catalogue image failures. They were not re-checked against this push.
 
-## Current status
+## Changes Made
 
-Production is serving the site. It is behind the repository: `GET /product/bacterial-water` returned 404 on 25 September 2026 and that URL was absent from the live sitemap, while the listing is already in `src/data/products.json`. The homepage cache `age` was about 4.5 days. Publishing that listing is a deploy of existing catalogue commits, not part of the checkout change.
+- Updated this report to the current production head. No storefront, checkout, or schema code was edited.
+- The triggering push (already merged as #71) adds `scripts/orders-migration.mjs`, points `scripts/ensure-orders-table.mjs` at it, and covers it with `src/lib/orders-migration.test.ts`. If `public.orders` exists and has no `reference` column, the migration renames it to `orders_legacy_stripe` (or the next free suffix) and creates the table in `db/orders.sql`. It does not drop or truncate rows. A build exits non-zero when `reference` is still missing after the migration and a database URL was set.
 
-AssistLoop is enabled in production. The homepage HTML preloads `https://assistloop.ai/assistloop-widget.js`.
+## Tests Performed
 
-`npx tsc --noEmit` used to fail with `Cannot find name 'LayoutProps'` until `next build` generated route types. The base branch now types the root layout `children` as `ReactNode`, so that failure is closed on this merge.
+- `node --experimental-strip-types --test src/lib/orders-migration.test.ts`: 14 passed, 0 failed.
+- GitHub Actions run `36404909350` on `9a235ca`: lint, typecheck, and build succeeded (47s).
+- `npm run check` was not re-run here. `node_modules` is not installed, and the npm registry is outside this environment's allow-list. The CI run above is the build evidence for this commit.
+- No request was sent to production checkout. No browser pass.
 
-Contact is a `mailto:` composer. The newsletter form says it does not start a mailing list. Both render and do what they say.
+## Build Status
 
-### Handed to sibling reports
+- CI on `cursor/redlinelabs-shop-1c01` at `9a235ca`: passed.
+- GitHub deployment `6706868725`: environment Production, state success, created 28 September 2026 09:39 UTC. Deployment URL `https://redlinelabs-o0mkn3hcv-metrouniforms.vercel.app`.
+- Production was not promoted or redeployed from this session. The merge that triggered this run is what Vercel built.
 
-These came out of the same pass. They stay listed here so the audit is not dropped, and the owning report should record them.
+## Outstanding Work
 
-- `ecommerce-cro-health.md`: checkout used to create a Stripe coupon from a browser store-credit amount. Account balances live only in `localStorage`. This branch ignores that amount and no longer subtracts it from “Due now”. The CRO checklist still says store credit should apply at checkout; that item disagrees with this code.
-- `ecommerce-cro-health.md`: the live checkout path did not require age and research-use confirmation on the server. The server action and `POST /api/checkout` now reject a session unless both are true. Account, FAQ, checkout, and the restock control no longer promise email alerts or an automatic credit deduction.
-- `security-compliance-health.md`: accounts, orders, addresses, and stock alerts are browser-local. There is no Stripe webhook. `GET /api/checkout/session` returns email and shipping to anyone with the Checkout Session id. Live homepage headers were HSTS only, plus `Access-Control-Allow-Origin: *`.
-- `seo-aeo-health.md`: product JSON-LD marks every listing `InStock`. FAQ content has no `FAQPage` schema. Slugs include `products-dsip`, `product-tb-1`, and the misspelling `products-kisspepien`.
-- `catalogue-merchandising-health.md`: listing titles mix case. Catalogue photos are remote `i0.wp.com` files with a `/brand/vial.png` fallback.
-- `qa-performance-health.md`: no product analytics in the repo. Draft pull request `#22` is Vercel Speed Insights. The test runner warns that `package.json` has no `"type": "module"`. Dead code: root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`, default `public/*.svg` files, and unused `public/brand/hero.png` and `public/brand/logo.png`.
+- Read the production build log and confirm the migration applied. Then place one test order, or inspect a new row, and confirm `POST /api/checkout` no longer returns the missing-`reference` error.
+- Bring `reports/project-overview.md` and `reports/ecommerce-cro-health.md` in line with bank transfer, the Neon orders table, and `vercel.json`. Leave catalogue, SEO, security, and performance findings in their own reports.
+- Do not merge further changes to `cursor/redlinelabs-shop-1c01` unless that promotion is explicitly requested.
 
-### Changes on this branch
+## Recommendations
 
-- Checkout no longer turns a browser store-credit balance into a Stripe coupon.
-- Checkout requires age and research-use confirmation before creating a session.
-- Checkout, account, FAQ, and the product restock control match that behaviour.
-- No visual redesign. Header, gold/black palette, catalogue data, and the DGC20 coupon behaviour are unchanged.
-
-### Tests performed
-
-- `npm test`: 32 passed, 0 failed.
-- `npm run lint`: passed.
-- `npm run build` (Next.js 16.3.4): passed. Static product paths include `/product/bacterial-water`.
-- `npx tsc --noEmit` after that build: passed. Re-run after this merge because the base branch added `npm run typecheck` and changed `src/app/layout.tsx`.
-- Local browser pass against `next start`: FAQ account answer, account benefit cards, BPC-157 restock line, shop search `bpc`, checkout summary with store credit $0.00, and the mobile menu at 390px. No card payment was submitted.
-
-### Build status
-
-Local production build succeeded on 25 September 2026 before this merge. This branch has not been deployed. Production was not updated.
-
-### Outstanding work
-
-- Review and, only when explicitly requested, deploy the checkout fix. Production still applies client-supplied store credit until then.
-- Decide whether Bacterial Water should be published by deploying the existing catalogue commits.
-- Keep the Redline Labs black and gold storefront. A historical branch named `cursor/metro-uniforms-about-151c` is not the current brand.
-- Use a Vercel preview for this branch. Do not promote it to production without an explicit request.
-
-## Change log
-
-| Date | Agent | Summary |
-| --- | --- | --- |
-| _initial_ | setup | Report scaffold created. |
-| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. Render and deploy findings stay here. Checkout, security, SEO, catalogue, and test findings are handed to the sibling reports. |
+- Keep using the build as the gate that refuses to ship when `reference` is missing. Do not also rename the live table from a request handler.
+- Leave PayID, database URLs, and `ADMIN_API_SECRET` in the host environment. Do not copy them into the repo or this report.
+- Keep the Redline Labs black and gold storefront. A branch named for Metro Uniforms is not the current brand.
+- Other agents should not re-implement the orders migration. #71 already owns that change.
