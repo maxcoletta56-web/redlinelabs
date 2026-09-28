@@ -1,14 +1,14 @@
 import "server-only";
 
 import { resolveBankTransfer } from "@/lib/bank-transfer";
-import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
+import { quoteCatalogueCart } from "@/lib/catalogue-quote";
+import { lineLabel, type CartLineInput } from "@/lib/order";
 import {
   insertOrder,
   ordersConfigured,
   type OrderItemSnapshot,
   type OrderShippingSnapshot,
 } from "@/lib/orders";
-import { lookupPromo, promoDiscountCents } from "@/lib/promo";
 import { withTimeout } from "@/lib/with-timeout";
 
 export type BankTransferShippingInput = {
@@ -42,7 +42,7 @@ function trimmed(value: string | null | undefined, max: number) {
  * The address never affects the amount owed, so it is stored as typed after
  * trimming and length capping. Prices always come from the catalogue.
  */
-function normalizeShipping(
+export function normalizeCheckoutShipping(
   shipping: BankTransferShippingInput | null | undefined,
 ): OrderShippingSnapshot | null {
   const line1 = trimmed(shipping?.line1, 200);
@@ -78,15 +78,12 @@ export async function createBankTransferOrder(input: {
     throw new Error("Age and research-use confirmation are required");
   }
 
-  const lines = resolveCartLines(input.items);
-  const promo = lookupPromo(input.promoCode);
-  const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const totalCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
-  if (totalCents <= 0) {
+  const quoted = quoteCatalogueCart(input.items, input.promoCode);
+  if (quoted.totalCents <= 0) {
     throw new Error("Order total must be greater than zero");
   }
 
-  const items: OrderItemSnapshot[] = lines.map((line) => ({
+  const items: OrderItemSnapshot[] = quoted.lines.map((line) => ({
     slug: line.slug,
     name: lineLabel(line),
     option: line.option,
@@ -99,23 +96,21 @@ export async function createBankTransferOrder(input: {
   const reference = await withTimeout(
     insertOrder({
       currency: "aud",
-      subtotalCents,
-      totalCents,
-      promoCode: promo?.code ?? null,
+      subtotalCents: quoted.subtotalCents,
+      totalCents: quoted.totalCents,
+      promoCode: quoted.promo?.code ?? null,
       firstName: trimmed(input.firstName, 120) || "Customer",
       lastName: trimmed(input.lastName, 120) || "Account",
       email: trimmed(input.email, 200).toLowerCase(),
       items,
-      shipping: normalizeShipping(input.shipping),
+      shipping: normalizeCheckoutShipping(input.shipping),
     }),
     DATABASE_TIMEOUT_MS,
     "The order database",
   );
 
-  // TODO(payments): this repo has no transactional email sender. The contact
-  // route only hands the browser a mailto: link, so there is nothing to send
-  // the PayID instructions with. Once a sender is added, email the customer
-  // the same instructions that /order/[reference] renders.
+  // Bank transfer instructions stay on /order/[reference]. Card payments send
+  // their confirmation from the Whop webhook after payment.succeeded.
 
-  return { reference, redirectUrl: `/order/${reference}`, totalCents };
+  return { reference, redirectUrl: `/order/${reference}`, totalCents: quoted.totalCents };
 }

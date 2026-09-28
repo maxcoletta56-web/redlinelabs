@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
-import { checkoutTotals } from "@/lib/promo-pricing";
+import { quoteDisplayedCart } from "@/lib/order-quote";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
@@ -14,7 +14,7 @@ export function CartDrawer() {
   const { items, drawerOpen, setDrawerOpen, updateQty, removeItem } =
     useCart();
   const { promo } = usePromo();
-  const totals = checkoutTotals({ items, promo });
+  const quote = quoteDisplayedCart(items, promo);
   const closeRef = useRef<HTMLButtonElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -127,18 +127,30 @@ export function CartDrawer() {
             <div className="mb-4 flex justify-between text-sm">
               <span>Subtotal</span>
               <span className="text-[#d4af37]">
-                {formatPrice(centsToDollars(totals.catalogCents))}
+                {formatPrice(centsToDollars(quote.subtotalCents))}
               </span>
             </div>
             <PromoCodeForm id="drawer-checkout-code" />
-            {totals.discountCents > 0 && (
+            {quote.volumeDiscountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
-                <span>{promo?.percentOff}% off total</span>
+                <span>10% off orders $200+</span>
                 <span className="text-[#d4af37]">
-                  −{formatPrice(centsToDollars(totals.discountCents))}
+                  −{formatPrice(centsToDollars(quote.volumeDiscountCents))}
                 </span>
               </div>
             )}
+            {quote.promoDiscountCents > 0 && (
+              <div className="mb-4 flex justify-between text-sm">
+                <span>{promo?.percentOff}% off total</span>
+                <span className="text-[#d4af37]">
+                  −{formatPrice(centsToDollars(quote.promoDiscountCents))}
+                </span>
+              </div>
+            )}
+            <div className="mb-4 flex justify-between text-sm">
+              <span>Due</span>
+              <span className="text-[#d4af37]">{formatPrice(centsToDollars(quote.totalCents))}</span>
+            </div>
             <Link
               href="/checkout"
               onClick={() => setDrawerOpen(false)}
