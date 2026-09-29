@@ -209,7 +209,10 @@ function AdminDesk({
                   <OrderRow
                     key={order.reference}
                     order={order}
-                    confirming={confirming === order.reference && order.status === "awaiting_payment"}
+                    confirming={
+                      confirming === order.reference &&
+                      (order.status === "awaiting_payment" || order.status === "pending")
+                    }
                   />
                 ))
               )}
@@ -277,7 +280,7 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
       </Cell>
       <Cell label="Status">
         <StatusBadge status={order.status} />
-        {order.status === "awaiting_payment" ? (
+        {order.status === "awaiting_payment" || order.status === "pending" ? (
           <div className="mt-3">
             <MarkPaid reference={order.reference} confirming={confirming} />
           </div>

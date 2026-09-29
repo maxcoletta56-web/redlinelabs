@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { startCartCheckoutSession } from "@/app/actions/checkout";
+import { startWhopCardCheckout } from "@/app/actions/checkout";
+import { WhopCheckoutElement } from "@/components/WhopCheckoutElement";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import type { CartLineInput } from "@/lib/order";
 import { withTimeout } from "@/lib/with-timeout";
 
-/** Longer than the server-side provider timeout so the server message wins. */
 const SUBMIT_TIMEOUT_MS = 25_000;
 
-const PENDING_COPY = "Creating your order and payment instructions.";
+type Session = {
+  reference: string;
+  sessionId: string;
+  planId: string;
+  environment: "sandbox" | "production";
+  returnUrl: string;
+};
 
-export function CartCheckout({
+export function WhopCardCheckout({
   items,
   email,
   firstName,
@@ -26,17 +32,19 @@ export function CartCheckout({
   email: string;
   firstName: string;
   lastName: string;
-  shipping?: ShippingAddressInput | null;
+  shipping: ShippingAddressInput;
   promoCode?: string | null;
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
     withTimeout(
-      startCartCheckoutSession({
+      startWhopCardCheckout({
         items,
         email,
         firstName,
@@ -45,26 +53,31 @@ export function CartCheckout({
         promoCode,
         ageConfirmed,
         researchUse,
-        rail: "bank_transfer",
       }),
       SUBMIT_TIMEOUT_MS,
-      "Checkout",
+      "Card checkout",
     )
       .then((result) => {
         if (cancelled) return;
         if (result.ok) {
-          window.location.assign(result.redirectUrl);
+          setSession({
+            reference: result.reference,
+            sessionId: result.sessionId,
+            planId: result.planId,
+            environment: result.environment,
+            returnUrl: result.returnUrl,
+          });
           return;
         }
         setError(result.error);
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
-        console.error("checkout submit failed", reason);
+        console.error("whop checkout failed", reason);
         setError(
           reason instanceof Error && reason.name === "TimeoutError"
-            ? "Checkout is taking longer than expected. Nothing has been charged."
-            : "Checkout could not be started. Nothing has been charged.",
+            ? "Card checkout is taking longer than expected. Nothing has been charged."
+            : "Card checkout could not be started. Nothing has been charged.",
         );
       });
     return () => {
@@ -81,6 +94,7 @@ export function CartCheckout({
           className="btn"
           onClick={() => {
             setError(null);
+            setSession(null);
             setAttempt((count) => count + 1);
           }}
         >
@@ -97,9 +111,29 @@ export function CartCheckout({
     );
   }
 
+  if (!session) {
+    return (
+      <p className="text-sm leading-6 text-[#8f8c84]" role="status">
+        Preparing the card form. The amount is calculated on the server.
+      </p>
+    );
+  }
+
   return (
-    <p className="text-sm leading-6 text-[#8f8c84]" role="status">
-      {PENDING_COPY}
-    </p>
+    <WhopCheckoutElement
+      planId={session.planId}
+      sessionId={session.sessionId}
+      returnUrl={session.returnUrl}
+      environment={session.environment}
+      email={email}
+      address={{
+        name: shipping.name,
+        line1: shipping.line1,
+        line2: shipping.line2,
+        city: shipping.city,
+        state: shipping.state,
+        postalCode: shipping.postal_code,
+      }}
+    />
   );
 }

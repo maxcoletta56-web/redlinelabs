@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { neonQuery, resultRows, schemaDatabaseUrl } from "./neon-schema.mjs";
+import { neonQuery, resultRows, schemaDatabaseUrl, schemaSql, statementForNeon } from "./neon-schema.mjs";
 import { legacyTableName, ordersMigrationSql, ordersSchemaSql } from "./orders-migration.mjs";
 
 export { ordersSchemaSql };
@@ -61,6 +61,8 @@ export async function migrateOrdersTable(options = {}) {
     }
 
     await query(ordersMigrationSql({ legacyName }));
+    await query(statementForNeon(schemaSql("whop-payments.sql")));
+    log("whop_payments table: ensured");
 
     const after = await inspectOrders(query);
     const summary = after.columns.map((column) => `${column.name} ${column.type}`).join(", ");

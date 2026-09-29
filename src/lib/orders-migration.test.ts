@@ -134,11 +134,12 @@ test("a stripe-era orders table is renamed aside, then the current one is create
     { columns: ORDERS_COLUMNS, legacyTables: ["orders_legacy_stripe"] },
   ]);
   assert.equal(run.ok, true);
-  assert.equal(run.statements.length, 1);
+  assert.equal(run.statements.length, 2);
   assert.match(
     String(run.statements[0]),
     /ALTER TABLE public\.orders RENAME TO orders_legacy_stripe;/,
   );
+  assert.match(String(run.statements[1]), /CREATE TABLE IF NOT EXISTS whop_payments/);
   assert.match(run.logs, /no reference column; renaming it to orders_legacy_stripe/);
   assert.match(run.logs, /legacy rows kept in orders_legacy_stripe/);
   assert.equal(run.errors, "");
