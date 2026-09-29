@@ -133,6 +133,11 @@ function createdAtMs(value: string | null) {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
+/** A payment email goes out only for the update that first records payment. */
+export function paymentReceivedEmailDue(previousStatus: string | null | undefined) {
+  return previousStatus !== "paid";
+}
+
 export function adminLoginError(code: string | undefined): string | null {
   if (code === "rejected") return "That secret was not accepted.";
   if (code === "limited") return "Too many attempts. Try again in a few minutes.";

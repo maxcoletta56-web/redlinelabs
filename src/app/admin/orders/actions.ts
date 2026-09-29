@@ -6,8 +6,9 @@ import { redirect, RedirectType } from "next/navigation";
 import { adminSecretMatches, adminSessionValid } from "@/lib/admin-auth";
 import { clearAdminSession, readAdminSessionToken, setAdminSession } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
-import { markOrderPaid, ordersConfigured } from "@/lib/orders";
+import { ordersConfigured } from "@/lib/orders";
 import { rateLimit } from "@/lib/rate-limit";
+import { recordAdminPayment } from "@/lib/record-admin-payment";
 
 function clientIp(headerList: Headers) {
   const forwarded = headerList.get("x-forwarded-for");
@@ -36,8 +37,8 @@ export async function logoutAdmin() {
 }
 
 /**
- * Same idempotent update as POST /api/admin/orders/[reference]/paid.
- * The cookie is checked again here; the bearer route is left unchanged.
+ * Same update as POST /api/admin/orders/[reference]/paid, including the
+ * payment email. The cookie is checked again here.
  */
 export async function markAdminOrderPaid(formData: FormData) {
   const token = await readAdminSessionToken();
@@ -57,19 +58,11 @@ export async function markAdminOrderPaid(formData: FormData) {
     redirect("/admin/orders?notice=unavailable", RedirectType.replace);
   }
 
-  let failed = false;
-  let found = false;
-  try {
-    found = (await markOrderPaid(reference)) !== null;
-  } catch (error) {
-    failed = true;
-    console.error("[admin] mark order paid failed", {
-      reference,
-      errorName: error instanceof Error ? error.name : "unknown",
-    });
+  const result = await recordAdminPayment(reference);
+  if (!result.ok && result.reason === "missing") {
+    redirect("/admin/orders?notice=missing", RedirectType.replace);
   }
-  if (failed) redirect("/admin/orders?notice=failed", RedirectType.replace);
-  if (!found) redirect("/admin/orders?notice=missing", RedirectType.replace);
+  if (!result.ok) redirect("/admin/orders?notice=failed", RedirectType.replace);
 
   revalidatePath("/admin/orders");
   redirect(
