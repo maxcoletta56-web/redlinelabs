@@ -10,6 +10,7 @@ import {
   formatAudCents,
   formatSydneyDateTime,
   gateAdminData,
+  paymentReceivedEmailDue,
   promoLabel,
   sortAdminOrders,
   summarizeOrderItems,
@@ -155,6 +156,13 @@ test("counts put awaiting payment first and paid-today revenue on the Sydney day
     orders.map((order) => order.reference),
     ["paid-new", "waiting-old", "waiting-new", "paid-yesterday"],
   );
+});
+
+test("a payment email is skipped only when the order was already paid", () => {
+  assert.equal(paymentReceivedEmailDue("awaiting_payment"), true);
+  assert.equal(paymentReceivedEmailDue(undefined), true);
+  assert.equal(paymentReceivedEmailDue(null), true);
+  assert.equal(paymentReceivedEmailDue("paid"), false);
 });
 
 test("login and desk messages do not echo the secret or an arbitrary query", () => {

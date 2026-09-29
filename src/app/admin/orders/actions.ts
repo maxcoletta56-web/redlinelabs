@@ -6,8 +6,12 @@ import { redirect, RedirectType } from "next/navigation";
 import { adminSecretMatches, adminSessionValid } from "@/lib/admin-auth";
 import { clearAdminSession, readAdminSessionToken, setAdminSession } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
-import { markOrderPaid, ordersConfigured } from "@/lib/orders";
-import { rateLimit } from "@/lib/rate-limit";
+import { ordersConfigured } from "@/lib/orders";
+import { peekRateLimit, rateLimit } from "@/lib/rate-limit";
+import { recordAdminPayment } from "@/lib/record-admin-payment";
+
+const ADMIN_LOGIN_LIMIT = 8;
+const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 function clientIp(headerList: Headers) {
   const forwarded = headerList.get("x-forwarded-for");
@@ -18,13 +22,14 @@ export async function loginAdmin(formData: FormData) {
   const provided = formData.get("secret");
   const secret = process.env.ADMIN_API_SECRET;
   const attempt = typeof provided === "string" ? provided : "";
+  const headerList = await headers();
+  const key = `admin-login:${clientIp(headerList)}`;
+  if (!peekRateLimit(key, ADMIN_LOGIN_LIMIT, ADMIN_LOGIN_WINDOW_MS).ok) {
+    redirect("/admin/orders?error=limited", RedirectType.replace);
+  }
   if (!secret || !adminSecretMatches(attempt, secret)) {
-    const headerList = await headers();
-    const limit = rateLimit(`admin-login:${clientIp(headerList)}`, 8, 15 * 60 * 1000);
-    redirect(
-      limit.ok ? "/admin/orders?error=rejected" : "/admin/orders?error=limited",
-      RedirectType.replace,
-    );
+    rateLimit(key, ADMIN_LOGIN_LIMIT, ADMIN_LOGIN_WINDOW_MS);
+    redirect("/admin/orders?error=rejected", RedirectType.replace);
   }
   await setAdminSession(secret);
   redirect("/admin/orders", RedirectType.replace);
@@ -36,8 +41,8 @@ export async function logoutAdmin() {
 }
 
 /**
- * Same idempotent update as POST /api/admin/orders/[reference]/paid.
- * The cookie is checked again here; the bearer route is left unchanged.
+ * Same update as POST /api/admin/orders/[reference]/paid, including the
+ * payment email. The cookie is checked again here.
  */
 export async function markAdminOrderPaid(formData: FormData) {
   const token = await readAdminSessionToken();
@@ -57,19 +62,11 @@ export async function markAdminOrderPaid(formData: FormData) {
     redirect("/admin/orders?notice=unavailable", RedirectType.replace);
   }
 
-  let failed = false;
-  let found = false;
-  try {
-    found = (await markOrderPaid(reference)) !== null;
-  } catch (error) {
-    failed = true;
-    console.error("[admin] mark order paid failed", {
-      reference,
-      errorName: error instanceof Error ? error.name : "unknown",
-    });
+  const result = await recordAdminPayment(reference);
+  if (!result.ok && result.reason === "missing") {
+    redirect("/admin/orders?notice=missing", RedirectType.replace);
   }
-  if (failed) redirect("/admin/orders?notice=failed", RedirectType.replace);
-  if (!found) redirect("/admin/orders?notice=missing", RedirectType.replace);
+  if (!result.ok) redirect("/admin/orders?notice=failed", RedirectType.replace);
 
   revalidatePath("/admin/orders");
   redirect(
