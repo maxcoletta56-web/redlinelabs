@@ -71,6 +71,47 @@ test("customer order email includes the PayID instructions and the research line
   assert.equal(email.html.includes("BAC Water <5ml>"), false);
 });
 
+test("order emails include the ship-to lines and stay safe without an address", () => {
+  const shipping = {
+    line1: "1 Laboratory Road <dock>",
+    line2: "Unit 2",
+    city: "Sydney",
+    state: "NSW",
+    postcode: "2000",
+    country: "AU",
+  };
+  const customer = buildCustomerOrderEmail({ ...confirmation, shipping });
+  assert.match(customer.text, /Ship to:/);
+  assert.match(customer.text, /1 Laboratory Road <dock>/);
+  assert.match(customer.text, /Unit 2/);
+  assert.match(customer.text, /Sydney NSW 2000/);
+  assert.match(customer.text, /\nAU/);
+  assert.match(customer.html, /1 Laboratory Road &lt;dock&gt;/);
+  assert.equal(customer.html.includes("1 Laboratory Road <dock>"), false);
+  assert.match(customer.html, /Unit 2/);
+  assert.match(customer.html, /Sydney NSW 2000<br>AU/);
+
+  const merchant = buildMerchantOrderEmail({
+    ...confirmation,
+    shipping,
+    notifyEmail: "ops@redlinelabs.shop",
+  });
+  assert.match(merchant.text, /Ship to:/);
+  assert.match(merchant.text, /1 Laboratory Road/);
+  assert.match(merchant.text, /Sydney NSW 2000/);
+  assert.match(merchant.html, /1 Laboratory Road/);
+
+  const missing = buildCustomerOrderEmail({ ...confirmation, shipping: null });
+  assert.match(missing.text, /No address on file/);
+  assert.match(missing.html, /No address on file/);
+  const merchantMissing = buildMerchantOrderEmail({
+    ...confirmation,
+    shipping: null,
+    notifyEmail: "ops@redlinelabs.shop",
+  });
+  assert.match(merchantMissing.text, /No address on file/);
+});
+
 test("merchant email subject carries the reference and the dollar total", () => {
   const email = buildMerchantOrderEmail({
     ...confirmation,

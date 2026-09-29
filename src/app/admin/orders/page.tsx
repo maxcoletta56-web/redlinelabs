@@ -21,6 +21,7 @@ import {
 } from "@/lib/admin-orders";
 import { readAdminSessionToken } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
+import { formatShippingAddress } from "@/lib/order-shipping";
 import { listRecentOrders, ordersConfigured, type StoredOrder } from "@/lib/orders";
 import { pageMetadata } from "@/lib/seo";
 
@@ -258,6 +259,12 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
         ) : (
           <p className="mt-1 text-[#8f8c84]">—</p>
         )}
+        <p className="mt-2 text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+          Ship to
+        </p>
+        <p className="mt-1 whitespace-pre-line text-xs leading-5 text-[#cfc8b8]">
+          {formatShippingAddress(order.shipping)}
+        </p>
       </Cell>
       <Cell label="Items">
         <p className="max-w-xs">{summarizeOrderItems(order.items)}</p>

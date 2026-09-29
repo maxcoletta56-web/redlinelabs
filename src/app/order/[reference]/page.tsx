@@ -6,6 +6,7 @@ import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
+import { formatShippingAddress } from "@/lib/order-shipping";
 import { findOrder, type StoredOrder } from "@/lib/orders";
 import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
@@ -136,24 +137,12 @@ export default async function OrderPage({ params }: Props) {
               <dd className="text-[#cfc8b8]">{placedAt}</dd>
             </div>
           )}
-          {order.shipping && (
-            <div className="flex gap-2">
-              <dt>Ship to</dt>
-              <dd className="text-[#cfc8b8]">
-                {[
-                  order.shipping.name,
-                  order.shipping.line1,
-                  order.shipping.line2,
-                  order.shipping.city,
-                  order.shipping.state,
-                  order.shipping.postcode,
-                  order.shipping.country,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-              </dd>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <dt>Ship to</dt>
+            <dd className="whitespace-pre-line text-[#cfc8b8]">
+              {formatShippingAddress(order.shipping)}
+            </dd>
+          </div>
         </dl>
       </section>
 

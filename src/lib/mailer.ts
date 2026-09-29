@@ -1,5 +1,6 @@
 import { resolveBankTransfer, transferDescription } from "./bank-transfer.ts";
 import { COMPANY_EMAIL, RESEARCH_DISCLAIMER } from "./company.ts";
+import { formatShippingAddress, type ShippingAddressView } from "./order-shipping.ts";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -33,6 +34,7 @@ export type OrderConfirmationInput = {
   payId: string;
   accountName: string;
   orderUrl: string;
+  shipping?: ShippingAddressView | null;
 };
 
 export type PaymentReceivedInput = {
@@ -227,6 +229,19 @@ function totalsText(input: Pick<OrderConfirmationInput, "subtotalCents" | "total
   return lines.join("\n");
 }
 
+function shippingText(shipping: ShippingAddressView | null | undefined) {
+  return `Ship to:\n${formatShippingAddress(shipping)}`;
+}
+
+function shippingHtml(shipping: ShippingAddressView | null | undefined) {
+  const body = formatShippingAddress(shipping)
+    .split("\n")
+    .map((line) => escapeHtml(line))
+    .join("<br>");
+  return `<p style="margin:16px 0 8px;color:#d4af37;font-size:12px;letter-spacing:0.12em;">SHIP TO</p>
+    <p style="margin:0 0 16px;">${body}</p>`;
+}
+
 function totalsHtml(input: Pick<OrderConfirmationInput, "subtotalCents" | "totalCents" | "promoCode">) {
   const rows = [];
   if (input.promoCode) {
@@ -246,6 +261,8 @@ export function buildCustomerOrderEmail(input: OrderConfirmationInput): Rendered
     `Order ${input.reference}`,
     "",
     `Hello ${name},`,
+    "",
+    shippingText(input.shipping),
     "",
     `Transfer ${amount} AUD for this order. Put the reference in the transfer description.`,
     "",
@@ -267,6 +284,7 @@ export function buildCustomerOrderEmail(input: OrderConfirmationInput): Rendered
   const html = htmlShell(
     `Order ${input.reference}`,
     `<p style="margin:0 0 12px;">Hello ${escapeHtml(name)},</p>
+    ${shippingHtml(input.shipping)}
     <p style="margin:0 0 16px;">Transfer ${escapeHtml(amount)} AUD for this order. Put the reference in the transfer description.</p>
     ${itemsTable(input.items)}
     ${totalsHtml(input)}
@@ -295,6 +313,7 @@ export function buildMerchantOrderEmail(
     "",
     `Customer: ${name}`,
     `Email: ${input.email}`,
+    shippingText(input.shipping),
   ];
   if (input.promoCode) lines.push(`Promo code: ${input.promoCode}`);
   lines.push(
@@ -315,6 +334,7 @@ export function buildMerchantOrderEmail(
     `New order ${input.reference}`,
     `<p style="margin:0 0 4px;">Customer: ${escapeHtml(name)}</p>
     <p style="margin:0 0 4px;">Email: ${escapeHtml(input.email)}</p>
+    ${shippingHtml(input.shipping)}
     ${promoHtml}
     ${itemsTable(input.items)}
     <p style="margin:16px 0;color:#d4af37;">Total: ${escapeHtml(amount)} AUD</p>
@@ -460,6 +480,7 @@ export type OrderCreatedNotice = {
   subtotalCents: number;
   totalCents: number;
   promoCode: string | null;
+  shipping?: ShippingAddressView | null;
 };
 
 export async function sendOrderCreatedEmails(

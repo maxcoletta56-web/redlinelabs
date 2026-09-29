@@ -36,6 +36,7 @@ export async function startCartCheckoutSession(input: {
     researchUse: input.researchUse,
     items: input.items,
     promoCode: input.promoCode,
+    shipping: input.shipping,
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" };
