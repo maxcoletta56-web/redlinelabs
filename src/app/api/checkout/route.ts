@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         email: parsed.data.email,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
+        shipping: parsed.data.shipping,
         promoCode: parsed.data.promoCode,
         ageConfirmed: true,
         researchUse: true,
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
         email: parsed.data.email,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
+        shipping: parsed.data.shipping,
         promoCode: parsed.data.promoCode,
         ageConfirmed: true,
         researchUse: true,
@@ -101,7 +103,12 @@ export async function POST(request: Request) {
       errorName: error instanceof Error ? error.name : "unknown",
       errorMessage: message,
     });
-    const status = message.includes("Cart is empty") || message.includes("quantity") ? 400 : 502;
+    const status =
+      message.includes("Cart is empty") ||
+      message.includes("quantity") ||
+      message.includes("shipping address")
+        ? 400
+        : 502;
     return NextResponse.json({ error: message }, { status });
   }
 }

@@ -4,6 +4,16 @@ export type CartLineInput = {
   qty: number;
 };
 
+export type CheckoutShipping = {
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country?: string;
+};
+
 export type CheckoutBody = {
   email: string;
   firstName?: string;
@@ -12,6 +22,7 @@ export type CheckoutBody = {
   researchUse: boolean;
   items: CartLineInput[];
   promoCode?: string | null;
+  shipping: CheckoutShipping | null;
 };
 
 export type ParseResult<T> =
@@ -82,7 +93,25 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
       researchUse: true,
       items,
       promoCode,
+      shipping: parseShipping(row.shipping),
     },
+  };
+}
+
+function parseShipping(value: unknown): CheckoutShipping | null {
+  const row = asRecord(value);
+  if (!row) return null;
+  const name = readString(row.name);
+  const line2 = readString(row.line2);
+  const country = readString(row.country);
+  return {
+    name,
+    line1: readString(row.line1),
+    ...(line2 ? { line2 } : {}),
+    city: readString(row.city),
+    state: readString(row.state),
+    postal_code: readString(row.postal_code),
+    ...(country ? { country } : {}),
   };
 }
 

@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Field } from "@/components/Field";
+import { Field, SelectField } from "@/components/Field";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { useAccount } from "@/lib/account";
-import { defaultAddress, formatAddress, type SavedAddress } from "@/lib/account-data";
+import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { paymentsProvider } from "@/lib/payments-provider";
@@ -17,16 +17,40 @@ import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
 
-function shippingFromAddress(address: SavedAddress): ShippingAddressInput {
+const AU_POSTCODE = /^\d{4}$/;
+
+type ShippingDraft = {
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  postcode: string;
+};
+
+const EMPTY_SHIPPING: ShippingDraft = {
+  line1: "",
+  line2: "",
+  city: "",
+  state: "",
+  postcode: "",
+};
+
+function draftFromSaved(address: SavedAddress): ShippingDraft {
   return {
-    name: `${address.firstName} ${address.lastName}`.trim(),
     line1: address.line1,
-    line2: address.line2 || undefined,
+    line2: address.line2,
     city: address.city,
     state: address.state,
-    postal_code: address.postcode,
-    country: "AU",
+    postcode: address.postcode,
   };
+}
+
+function shippingDraftError(draft: ShippingDraft) {
+  if (!draft.line1.trim()) return "Address line 1 is required";
+  if (!draft.city.trim()) return "Suburb or city is required";
+  if (!isAuState(draft.state.trim())) return "Select an Australian state or territory";
+  if (!AU_POSTCODE.test(draft.postcode.trim())) return "Enter a 4-digit Australian postcode";
+  return null;
 }
 
 const PROVIDER_COPY = {
@@ -82,6 +106,7 @@ export default function CheckoutPage() {
     email?: string;
   }>({});
   const [addressId, setAddressId] = useState<string>("");
+  const [shippingOverrides, setShippingOverrides] = useState<ShippingDraft | null>(null);
 
   useEffect(() => {
     fetch("/api/checkout")
@@ -100,6 +125,8 @@ export default function CheckoutPage() {
   const selectedAddress =
     user?.addresses.find((address) => address.id === addressId) ??
     (user ? defaultAddress(user) : null);
+  const savedShipping = selectedAddress ? draftFromSaved(selectedAddress) : EMPTY_SHIPPING;
+  const shippingDraft = shippingOverrides ?? savedShipping;
   const totals = checkoutTotals({
     items,
     promo,
@@ -116,9 +143,25 @@ export default function CheckoutPage() {
       })),
     [items],
   );
-  const shipping = useMemo(
-    () => (selectedAddress ? shippingFromAddress(selectedAddress) : null),
-    [selectedAddress],
+  const shipping = useMemo<ShippingAddressInput>(
+    () => ({
+      name: `${firstName} ${lastName}`.trim(),
+      line1: shippingDraft.line1,
+      line2: shippingDraft.line2.trim() || undefined,
+      city: shippingDraft.city,
+      state: shippingDraft.state,
+      postal_code: shippingDraft.postcode,
+      country: "AU",
+    }),
+    [
+      firstName,
+      lastName,
+      shippingDraft.line1,
+      shippingDraft.line2,
+      shippingDraft.city,
+      shippingDraft.state,
+      shippingDraft.postcode,
+    ],
   );
 
   if (items.length === 0) {
@@ -173,6 +216,11 @@ export default function CheckoutPage() {
               const form = new FormData(event.currentTarget);
               if (form.get("ageConfirmed") !== "on" || form.get("researchUse") !== "on") {
                 setError("Age and research-use confirmation are required");
+                return;
+              }
+              const addressError = shippingDraftError(shippingDraft);
+              if (addressError) {
+                setError(addressError);
                 return;
               }
               setCustomer({
@@ -235,7 +283,10 @@ export default function CheckoutPage() {
                         name="savedAddress"
                         className="mt-1"
                         checked={(addressId || selectedAddress?.id) === address.id}
-                        onChange={() => setAddressId(address.id)}
+                        onChange={() => {
+                          setAddressId(address.id);
+                          setShippingOverrides(null);
+                        }}
                       />
                       <span>
                         <span className="block font-medium text-white">
@@ -256,6 +307,94 @@ export default function CheckoutPage() {
               </fieldset>
             )}
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
+            <fieldset className="space-y-4">
+              <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                Shipping address
+              </legend>
+              <Field
+                id="address-line1"
+                label="Address line 1"
+                name="line1"
+                autoComplete="address-line1"
+                value={shippingDraft.line1}
+                onChange={(event) =>
+                  setShippingOverrides((current) => ({
+                    ...(current ?? savedShipping),
+                    line1: event.target.value,
+                  }))
+                }
+              />
+              <Field
+                id="address-line2"
+                label="Address line 2"
+                name="line2"
+                autoComplete="address-line2"
+                value={shippingDraft.line2}
+                onChange={(event) =>
+                  setShippingOverrides((current) => ({
+                    ...(current ?? savedShipping),
+                    line2: event.target.value,
+                  }))
+                }
+              />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field
+                  id="address-city"
+                  label="Suburb / city"
+                  name="city"
+                  autoComplete="address-level2"
+                  value={shippingDraft.city}
+                  onChange={(event) =>
+                    setShippingOverrides((current) => ({
+                      ...(current ?? savedShipping),
+                      city: event.target.value,
+                    }))
+                  }
+                />
+                <SelectField
+                  id="address-state"
+                  label="State"
+                  name="state"
+                  autoComplete="address-level1"
+                  value={shippingDraft.state}
+                  onChange={(event) =>
+                    setShippingOverrides((current) => ({
+                      ...(current ?? savedShipping),
+                      state: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select</option>
+                  {AU_STATES.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </SelectField>
+                <Field
+                  id="address-postcode"
+                  label="Postcode"
+                  name="postcode"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  value={shippingDraft.postcode}
+                  onChange={(event) =>
+                    setShippingOverrides((current) => ({
+                      ...(current ?? savedShipping),
+                      postcode: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                  Country
+                </span>
+                <p id="address-country" className="field">
+                  Australia
+                </p>
+              </div>
+            </fieldset>
             <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
               <input type="checkbox" name="ageConfirmed" required className="mt-1" />
               I confirm I am 18 years of age or older.
