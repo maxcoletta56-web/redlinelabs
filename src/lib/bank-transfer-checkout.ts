@@ -1,7 +1,9 @@
 import "server-only";
 
 import { resolveBankTransfer } from "@/lib/bank-transfer";
+import { sendOrderCreatedEmails } from "@/lib/mailer";
 import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
+import { scheduleEmail } from "@/lib/schedule-email";
 import {
   insertOrder,
   ordersConfigured,
@@ -96,16 +98,20 @@ export async function createBankTransferOrder(input: {
     qty: line.qty,
     unitAmountCents: line.unitAmountCents,
   }));
+  const firstName = trimmed(input.firstName, 120) || "Customer";
+  const lastName = trimmed(input.lastName, 120) || "Account";
+  const email = trimmed(input.email, 200).toLowerCase();
+  const promoCode = promo?.code ?? null;
 
   const reference = await withTimeout(
     insertOrder({
       currency: "aud",
       subtotalCents,
       totalCents,
-      promoCode: promo?.code ?? null,
-      firstName: trimmed(input.firstName, 120) || "Customer",
-      lastName: trimmed(input.lastName, 120) || "Account",
-      email: trimmed(input.email, 200).toLowerCase(),
+      promoCode,
+      firstName,
+      lastName,
+      email,
       items,
       shipping: checkoutShippingSnapshot(input.shipping),
     }),
@@ -113,10 +119,18 @@ export async function createBankTransferOrder(input: {
     "The order database",
   );
 
-  // TODO(payments): this repo has no transactional email sender. The contact
-  // route only hands the browser a mailto: link, so there is nothing to send
-  // the PayID instructions with. Once a sender is added, email the customer
-  // the same instructions that /order/[reference] renders.
+  scheduleEmail(reference, () =>
+    sendOrderCreatedEmails({
+      reference,
+      firstName,
+      lastName,
+      email,
+      items,
+      subtotalCents,
+      totalCents,
+      promoCode,
+    }),
+  );
 
   return { reference, redirectUrl: `/order/${reference}`, totalCents };
 }

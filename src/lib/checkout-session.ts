@@ -12,7 +12,7 @@ import {
   resolvePayoneer,
   type PayoneerList,
 } from "@/lib/payoneer";
-import { lookupPromo, promoDiscountCents } from "@/lib/promo";
+import { lookupPromo, orderTotalsFromCents } from "@/lib/promo";
 import { absoluteUrl } from "@/lib/seo";
 
 export type ShippingAddressInput = {
@@ -70,8 +70,7 @@ export async function createPayoneerCheckout(input: {
   const promo = lookupPromo(input.promoCode);
   const email = input.email?.trim() ?? "";
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const promoOffCents = promoDiscountCents(subtotalCents, promo);
-  const amountCents = subtotalCents - promoOffCents;
+  const amountCents = orderTotalsFromCents(subtotalCents, promo).discountedCents;
   const transactionId = `rl_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
   const firstName = input.firstName?.trim() || "Customer";
   const lastName = input.lastName?.trim() || "Account";

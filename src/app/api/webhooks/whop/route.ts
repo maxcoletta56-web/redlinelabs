@@ -1,9 +1,42 @@
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
-import { sendPaymentReceivedEmail } from "@/lib/mailer";
-import { ordersConfigured } from "@/lib/orders";
-import { fulfillWhopPayment } from "@/lib/whop-payments";
+import { buildPaymentReceivedEmail, sendEmail } from "@/lib/mailer";
+import { ordersConfigured, type StoredOrder } from "@/lib/orders";
+import { fulfillWhopPayment, type ConfirmationResult } from "@/lib/whop-payments";
 import { readWhopPaymentNotice, verifyWhopWebhook } from "@/lib/whop";
+
+function orderPageUrl(reference: string) {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://redlinelabs.shop").replace(
+    /\/$/,
+    "",
+  );
+  return `${base}/order/${encodeURIComponent(reference)}`;
+}
+
+/** Missing mail config and transport errors both ask Whop to retry. */
+async function sendPaidConfirmation(order: StoredOrder): Promise<ConfirmationResult> {
+  const apiKey = process.env.RESEND_API_KEY?.trim() ?? "";
+  const from = process.env.ORDER_EMAIL_FROM?.trim() ?? "";
+  if (!apiKey || !from) return "unconfigured";
+  try {
+    await sendEmail(
+      buildPaymentReceivedEmail({
+        reference: order.reference,
+        firstName: order.firstName,
+        email: order.email,
+        totalCents: order.totalCents,
+        orderUrl: orderPageUrl(order.reference),
+      }),
+    );
+    return "sent";
+  } catch (error) {
+    console.error("[whop] confirmation email failed", {
+      reference: order.reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return "failed";
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -53,13 +86,7 @@ export async function POST(request: Request) {
       paymentId: notice.paymentId,
       reference: notice.orderId,
       outcome: notice.type === "payment.succeeded" ? "paid" : "failed",
-      sendConfirmation: (order) =>
-        sendPaymentReceivedEmail({
-          reference: order.reference,
-          firstName: order.firstName,
-          email: order.email,
-          totalCents: order.totalCents,
-        }),
+      sendConfirmation: sendPaidConfirmation,
     });
     if (result.status === 500) {
       return NextResponse.json({ error: "Confirmation is still pending" }, { status: 500 });

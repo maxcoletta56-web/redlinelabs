@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authorizeAdmin } from "@/lib/admin-auth";
+import { sendPaymentReceivedEmail } from "@/lib/mailer";
 import { normalizeOrderReference } from "@/lib/order-reference";
-import { markOrderPaid, ordersConfigured } from "@/lib/orders";
+import { findOrder, markOrderPaid, ordersConfigured } from "@/lib/orders";
+import { scheduleEmail } from "@/lib/schedule-email";
 
 export async function POST(
   request: NextRequest,
@@ -22,9 +24,27 @@ export async function POST(
   }
 
   try {
+    const existing = await findOrder(normalized).catch((error: unknown) => {
+      console.error("[admin] order lookup before paid email failed", {
+        reference: normalized,
+        errorName: error instanceof Error ? error.name : "unknown",
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    });
     const order = await markOrderPaid(normalized);
     if (!order) {
       return NextResponse.json({ error: "Order was not found" }, { status: 404 });
+    }
+    if (existing?.status !== "paid") {
+      scheduleEmail(order.reference, () =>
+        sendPaymentReceivedEmail({
+          reference: order.reference,
+          firstName: order.firstName,
+          email: order.email,
+          totalCents: order.totalCents,
+        }),
+      );
     }
     return NextResponse.json({
       reference: order.reference,

@@ -24,6 +24,26 @@ test("DGC20 is a 20 percent checkout code", () => {
   assert.equal(lookupPromo(""), null);
 });
 
+test("FAMILY70 is a 70 percent checkout code", () => {
+  const promo = lookupPromo("family70");
+  assert.deepEqual(promo, {
+    code: "FAMILY70",
+    percentOff: 70,
+    name: "70% off order total",
+  });
+  assert.deepEqual(lookupPromo("FAMILY70"), promo);
+  assert.equal(applyPercentOff(10000, 70), 3000);
+  assert.equal(promoDiscountCents(10000, promo), 7000);
+
+  const totals = checkoutTotals({
+    items: [{ price: 100, qty: 1 }],
+    promo,
+  });
+  assert.equal(totals.catalogCents, 10000);
+  assert.equal(totals.discountedCents, 3000);
+  assert.equal(totals.discountCents, 7000);
+});
+
 test("takes 20 percent off the order total, not each line", () => {
   assert.equal(applyPercentOff(8900, 20), 7120);
   assert.equal(promoDiscountCents(8900, lookupPromo("DGC20")), 1780);
