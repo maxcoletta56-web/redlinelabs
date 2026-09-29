@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect, RedirectType } from "next/navigation";
+import { settleAdminOrderPaid } from "@/lib/admin-mark-paid";
 import { adminSecretMatches, adminSessionValid } from "@/lib/admin-auth";
 import { clearAdminSession, readAdminSessionToken, setAdminSession } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
-import { markOrderPaid, ordersConfigured } from "@/lib/orders";
+import { ordersConfigured } from "@/lib/orders";
 import { rateLimit } from "@/lib/rate-limit";
 
 function clientIp(headerList: Headers) {
@@ -37,7 +38,9 @@ export async function logoutAdmin() {
 
 /**
  * Same idempotent update as POST /api/admin/orders/[reference]/paid.
- * The cookie is checked again here; the bearer route is left unchanged.
+ * `settleAdminOrderPaid` calls `markOrderPaidWithPaymentEmail`, the helper the
+ * bearer route uses, so both paths look up, mark paid, and schedule the receipt.
+ * The cookie is checked again here; the bearer route's auth is left unchanged.
  */
 export async function markAdminOrderPaid(formData: FormData) {
   const token = await readAdminSessionToken();
@@ -57,23 +60,10 @@ export async function markAdminOrderPaid(formData: FormData) {
     redirect("/admin/orders?notice=unavailable", RedirectType.replace);
   }
 
-  let failed = false;
-  let found = false;
-  try {
-    found = (await markOrderPaid(reference)) !== null;
-  } catch (error) {
-    failed = true;
-    console.error("[admin] mark order paid failed", {
-      reference,
-      errorName: error instanceof Error ? error.name : "unknown",
-    });
-  }
-  if (failed) redirect("/admin/orders?notice=failed", RedirectType.replace);
-  if (!found) redirect("/admin/orders?notice=missing", RedirectType.replace);
+  const settled = await settleAdminOrderPaid(reference);
+  if (settled.notice === "failed") redirect(settled.location, RedirectType.replace);
+  if (settled.notice === "missing") redirect(settled.location, RedirectType.replace);
 
   revalidatePath("/admin/orders");
-  redirect(
-    `/admin/orders?notice=paid&reference=${encodeURIComponent(reference)}`,
-    RedirectType.replace,
-  );
+  redirect(settled.location, RedirectType.replace);
 }
