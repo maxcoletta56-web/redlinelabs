@@ -8,7 +8,7 @@ import {
   type OrderItemSnapshot,
   type OrderShippingSnapshot,
 } from "@/lib/orders";
-import { lookupPromo, promoDiscountCents } from "@/lib/promo";
+import { lookupPromo, orderTotalsFromCents } from "@/lib/promo";
 import { withTimeout } from "@/lib/with-timeout";
 
 export type BankTransferShippingInput = {
@@ -42,7 +42,7 @@ function trimmed(value: string | null | undefined, max: number) {
  * The address never affects the amount owed, so it is stored as typed after
  * trimming and length capping. Prices always come from the catalogue.
  */
-function normalizeShipping(
+export function checkoutShippingSnapshot(
   shipping: BankTransferShippingInput | null | undefined,
 ): OrderShippingSnapshot | null {
   const line1 = trimmed(shipping?.line1, 200);
@@ -81,7 +81,8 @@ export async function createBankTransferOrder(input: {
   const lines = resolveCartLines(input.items);
   const promo = lookupPromo(input.promoCode);
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const totalCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
+  const totals = orderTotalsFromCents(subtotalCents, promo);
+  const totalCents = totals.discountedCents;
   if (totalCents <= 0) {
     throw new Error("Order total must be greater than zero");
   }
@@ -106,7 +107,7 @@ export async function createBankTransferOrder(input: {
       lastName: trimmed(input.lastName, 120) || "Account",
       email: trimmed(input.email, 200).toLowerCase(),
       items,
-      shipping: normalizeShipping(input.shipping),
+      shipping: checkoutShippingSnapshot(input.shipping),
     }),
     DATABASE_TIMEOUT_MS,
     "The order database",

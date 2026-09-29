@@ -46,6 +46,16 @@ export function itemKey(item: Pick<CartItem, "slug" | "option">) {
   return `${item.slug}::${item.option ?? "default"}`;
 }
 
+function publishedPrice(slug: string, option: string | null) {
+  const product = getProduct(slug);
+  if (!product) return null;
+  if (product.variants.length === 0) return product.minPrice > 0 ? product.minPrice : null;
+  const variant = option
+    ? product.variants.find((entry) => entry.option === option)
+    : product.variants[0];
+  return variant && variant.price > 0 ? variant.price : null;
+}
+
 function readCart(): CartItem[] {
   if (typeof window === "undefined") return empty;
   try {
@@ -55,8 +65,9 @@ function readCart(): CartItem[] {
     return parsed
       .map((item) => {
         const product = getProduct(item.slug);
-        if (!product || item.qty <= 0) return null;
-        return { ...item, slug: product.slug, name: product.name };
+        const price = publishedPrice(item.slug, item.option);
+        if (!product || price == null || item.qty <= 0) return null;
+        return { ...item, slug: product.slug, name: product.name, price };
       })
       .filter((item): item is CartItem => Boolean(item));
   } catch {
@@ -105,14 +116,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback((item: Omit<CartItem, "qty">, qty = 1) => {
     const key = itemKey(item);
+    const price = publishedPrice(item.slug, item.option) ?? item.price;
+    const nextItem = { ...item, price };
     const current = itemsSnapshot;
     const existing = current.find((p) => itemKey(p) === key);
     writeItems(
       existing
         ? current.map((p) =>
-            itemKey(p) === key ? { ...p, qty: clampQty(p.qty + qty) } : p,
+            itemKey(p) === key ? { ...p, price, qty: clampQty(p.qty + qty) } : p,
           )
-        : [...current, { ...item, qty: clampQty(qty) }],
+        : [...current, { ...nextItem, qty: clampQty(qty) }],
     );
     drawerOpen = true;
     emit();

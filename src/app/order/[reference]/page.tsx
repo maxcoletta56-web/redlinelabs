@@ -8,6 +8,7 @@ import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { findOrder, type StoredOrder } from "@/lib/orders";
 import { formatPrice } from "@/lib/products";
+import { lookupPromo, promoDiscountCents, volumeDiscountCents } from "@/lib/promo";
 import { pageMetadata } from "@/lib/seo";
 
 /** Payment clears out of band, so the status must never be served from a cache. */
@@ -20,8 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const normalized = normalizeOrderReference(reference) ?? reference;
   return pageMetadata({
     title: `Order ${normalized}`,
-    description:
-      "Bank transfer payment instructions for a Redline Labs research-use order. This page is not indexed.",
+    description: "Status for a Redline Labs research-use order. This page is not indexed.",
     path: `/order/${normalized}`,
     index: false,
   });
@@ -38,16 +38,48 @@ function formatDate(iso: string | null) {
   }).format(date);
 }
 
-function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
-  return (
-    <p
-      className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
-      role="status"
-    >
-      {paid ? "Payment received" : "Awaiting payment"}
-    </p>
-  );
+function statusLabel(status: StoredOrder["status"]) {
+  if (status === "paid") return "Payment received";
+  if (status === "pending") return "Payment processing";
+  if (status === "failed") return "Payment failed";
+  return "Awaiting payment";
+}
+
+function statusBody(order: StoredOrder, paidAt: string | null) {
+  if (order.status === "paid") {
+    return `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`;
+  }
+  if (order.status === "pending") {
+    return "The card payment is with Whop. This page updates when it is confirmed, and a confirmation email is sent after it succeeds.";
+  }
+  if (order.status === "failed") {
+    return "The card payment did not complete. Nothing has been marked paid. You can return to checkout and try again.";
+  }
+  return "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day.";
+}
+
+function discountLines(order: StoredOrder) {
+  const volume = volumeDiscountCents(order.subtotalCents);
+  const promo = lookupPromo(order.promoCode);
+  const promoOff = promoDiscountCents(order.subtotalCents - volume, promo);
+  const actual = order.subtotalCents - order.totalCents;
+  if (actual === volume + promoOff && actual > 0) {
+    return [
+      ...(volume > 0
+        ? [{ label: "10% off orders of $200 or more", cents: volume }]
+        : []),
+      ...(promoOff > 0 && promo ? [{ label: `Promo code ${promo.code}`, cents: promoOff }] : []),
+    ];
+  }
+  if (actual > 0) {
+    return [
+      {
+        label: order.promoCode ? `Promo code ${order.promoCode}` : "Discount",
+        cents: actual,
+      },
+    ];
+  }
+  return [];
 }
 
 export default async function OrderPage({ params }: Props) {
@@ -66,9 +98,11 @@ export default async function OrderPage({ params }: Props) {
   if (!order) notFound();
 
   const paid = order.status === "paid";
+  const awaitingTransfer = order.status === "awaiting_payment";
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
+  const discounts = discountLines(order);
 
   return (
     <div className="wrap max-w-[760px] py-16">
@@ -80,15 +114,16 @@ export default async function OrderPage({ params }: Props) {
           { label: `Order ${order.reference}` },
         ]}
       />
-      <StatusBadge order={order} />
+      <p
+        className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
+        role="status"
+      >
+        {statusLabel(order.status)}
+      </p>
       <h1 className="mt-3 mb-2 text-[2.15rem] font-semibold tracking-[-0.03em]">
         Order {order.reference}
       </h1>
-      <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
-        {paid
-          ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
-      </p>
+      <p className="mb-8 text-sm leading-7 text-[#8f8c84]">{statusBody(order, paidAt)}</p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
         <h2
@@ -109,14 +144,12 @@ export default async function OrderPage({ params }: Props) {
             </li>
           ))}
         </ul>
-        {order.promoCode && (
-          <div className="mb-3 flex justify-between text-sm">
-            <span>Promo code {order.promoCode}</span>
-            <span className="text-[#d4af37]">
-              −{formatPrice((order.subtotalCents - order.totalCents) / 100)}
-            </span>
+        {discounts.map((line) => (
+          <div key={line.label} className="mb-3 flex justify-between text-sm">
+            <span>{line.label}</span>
+            <span className="text-[#d4af37]">−{formatPrice(line.cents / 100)}</span>
           </div>
-        )}
+        ))}
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
           <span>{paid ? "Paid" : "Amount due"}</span>
           <span className="text-[#d4af37]">
@@ -157,7 +190,7 @@ export default async function OrderPage({ params }: Props) {
         </dl>
       </section>
 
-      {!paid && (
+      {awaitingTransfer && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"

@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { ordersSchemaSql } from "../../scripts/ensure-orders-table.mjs";
-import { statementForNeon } from "../../scripts/neon-schema.mjs";
+import { schemaSql, statementForNeon } from "../../scripts/neon-schema.mjs";
 import { CREATE_ORDERS } from "./orders.ts";
+import { CREATE_WHOP_PAYMENTS } from "./whop-payments.ts";
 
 function compact(sql: string) {
   return sql.replace(/\s+/g, " ").trim();
@@ -18,6 +19,10 @@ test("the orders schema is one statement Neon will accept", () => {
   assert.equal(statement.endsWith(";"), false);
   assert.equal(statement.split(";").length, 1);
   assert.match(statement, /^CREATE TABLE IF NOT EXISTS orders/);
+});
+
+test("db/whop_payments.sql is the statement the webhook runtime runs", () => {
+  assert.equal(compact(statementForNeon(schemaSql("whop_payments.sql"))), compact(CREATE_WHOP_PAYMENTS));
 });
 
 test("schema apply skips when no database url is set", () => {

@@ -1,7 +1,9 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "failed", "paid"] as const;
+
+export type NewOrderStatus = "awaiting_payment" | "pending";
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -98,7 +100,7 @@ const ORDER_COLUMNS = [
 
 const INSERT_ORDER =
   "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) " +
+  "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
@@ -107,6 +109,10 @@ const LIST_ORDERS = `SELECT ${ORDER_COLUMNS} FROM orders ORDER BY orders.created
 
 const MARK_ORDER_PAID =
   `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()) WHERE reference = $1 ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+const MARK_ORDER_FAILED =
+  `UPDATE orders SET status = 'failed' WHERE reference = $1 AND status = 'pending' ` +
   `RETURNING ${ORDER_COLUMNS}`;
 
 export function ensureOrdersTable(sql: Sql) {
@@ -209,6 +215,7 @@ export async function insertOrder(
   order: NewOrder,
   sql: Sql | null = getSql(),
   attempts = 5,
+  status: NewOrderStatus = "awaiting_payment",
 ): Promise<string> {
   if (!sql) throw new OrdersUnavailableError();
   await ensureOrdersTable(sql);
@@ -217,6 +224,7 @@ export async function insertOrder(
     const reference = generateOrderReference();
     const result = await sql.query(INSERT_ORDER, [
       reference,
+      status,
       order.currency,
       order.subtotalCents,
       order.totalCents,
@@ -268,5 +276,18 @@ export async function markOrderPaid(
   if (!sql) throw new OrdersUnavailableError();
   await ensureOrdersTable(sql);
   const result = await sql.query(MARK_ORDER_PAID, [normalized]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
+}
+
+/** A failed card attempt must not overwrite an order that already cleared. */
+export async function markOrderFailed(
+  reference: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_ORDER_FAILED, [normalized]);
   return readOrderRow(rowsOf(result)[0]) ?? null;
 }

@@ -9,4 +9,5 @@ export function ordersSchemaSql() {
 const entry = process.argv[1];
 if (entry && import.meta.url === pathToFileURL(resolve(entry)).href) {
   await applySchema("orders");
+  await applySchema("whop_payments");
 }

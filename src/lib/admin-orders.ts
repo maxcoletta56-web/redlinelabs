@@ -89,6 +89,8 @@ export function promoLabel(code: string | null): string {
 export function orderStatusLabel(status: string): string {
   if (status === "paid") return "Paid";
   if (status === "awaiting_payment") return "Awaiting payment";
+  if (status === "pending") return "Pending";
+  if (status === "failed") return "Failed";
   return status;
 }
 
@@ -107,7 +109,7 @@ export function adminOrderStats(
   let paidToday = 0;
   let revenuePaidTodayCents = 0;
   for (const order of orders) {
-    if (order.status === "awaiting_payment") awaitingPayment += 1;
+    if (order.status === "awaiting_payment" || order.status === "pending") awaitingPayment += 1;
     if (order.status === "paid" && today && sydneyCalendarDay(order.paidAt) === today) {
       paidToday += 1;
       revenuePaidTodayCents += order.totalCents;
@@ -120,7 +122,11 @@ export function sortAdminOrders<T extends { status: string; createdAt: string | 
   orders: readonly T[],
 ): T[] {
   return [...orders].sort((a, b) => {
-    const rank = (status: string) => (status === "awaiting_payment" ? 0 : 1);
+    const rank = (status: string) => {
+      if (status === "awaiting_payment" || status === "pending") return 0;
+      if (status === "failed") return 1;
+      return 2;
+    };
     const byStatus = rank(a.status) - rank(b.status);
     if (byStatus !== 0) return byStatus;
     return createdAtMs(b.createdAt) - createdAtMs(a.createdAt);
