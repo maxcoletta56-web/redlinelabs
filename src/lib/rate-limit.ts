@@ -4,12 +4,30 @@ type Bucket = {
 
 const buckets = new Map<string, Bucket>();
 
-export function rateLimit(key: string, limit: number, windowMs: number) {
-  const now = Date.now();
+export function resetRateLimitForTests() {
+  buckets.clear();
+}
+
+function bucketInWindow(key: string, windowMs: number, now: number) {
   const bucket = buckets.get(key) ?? { hits: [] };
   bucket.hits = bucket.hits.filter((time) => now - time < windowMs);
+  buckets.set(key, bucket);
+  return bucket;
+}
+
+/** Reads the window without recording an attempt. */
+export function peekRateLimit(key: string, limit: number, windowMs: number, now = Date.now()) {
+  const bucket = bucketInWindow(key, windowMs, now);
   if (bucket.hits.length >= limit) {
-    buckets.set(key, bucket);
+    const retryAfterMs = windowMs - (now - bucket.hits[0]);
+    return { ok: false, retryAfterMs };
+  }
+  return { ok: true, retryAfterMs: 0 };
+}
+
+export function rateLimit(key: string, limit: number, windowMs: number, now = Date.now()) {
+  const bucket = bucketInWindow(key, windowMs, now);
+  if (bucket.hits.length >= limit) {
     const retryAfterMs = windowMs - (now - bucket.hits[0]);
     return { ok: false, retryAfterMs };
   }
