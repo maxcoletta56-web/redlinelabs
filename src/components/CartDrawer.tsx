@@ -153,6 +153,13 @@ export function CartDrawer() {
             >
               View cart
             </Link>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(false)}
+              className="mt-3 w-full text-center text-[12px] tracking-[0.08em] text-[#cfc8b8] uppercase hover:text-[#d4af37]"
+            >
+              Continue shopping
+            </button>
           </div>
         )}
       </aside>
