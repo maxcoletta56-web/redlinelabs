@@ -23,9 +23,9 @@ export function Footer() {
           </p>
         </div>
         <div>
-          <h3 className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
+          <p className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
             Navigation
-          </h3>
+          </p>
           <ul className="space-y-2.5 text-sm text-[#cfc8b8]">
             <li><Link href="/" className="hover:text-[#d4af37]">Home</Link></li>
             <li><Link href="/shop" className="hover:text-[#d4af37]">Shop</Link></li>
@@ -38,9 +38,9 @@ export function Footer() {
           </ul>
         </div>
         <div>
-          <h3 className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
+          <p className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
             Policies
-          </h3>
+          </p>
           <ul className="space-y-2.5 text-sm text-[#cfc8b8]">
             <li><Link href="/shipping-policy" className="hover:text-[#d4af37]">Shipping Policy</Link></li>
             <li><Link href="/refund-policy" className="hover:text-[#d4af37]">Refund Policy</Link></li>
@@ -49,18 +49,18 @@ export function Footer() {
           </ul>
         </div>
         <div>
-          <h3 className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
+          <p className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
             Contact
-          </h3>
+          </p>
           <a href="mailto:redlinelabsltd@pm.me" className="text-sm text-[#cfc8b8] hover:text-[#d4af37]">
             redlinelabsltd@pm.me
           </a>
           <p className="mt-2 text-sm text-[#8f8c84]">Australia-wide dispatch</p>
         </div>
         <div>
-          <h3 className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
+          <p className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase">
             Research use
-          </h3>
+          </p>
           <p className="text-sm leading-6 text-[#8f8c84]">
             Not for human or veterinary consumption. Not a pharmacy.
           </p>

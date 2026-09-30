@@ -12,7 +12,8 @@ import {
 import { COMPANY_NUMBER, REGISTERED_COMPANY_SHORT } from "@/lib/company";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductImage } from "@/components/ProductImage";
-import { faqs } from "@/lib/faqs";
+import { JsonLd } from "@/components/JsonLd";
+import { faqs, faqJsonLd } from "@/lib/faqs";
 import {
   categories,
   featuredProducts,
@@ -74,12 +75,12 @@ export default function Home() {
 
   return (
     <div>
+      <JsonLd data={faqJsonLd()} />
       <section className="relative overflow-hidden bg-[#050505] text-white">
         <Image
           src="/brand/hero-lab.jpg"
           alt=""
           fill
-          priority
           sizes="100vw"
           className="object-cover opacity-25"
         />
@@ -266,12 +267,9 @@ export default function Home() {
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {shopCategories.map((cat, index) => {
-              const names = products
-                .filter((p) => p.categories.includes(cat))
-                .map((p) => p.name)
-                .slice(0, 4);
-              const extra =
-                products.filter((p) => p.categories.includes(cat)).length - names.length;
+              const listed = products.filter((p) => p.categories.includes(cat));
+              const shown = listed.slice(0, 4);
+              const extra = listed.length - shown.length;
               return (
                 <article key={cat} className="surface flex flex-col p-6 transition duration-200 hover:-translate-y-0.5 hover:border-[#d4af37]/50">
                   <div className="mb-4 flex items-start justify-between gap-3">
@@ -289,8 +287,15 @@ export default function Home() {
                     {categoryCopy[cat]}
                   </p>
                   <ul className="mb-5 space-y-1.5 text-[14px] text-[#cfc8b8]">
-                    {names.map((name) => (
-                      <li key={name}>{name}</li>
+                    {shown.map((product) => (
+                      <li key={product.slug}>
+                        <Link
+                          href={`/product/${product.slug}`}
+                          className="hover:text-[#d4af37]"
+                        >
+                          {product.name}
+                        </Link>
+                      </li>
                     ))}
                     {extra > 0 && (
                       <li className="text-[#8f8c84]">+{extra} more</li>

@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { AddToCart } from "@/components/AddToCart";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CoaSection } from "@/components/CoaSection";
+import { FaqList } from "@/components/FaqList";
 import { JsonLd } from "@/components/JsonLd";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductImage } from "@/components/ProductImage";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { StockAlertButton } from "@/components/StockAlertButton";
+import { productFaqJsonLd, productFaqs } from "@/lib/faqs";
 import { getProduct, optionLabel, products, relatedProducts, type Product } from "@/lib/products";
-import { absoluteUrl, pageMetadata } from "@/lib/seo";
+import { absoluteUrl, pageMetadata, productMetaDescription } from "@/lib/seo";
 import { canonicalProductSlug } from "@/lib/slugs";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -77,7 +80,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!product) return { title: "Product" };
   return pageMetadata({
     title: product.name,
-    description: product.description,
+    description: productMetaDescription(product.name, product.description),
     path: `/product/${product.slug}`,
     image: product.image,
     imageAlt: productImageAlt(product.name, product.variants[0]?.option),
@@ -98,7 +101,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="wrap py-12">
-      <JsonLd data={productJsonLd(product)} />
+      <JsonLd data={[productJsonLd(product), productFaqJsonLd(product)]} />
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
@@ -120,7 +123,12 @@ export default async function ProductPage({ params }: Props) {
         </div>
         <div>
           {product.categories[0] && (
-            <p className="kicker mb-3">{product.categories[0]}</p>
+            <Link
+              href={`/shop?category=${encodeURIComponent(product.categories[0])}`}
+              className="kicker mb-3 inline-block"
+            >
+              {product.categories[0]}
+            </Link>
           )}
           <h1 className="mb-6 text-[2.1rem] leading-tight font-semibold tracking-[-0.03em] text-white">
             {product.name}
@@ -150,6 +158,19 @@ export default async function ProductPage({ params }: Props) {
           </div>
         </section>
       )}
+
+      <section className="mt-20 border-t border-[rgba(212,175,55,0.16)] pt-14">
+        <p className="kicker mb-3">FAQ</p>
+        <h2 className="section-title mb-10">Common questions</h2>
+        <div className="max-w-[760px]">
+          <FaqList items={productFaqs(product)} headingLevel="h3" />
+          <p className="mt-6">
+            <Link href="/faq" className="text-[14px] font-medium text-[#d4af37]">
+              View all frequently asked questions →
+            </Link>
+          </p>
+        </div>
+      </section>
     </div>
   );
 }
