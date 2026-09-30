@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyPercentOff,
+  cardChargeCents,
   checkoutTotals,
   lookupPromo,
   normalizePromoCode,
@@ -97,4 +98,20 @@ test("applies store credit after 20 percent off the total", () => {
   const creditCents = creditToApplyCents(1000, totals.discountedCents);
   assert.equal(creditCents, 1000);
   assert.equal(totals.discountedCents - creditCents, 23240);
+});
+
+test("card orders of $200 or more take 10 percent off before the promo", () => {
+  const below = cardChargeCents(19_999, lookupPromo("DGC20"));
+  assert.equal(below.volumeDiscountCents, 0);
+  assert.equal(below.promoDiscountCents, 19_999 - applyPercentOff(19_999, 20));
+  assert.equal(below.totalCents, applyPercentOff(19_999, 20));
+
+  const exact = cardChargeCents(20_000, null);
+  assert.equal(exact.volumeDiscountCents, 2_000);
+  assert.equal(exact.totalCents, 18_000);
+
+  const stacked = cardChargeCents(20_000, lookupPromo("DGC20"));
+  assert.equal(stacked.volumeDiscountCents, 2_000);
+  assert.equal(stacked.promoDiscountCents, 3_600);
+  assert.equal(stacked.totalCents, 14_400);
 });

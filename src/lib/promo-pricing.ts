@@ -67,3 +67,30 @@ export function checkoutTotals({
     discountCents,
   };
 }
+
+/** Card orders at or above this catalogue subtotal take the volume percent off first. */
+export const VOLUME_DISCOUNT_THRESHOLD_CENTS = 20_000;
+
+export const VOLUME_DISCOUNT_PERCENT = 10;
+
+export function volumeDiscountCents(subtotalCents: number) {
+  const subtotal = Math.max(0, Math.round(subtotalCents));
+  if (subtotal < VOLUME_DISCOUNT_THRESHOLD_CENTS) return 0;
+  return subtotal - applyPercentOff(subtotal, VOLUME_DISCOUNT_PERCENT);
+}
+
+/**
+ * Card charge: 10% off the catalogue subtotal when it is at least $200, then
+ * the promo percent on what remains. Bank transfer does not use this.
+ */
+export function cardChargeCents(subtotalCents: number, promo: CheckoutPromo | null) {
+  const subtotal = Math.max(0, Math.round(subtotalCents));
+  const volumeOff = volumeDiscountCents(subtotal);
+  const afterVolume = subtotal - volumeOff;
+  const promoOff = promoDiscountCents(afterVolume, promo);
+  return {
+    volumeDiscountCents: volumeOff,
+    promoDiscountCents: promoOff,
+    totalCents: afterVolume - promoOff,
+  };
+}

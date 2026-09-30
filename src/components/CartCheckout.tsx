@@ -51,14 +51,19 @@ export function CartCheckout({
         promoCode,
         ageConfirmed,
         researchUse,
+        paymentMethod: "bank_transfer",
       }),
       SUBMIT_TIMEOUT_MS,
       "Checkout",
     )
       .then((result) => {
         if (cancelled) return;
-        if (result.ok) {
+        if (result.ok && result.method === "bank_transfer") {
           window.location.assign(result.redirectUrl);
+          return;
+        }
+        if (result.ok) {
+          setError("Card checkout should stay on this page.");
           return;
         }
         setError(result.error);

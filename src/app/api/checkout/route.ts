@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { bankTransferConfigured, createBankTransferOrder } from "@/lib/bank-transfer-checkout";
-import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-session";
 import { paymentsProvider } from "@/lib/payments-provider";
-import { resolvePayoneer } from "@/lib/payoneer";
 import { checkoutBodySchema } from "@/lib/validation";
+import { whopEnvironment } from "@/lib/whop";
+import { createWhopCardCheckout, whopCardConfigured } from "@/lib/whop-checkout";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
@@ -12,34 +12,24 @@ const PROVIDER_TIMEOUT_MS = 15_000;
 const BANK_TRANSFER_SETUP =
   "Bank transfer checkout is not configured. Add PAYID_ADDRESS, PAYID_ACCOUNT_NAME, and DATABASE_URL.";
 
-const PAYONEER_SETUP =
-  "Payoneer is not configured. Add PAYONEER_MERCHANT_CODE and PAYONEER_PAYMENT_TOKEN. Production uses the live Payoneer API.";
+const WHOP_SETUP =
+  "Card checkout is not configured. Add WHOP_API_KEY, WHOP_WEBHOOK_SECRET, WHOP_COMPANY_ID, and DATABASE_URL. Sandbox is the default until WHOP_ENVIRONMENT is production.";
 
 export async function GET() {
   const provider = paymentsProvider();
-  if (provider === "bank_transfer") {
-    return NextResponse.json({
-      provider,
-      configured: bankTransferConfigured(),
-      mode: null,
-    });
-  }
+  const bank = bankTransferConfigured();
+  const card = whopCardConfigured();
   return NextResponse.json({
     provider,
-    configured: payoneerConfigured(),
-    mode: resolvePayoneer(process.env)?.mode ?? null,
+    configured: bank || card,
+    mode: whopEnvironment(),
+    bankTransfer: { configured: bank },
+    card: { configured: card, environment: whopEnvironment() },
   });
 }
 
 export async function POST(request: Request) {
   const provider = paymentsProvider();
-  const configured = provider === "bank_transfer" ? bankTransferConfigured() : payoneerConfigured();
-  if (!configured) {
-    return NextResponse.json(
-      { error: provider === "bank_transfer" ? BANK_TRANSFER_SETUP : PAYONEER_SETUP },
-      { status: 503 },
-    );
-  }
 
   let json: unknown;
   try {
@@ -56,42 +46,60 @@ export async function POST(request: Request) {
     );
   }
 
+  const method =
+    parsed.data.paymentMethod ?? (provider === "bank_transfer" ? "bank_transfer" : "card");
+  if (method === "card" && !whopCardConfigured()) {
+    return NextResponse.json({ error: WHOP_SETUP }, { status: 503 });
+  }
+  if (method === "bank_transfer" && !bankTransferConfigured()) {
+    return NextResponse.json({ error: BANK_TRANSFER_SETUP }, { status: 503 });
+  }
+
   try {
-    if (provider === "bank_transfer") {
-      const order = await createBankTransferOrder({
-        items: parsed.data.items,
-        email: parsed.data.email,
-        firstName: parsed.data.firstName,
-        lastName: parsed.data.lastName,
-        shipping: parsed.data.shipping,
-        promoCode: parsed.data.promoCode,
-        ageConfirmed: true,
-        researchUse: true,
-      });
+    if (method === "card") {
+      const checkout = await withTimeout(
+        createWhopCardCheckout({
+          items: parsed.data.items,
+          email: parsed.data.email,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          shipping: parsed.data.shipping,
+          promoCode: parsed.data.promoCode,
+          ageConfirmed: true,
+          researchUse: true,
+        }),
+        PROVIDER_TIMEOUT_MS,
+        "The card processor",
+      );
       return NextResponse.json({
-        provider,
-        reference: order.reference,
-        redirectUrl: order.redirectUrl,
-        amountCents: order.totalCents,
+        provider: "card",
+        reference: checkout.reference,
+        sessionId: checkout.sessionId,
+        planId: checkout.planId,
+        environment: checkout.environment,
+        returnUrl: checkout.returnUrl,
+        amountCents: checkout.totalCents,
         currency: "aud",
       });
     }
 
-    const redirectUrl = await withTimeout(
-      createPayoneerCheckout({
-        items: parsed.data.items,
-        email: parsed.data.email,
-        firstName: parsed.data.firstName,
-        lastName: parsed.data.lastName,
-        shipping: parsed.data.shipping,
-        promoCode: parsed.data.promoCode,
-        ageConfirmed: true,
-        researchUse: true,
-      }),
-      PROVIDER_TIMEOUT_MS,
-      "The card processor",
-    );
-    return NextResponse.json({ provider, redirectUrl });
+    const order = await createBankTransferOrder({
+      items: parsed.data.items,
+      email: parsed.data.email,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      shipping: parsed.data.shipping,
+      promoCode: parsed.data.promoCode,
+      ageConfirmed: true,
+      researchUse: true,
+    });
+    return NextResponse.json({
+      provider: "bank_transfer",
+      reference: order.reference,
+      redirectUrl: order.redirectUrl,
+      amountCents: order.totalCents,
+      currency: "aud",
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout failed";
     console.error("[checkout] POST failed", {
@@ -109,6 +117,10 @@ export async function POST(request: Request) {
       message.includes("shipping address")
         ? 400
         : 502;
-    return NextResponse.json({ error: message }, { status });
+    const safe =
+      method === "bank_transfer"
+        ? "We could not create your order. Nothing has been charged."
+        : "The card processor did not respond. Nothing has been charged.";
+    return NextResponse.json({ error: safe }, { status });
   }
 }
