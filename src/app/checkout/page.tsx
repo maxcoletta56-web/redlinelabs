@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
+import { WhopCardCheckout } from "@/components/WhopCardCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
@@ -10,8 +11,8 @@ import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { useAccount } from "@/lib/account";
 import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
+import { priceCardCart } from "@/lib/card-pricing";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -53,7 +54,28 @@ function shippingDraftError(draft: ShippingDraft) {
   return null;
 }
 
-const PROVIDER_COPY = {
+type PaymentMethod = "card" | "bank_transfer";
+
+const METHOD_COPY = {
+  card: {
+    intro:
+      "Pay by card in the form on this page. Orders of $200 or more include 10% off. The amount is calculated on the server from the catalogue.",
+    paying: "Paying as",
+    payingDetail: "Card details stay in the Whop checkout form, including any bank verification step.",
+    addressNote: "This address is saved with the order before the card form is shown.",
+    creditNote: "It is not deducted from the card charge.",
+    summaryNote:
+      "Store credit saved in this browser is not deducted from the card charge. Orders of $200 or more include 10% off. The amount charged is taken from the catalogue, not from the browser cart.",
+    setup: (
+      <>
+        Card checkout is not configured. Add{" "}
+        <code className="text-[#d4af37]">WHOP_API_KEY</code>,{" "}
+        <code className="text-[#d4af37]">WHOP_WEBHOOK_SECRET</code>,{" "}
+        <code className="text-[#d4af37]">WHOP_COMPANY_ID</code>, and{" "}
+        <code className="text-[#d4af37]">DATABASE_URL</code>.
+      </>
+    ),
+  },
   bank_transfer: {
     intro:
       "Payment is by Australian bank transfer or PayID. The next screen shows the PayID address, the amount, and the reference to quote in the transfer description.",
@@ -72,33 +94,19 @@ const PROVIDER_COPY = {
       </>
     ),
   },
-  stripe: {
-    intro:
-      "Payment continues on the card processor. It collects the card, and the charge is sent to the merchant account. You return here after payment.",
-    paying: "Paying as",
-    payingDetail: "Card details are handled by the card processor.",
-    addressNote: "This address is saved with the order before the card processor takes payment.",
-    creditNote: "It is not deducted from the card charge.",
-    summaryNote:
-      "Store credit saved in this browser is not deducted from the card charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
-    setup: (
-      <>
-        Payoneer checkout is not configured. Add{" "}
-        <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-        <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>. Production uses the live
-        Payoneer API.
-      </>
-    ),
-  },
 } as const;
 
 export default function CheckoutPage() {
-  const copy = PROVIDER_COPY[paymentsProvider()];
   const { items } = useCart();
   const { promo } = usePromo();
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [method, setMethod] = useState<PaymentMethod>("card");
+  const [rails, setRails] = useState<{
+    bankTransfer: boolean;
+    card: boolean;
+    cardEnvironment: "sandbox" | "production" | null;
+  } | null>(null);
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
@@ -111,13 +119,22 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
+      .then((data: { bankTransfer?: boolean; card?: boolean; cardEnvironment?: "sandbox" | "production" | null }) => {
+        const next = {
+          bankTransfer: Boolean(data.bankTransfer),
+          card: Boolean(data.card),
+          cardEnvironment: data.cardEnvironment ?? null,
+        };
+        setRails(next);
+        if (!next.card && next.bankTransfer) setMethod("bank_transfer");
       })
       .catch(() => {
-        setConfigured(false);
+        setRails({ bankTransfer: false, card: false, cardEnvironment: null });
       });
   }, []);
+
+  const copy = METHOD_COPY[method];
+  const methodReady = method === "card" ? rails?.card === true : rails?.bankTransfer === true;
 
   const firstName = customer.firstName ?? user?.firstName ?? "";
   const lastName = customer.lastName ?? user?.lastName ?? "";
@@ -127,12 +144,13 @@ export default function CheckoutPage() {
     (user ? defaultAddress(user) : null);
   const savedShipping = selectedAddress ? draftFromSaved(selectedAddress) : EMPTY_SHIPPING;
   const shippingDraft = shippingOverrides ?? savedShipping;
-  const totals = checkoutTotals({
-    items,
-    promo,
-  });
+  const catalog = checkoutTotals({ items, promo: null });
+  const bankTotals = checkoutTotals({ items, promo });
+  const cardTotals = priceCardCart(catalog.catalogCents, promo);
   const browserCreditCents = user?.storeCreditCents ?? 0;
-  const payable = centsToDollars(totals.discountedCents);
+  const payable = centsToDollars(
+    method === "card" ? cardTotals.totalCents : bankTotals.discountedCents,
+  );
 
   const cartItems = useMemo(
     () =>
@@ -404,17 +422,53 @@ export default function CheckoutPage() {
               I confirm I am purchasing this product for legitimate laboratory
               research purposes and am not purchasing it for human consumption.
             </label>
+            <fieldset>
+              <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                Payment method
+              </legend>
+              <div className="space-y-2">
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "card"}
+                    onChange={() => setMethod("card")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Card</span>
+                    <span className="text-[#8f8c84]">
+                      Pay on this page. Orders of $200 or more include 10% off.
+                      {rails?.cardEnvironment === "sandbox" ? " Sandbox test cards only." : ""}
+                    </span>
+                  </span>
+                </label>
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "bank_transfer"}
+                    onChange={() => setMethod("bank_transfer")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Bank transfer</span>
+                    <span className="text-[#8f8c84]">Australian bank transfer or PayID. Instructions follow.</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
             {error && (
               <p className="text-sm leading-6 text-[#d4af37]" role="alert">
                 {error}
               </p>
             )}
-            {configured === false && (
+            {rails && !methodReady && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
                 {copy.setup}
               </p>
             )}
-            <button type="submit" className="btn" disabled={configured !== true}>
+            <button type="submit" className="btn" disabled={!methodReady}>
               Continue to payment
             </button>
           </form>
@@ -427,16 +481,29 @@ export default function CheckoutPage() {
                 : ""}
             </p>
             <div className="surface overflow-hidden p-3">
-              <CartCheckout
-                items={cartItems}
-                email={email}
-                firstName={firstName}
-                lastName={lastName}
-                shipping={shipping}
-                promoCode={promo?.code ?? null}
-                ageConfirmed
-                researchUse
-              />
+              {method === "card" ? (
+                <WhopCardCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              ) : (
+                <CartCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              )}
             </div>
             <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
@@ -459,14 +526,30 @@ export default function CheckoutPage() {
         </ul>
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4 text-sm">
           <span>Subtotal</span>
-          <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
+          <span className="text-[#d4af37]">{formatPrice(centsToDollars(catalog.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
-        {totals.discountCents > 0 && (
+        {method === "card" && cardTotals.promoOffCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(totals.discountCents))}
+              −{formatPrice(centsToDollars(cardTotals.promoOffCents))}
+            </span>
+          </div>
+        )}
+        {method === "card" && cardTotals.volumeOffCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders of $200 or more</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(cardTotals.volumeOffCents))}
+            </span>
+          </div>
+        )}
+        {method === "bank_transfer" && bankTotals.discountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>{promo?.percentOff}% off total</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(bankTotals.discountCents))}
             </span>
           </div>
         )}

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { bankTransferConfigured, createBankTransferOrder } from "@/lib/bank-transfer-checkout";
 import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-session";
+import { ordersConfigured } from "@/lib/orders";
 import { paymentsProvider } from "@/lib/payments-provider";
 import { resolvePayoneer } from "@/lib/payoneer";
 import { checkoutBodySchema } from "@/lib/validation";
+import { whopConfigured, whopEnvironment } from "@/lib/whop";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
@@ -17,17 +19,15 @@ const PAYONEER_SETUP =
 
 export async function GET() {
   const provider = paymentsProvider();
-  if (provider === "bank_transfer") {
-    return NextResponse.json({
-      provider,
-      configured: bankTransferConfigured(),
-      mode: null,
-    });
-  }
+  const bankTransfer = bankTransferConfigured();
+  const card = whopConfigured() && ordersConfigured();
   return NextResponse.json({
     provider,
-    configured: payoneerConfigured(),
-    mode: resolvePayoneer(process.env)?.mode ?? null,
+    configured: provider === "bank_transfer" ? bankTransfer : payoneerConfigured(),
+    bankTransfer,
+    card,
+    cardEnvironment: card ? whopEnvironment() : null,
+    mode: provider === "bank_transfer" ? null : (resolvePayoneer(process.env)?.mode ?? null),
   });
 }
 

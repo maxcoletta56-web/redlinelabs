@@ -40,13 +40,20 @@ function formatDate(iso: string | null) {
 }
 
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
+  const label =
+    order.status === "paid"
+      ? "Payment received"
+      : order.status === "failed"
+        ? "Payment failed"
+        : order.status === "pending"
+          ? "Payment pending"
+          : "Awaiting payment";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : "Awaiting payment"}
+      {label}
     </p>
   );
 }
@@ -73,7 +80,7 @@ export default async function OrderPage({ params }: Props) {
 
   return (
     <div className="wrap max-w-[760px] py-16">
-      <ClearCartOnSuccess />
+      {(paid || order.paymentMethod !== "card") && <ClearCartOnSuccess />}
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
@@ -88,7 +95,11 @@ export default async function OrderPage({ params }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+          : order.status === "failed"
+            ? "The card payment did not complete. You can start checkout again. Nothing was captured for this attempt."
+            : order.paymentMethod === "card"
+              ? "The card payment is still pending. This page updates when Whop confirms it, and the receipt email is sent then."
+              : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
@@ -110,9 +121,14 @@ export default async function OrderPage({ params }: Props) {
             </li>
           ))}
         </ul>
-        {order.promoCode && (
+        {order.subtotalCents > order.totalCents && (
           <div className="mb-3 flex justify-between text-sm">
-            <span>Promo code {order.promoCode}</span>
+            <span>
+              {order.promoCode ? `Promo code ${order.promoCode}` : "Discount"}
+              {order.paymentMethod === "card" && order.subtotalCents >= 20_000
+                ? " · 10% off orders of $200 or more"
+                : ""}
+            </span>
             <span className="text-[#d4af37]">
               −{formatPrice((order.subtotalCents - order.totalCents) / 100)}
             </span>
@@ -146,7 +162,7 @@ export default async function OrderPage({ params }: Props) {
         </dl>
       </section>
 
-      {!paid && (
+      {!paid && order.paymentMethod !== "card" && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"
