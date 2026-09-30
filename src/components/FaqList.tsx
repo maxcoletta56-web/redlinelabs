@@ -35,12 +35,16 @@ export function FaqList({
                 </span>
               </button>
             </Heading>
-            {isOpen && (
-              <div id={panelId} role="region" aria-labelledby={buttonId} className="px-5 pb-5">
-                <div className="mb-3 h-px w-10 bg-[#d4af37]" />
-                <p className="max-w-2xl text-sm leading-7 text-[#8f8c84]">{item.a}</p>
-              </div>
-            )}
+            <div
+              id={panelId}
+              role="region"
+              aria-labelledby={buttonId}
+              hidden={!isOpen}
+              className="px-5 pb-5"
+            >
+              <div className="mb-3 h-px w-10 bg-[#d4af37]" />
+              <p className="max-w-2xl text-sm leading-7 text-[#8f8c84]">{item.a}</p>
+            </div>
           </div>
         );
       })}

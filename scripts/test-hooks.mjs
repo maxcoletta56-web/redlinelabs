@@ -5,6 +5,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = pathResolve(dirname(fileURLToPath(import.meta.url)), "..");
 const stubUrl = new URL("./server-only-stub.mjs", import.meta.url).href;
 
+function relativeUrl(specifier, parentURL) {
+  if (!specifier.startsWith(".") || !parentURL) return null;
+  const base = pathResolve(dirname(fileURLToPath(parentURL)), specifier);
+  const candidates = [base, `${base}.ts`, `${base}.tsx`, `${base}.js`, `${base}.mjs`, `${base}.json`];
+  const match = candidates.find((candidate) => existsSync(candidate));
+  return match ? pathToFileURL(match).href : null;
+}
+
 function aliasUrl(specifier) {
   if (!specifier.startsWith("@/")) return null;
   const base = pathResolve(root, "src", specifier.slice(2));
@@ -19,5 +27,7 @@ export async function resolve(specifier, context, nextResolve) {
   }
   const aliased = aliasUrl(specifier);
   if (aliased) return nextResolve(aliased, context);
+  const relative = relativeUrl(specifier, context.parentURL);
+  if (relative) return nextResolve(relative, context);
   return nextResolve(specifier, context);
 }

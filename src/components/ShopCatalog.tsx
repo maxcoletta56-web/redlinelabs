@@ -157,11 +157,14 @@ export function ShopCatalog() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((product) => (
-            <ProductCard key={product.slug} product={product} />
-          ))}
-        </div>
+        <>
+          <h2 className="sr-only">Catalogue listings</h2>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((product) => (
+              <ProductCard key={product.slug} product={product} />
+            ))}
+          </div>
+        </>
       )}
     </>
   );

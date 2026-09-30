@@ -70,7 +70,14 @@ export default function AboutPage() {
                 >
                   redlinelabsltd@pm.me
                 </a>
-                . Certificates of Analysis are not published on product pages.
+                . Certificates of Analysis are not published on{" "}
+                <Link
+                  href="/shop"
+                  className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+                >
+                  product pages
+                </Link>
+                .
                 Lot numbers are not currently displayed on this site.
               </p>
             </article>
@@ -83,7 +90,15 @@ export default function AboutPage() {
                 legitimate laboratory research and analytical purposes. They are
                 not intended for human or veterinary consumption, diagnosis,
                 treatment, or prevention of disease. This catalogue is not a
-                pharmacy and does not offer medical advice.
+                pharmacy and does not offer medical advice. Questions are answered
+                on the{" "}
+                <Link
+                  href="/faq"
+                  className="text-[#d4af37] underline decoration-[#d4af37]/40 underline-offset-3"
+                >
+                  FAQ
+                </Link>
+                .
               </p>
             </article>
           </div>

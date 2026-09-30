@@ -6,6 +6,7 @@ import {
   INCORPORATION_DATE_LABEL,
   LEGAL_NAME,
   REGISTERED_COMPANY_SHORT,
+  RESEARCH_DISCLAIMER,
 } from "./company";
 
 export type FaqItem = {
@@ -117,10 +118,60 @@ export const faqs: FaqItem[] = [
 ];
 
 export function faqJsonLd() {
+  return faqPageJsonLd(faqs);
+}
+
+export function productFaqs(product: { name: string; sku: string }): FaqItem[] {
+  const sku = product.sku || product.name;
+  return [
+    {
+      q: `What is ${product.name} sold for?`,
+      text: RESEARCH_DISCLAIMER,
+      a: RESEARCH_DISCLAIMER,
+    },
+    {
+      q: `How do I request a certificate of analysis for ${product.name}?`,
+      text: `COAs are not currently published on product pages. Where applicable, selected batches are independently tested through Janoshik Analytical, with testing documentation available for relevant products. Request available batch documentation by emailing ${COMPANY_EMAIL} with the product name and SKU ${sku}.`,
+      a: (
+        <>
+          COAs are not currently published on product pages. Where applicable,
+          selected batches are independently tested through Janoshik Analytical,
+          with testing documentation available for relevant products. Request
+          available batch documentation by emailing{" "}
+          <a href={`mailto:${COMPANY_EMAIL}`} className="text-[#d4af37] underline underline-offset-2">
+            {COMPANY_EMAIL}
+          </a>{" "}
+          with the product name and SKU {sku}.
+        </>
+      ),
+    },
+    {
+      q: `Does Redline Labs ship ${product.name} within Australia?`,
+      text: "This storefront lists Australia-wide dispatch. Orders are typically processed within 1–3 business days after payment confirmation. Delivery dates are not guaranteed.",
+      a: (
+        <>
+          This storefront lists Australia-wide dispatch. Orders are typically
+          processed within 1–3 business days after payment confirmation.
+          Delivery dates are not guaranteed. See the{" "}
+          <Link href="/shipping-policy" className="text-[#d4af37] underline underline-offset-2">
+            shipping policy
+          </Link>
+          .
+        </>
+      ),
+    },
+  ];
+}
+
+export function productFaqJsonLd(product: { name: string; sku: string }) {
+  return faqPageJsonLd(productFaqs(product));
+}
+
+function faqPageJsonLd(items: FaqItem[]) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faqs.map((item) => ({
+    mainEntity: items.map((item) => ({
       "@type": "Question",
       name: item.q,
       acceptedAnswer: {
