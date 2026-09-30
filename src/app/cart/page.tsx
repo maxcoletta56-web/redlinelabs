@@ -5,7 +5,6 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
-import { paymentsProvider } from "@/lib/payments-provider";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -106,11 +105,8 @@ export default function CartPage() {
               </div>
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              {paymentsProvider() === "bank_transfer"
-                ? "Checkout is paid by Australian bank transfer or PayID."
-                : "Checkout is charged through the card processor."}{" "}
-              Apply a coupon for 20% off the
-              total order amount. Dispatch notes are on the{" "}
+              Pay by card on the checkout page, or by Australian bank transfer or PayID. Orders of
+              $200 or more include 10% off when you pay by card. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
               </Link>

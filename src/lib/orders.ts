@@ -1,7 +1,11 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "paid", "failed"] as const;
+
+export const PAYMENT_METHODS = ["bank_transfer", "card"] as const;
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -39,6 +43,8 @@ export type StoredOrder = {
   shipping: OrderShippingSnapshot | null;
   createdAt: string | null;
   paidAt: string | null;
+  paymentMethod: PaymentMethod;
+  whopPaymentId: string | null;
 };
 
 export type NewOrder = {
@@ -51,6 +57,8 @@ export type NewOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  status?: OrderStatus;
+  paymentMethod?: PaymentMethod;
 };
 
 export class OrdersUnavailableError extends Error {
@@ -74,7 +82,9 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   items JSONB NOT NULL,
   shipping JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  paid_at TIMESTAMPTZ
+  paid_at TIMESTAMPTZ,
+  payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
+  whop_payment_id TEXT
 )`;
 
 /** Postgres returns timestamptz in a driver-dependent shape, so pin it to ISO-8601 here. */
@@ -94,11 +104,13 @@ const ORDER_COLUMNS = [
   "shipping",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
+  "payment_method",
+  "whop_payment_id",
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, payment_method) " +
+  "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
@@ -197,6 +209,10 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     shipping: readShipping(record.shipping),
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
+    paymentMethod: (PAYMENT_METHODS as readonly string[]).includes(readText(record.payment_method))
+      ? (readText(record.payment_method) as PaymentMethod)
+      : "bank_transfer",
+    whopPaymentId: readText(record.whop_payment_id) || null,
   };
 }
 
@@ -217,6 +233,7 @@ export async function insertOrder(
     const reference = generateOrderReference();
     const result = await sql.query(INSERT_ORDER, [
       reference,
+      order.status ?? "awaiting_payment",
       order.currency,
       order.subtotalCents,
       order.totalCents,
@@ -226,6 +243,7 @@ export async function insertOrder(
       order.email,
       JSON.stringify(order.items),
       order.shipping ? JSON.stringify(order.shipping) : null,
+      order.paymentMethod ?? "bank_transfer",
     ]);
     if (rowsOf(result).length > 0) return reference;
   }
@@ -269,4 +287,65 @@ export async function markOrderPaid(
   await ensureOrdersTable(sql);
   const result = await sql.query(MARK_ORDER_PAID, [normalized]);
   return readOrderRow(rowsOf(result)[0]) ?? null;
+}
+
+const MARK_CARD_ORDER_PAID =
+  `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()), whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND payment_method = 'card' AND status <> 'paid' ` +
+  `AND (whop_payment_id IS NULL OR whop_payment_id = $2 OR status = 'failed') ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+const MARK_CARD_ORDER_FAILED =
+  `UPDATE orders SET status = 'failed', whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND payment_method = 'card' AND status = 'pending' ` +
+  `AND (whop_payment_id IS NULL OR whop_payment_id = $2) ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+const ABANDON_PENDING_CARD_ORDER =
+  `UPDATE orders SET status = 'failed' ` +
+  `WHERE reference = $1 AND payment_method = 'card' AND status = 'pending' AND whop_payment_id IS NULL ` +
+  `RETURNING reference`;
+
+/**
+ * One Whop payment id can move a card order to paid. A repeat of that id does
+ * not return a row, so the caller does not send a second confirmation.
+ * A later success can still pay an order that an earlier attempt marked failed.
+ */
+export async function markCardOrderPaid(
+  reference: string,
+  paymentId: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized || !paymentId) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_CARD_ORDER_PAID, [normalized, paymentId]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
+}
+
+/** A failed card attempt stays failed. It cannot overwrite a paid order. */
+export async function markCardOrderFailed(
+  reference: string,
+  paymentId: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized || !paymentId) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_CARD_ORDER_FAILED, [normalized, paymentId]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
+}
+
+/** Used when the checkout configuration could not be created. No charge exists. */
+export async function abandonPendingCardOrder(
+  reference: string,
+  sql: Sql | null = getSql(),
+): Promise<void> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized) return;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  await sql.query(ABANDON_PENDING_CARD_ORDER, [normalized]);
 }
