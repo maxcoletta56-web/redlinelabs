@@ -119,6 +119,9 @@ export default function CartPage() {
             <Link href="/checkout" className="btn w-full">
               Continue to checkout
             </Link>
+            <Link href="/shop" className="btn-ghost mt-3 w-full">
+              Continue shopping
+            </Link>
           </aside>
         </div>
       )}
