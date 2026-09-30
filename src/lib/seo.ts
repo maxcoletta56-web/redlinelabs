@@ -11,7 +11,7 @@ export function absoluteUrl(path = "/") {
   return new URL(normalized, SITE_URL).toString();
 }
 
-export function metaDescription(text: string, max = 160) {
+export function metaDescription(text: string, max = 155) {
   const compact = text.replace(/\s+/g, " ").trim();
   if (!compact) return "";
   const sentences = compact.split(/(?<=\.)\s+/);
@@ -30,6 +30,20 @@ export function metaDescription(text: string, max = 160) {
   const lastSpace = sliced.lastIndexOf(" ");
   const cut = lastSpace > 40 ? lastSpace : max - 1;
   return `${sliced.slice(0, cut)}…`;
+}
+
+const RESEARCH_USE_SENTENCE = " For laboratory research use only.";
+
+export function productMetaDescription(name: string, description: string, max = 155) {
+  const compact = description.replace(/\s+/g, " ").trim();
+  const first = compact.split(/(?<=\.)\s+/)[0] ?? compact;
+  const sentence = first.endsWith(".") ? first : `${first}.`;
+  const withUse = /laboratory research use only/i.test(sentence)
+    ? sentence
+    : `${sentence}${RESEARCH_USE_SENTENCE}`;
+  if (withUse.length <= max) return withUse;
+  const fallback = `${name} is listed for laboratory research by Redline Labs. Certificates of analysis are available on request.`;
+  return fallback.length <= max ? fallback : metaDescription(fallback, max);
 }
 
 function padDescription(text: string, max: number) {

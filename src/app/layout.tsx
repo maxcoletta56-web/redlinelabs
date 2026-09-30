@@ -14,7 +14,7 @@ import {
   INCORPORATION_DATE_ISO,
   LEGAL_NAME,
 } from "@/lib/company";
-import { absoluteUrl } from "@/lib/seo";
+import { absoluteUrl, DEFAULT_OG_IMAGE } from "@/lib/seo";
 import "./globals.css";
 
 const sans = Inter({
@@ -45,13 +45,13 @@ export const metadata: Metadata = {
     title: "Redline Labs | Research chemicals, Australia",
     description: defaultDescription,
     url: absoluteUrl("/"),
-    images: [{ url: absoluteUrl("/opengraph-image.png"), alt: "Redline Labs research catalogue" }],
+    images: [{ url: absoluteUrl(DEFAULT_OG_IMAGE), alt: "Redline Labs research catalogue" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Redline Labs | Research chemicals, Australia",
     description: defaultDescription,
-    images: [absoluteUrl("/opengraph-image.png")],
+    images: [absoluteUrl(DEFAULT_OG_IMAGE)],
   },
 };
 
@@ -76,9 +76,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               legalName: LEGAL_NAME,
               foundingDate: INCORPORATION_DATE_ISO,
               url: absoluteUrl("/"),
+              logo: absoluteUrl("/brand/logo-mark.png"),
               email: COMPANY_EMAIL,
               description:
                 "Laboratory research chemicals shipped within Australia. For laboratory research use only.",
+              areaServed: {
+                "@type": "Country",
+                name: "Australia",
+              },
+              contactPoint: {
+                "@type": "ContactPoint",
+                email: COMPANY_EMAIL,
+                contactType: "customer support",
+                areaServed: "AU",
+                availableLanguage: "English",
+              },
               identifier: {
                 "@type": "PropertyValue",
                 name: "Hong Kong Company Registration Number",
@@ -94,6 +106,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               "@type": "WebSite",
               name: BRAND_NAME,
               url: absoluteUrl("/"),
+              inLanguage: "en-AU",
               potentialAction: {
                 "@type": "SearchAction",
                 target: `${absoluteUrl("/shop")}?q={search_term_string}`,

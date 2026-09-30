@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Page not found" };
+export const metadata: Metadata = {
+  title: "Page not found",
+  description:
+    "That address is not in the Redline Labs storefront. Browse the research catalogue or return to the homepage.",
+  robots: { index: false, follow: false },
+  alternates: { canonical: null },
+};
 
 export default function NotFound() {
   return (
