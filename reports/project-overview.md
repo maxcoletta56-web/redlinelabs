@@ -34,18 +34,19 @@ catalogue, a persistent cart, and Payoneer Checkout.
 | **Styling** | Tailwind CSS **4** via `@tailwindcss/postcss` |
 | **Package manager** | **npm** (`package-lock.json`, lockfile v3) — Node **22** |
 | **Project structure** | `src/app` (App Router routes), `src/components`, `src/lib` (logic + tests), `src/data/products.json` |
-| **Build command** | `npm run build` → `next build` (also runs the TypeScript type-check) |
+| **Build command** | `npm run build` → `node scripts/ensure-comments-table.mjs && next build` (the Next build also type-checks) |
 | **Dev command** | `npm run dev` → `next dev` (serves on `http://localhost:3000`) |
 | **Lint** | `npm run lint` → `eslint` (flat config, `eslint-config-next` core-web-vitals + TS) |
-| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts` (**31** tests) |
-| **Deployment** | **Vercel** (Git-connected, zero-config Next.js preset) |
-| **Vercel config** | No `vercel.json` — relies on Vercel's automatic Next.js framework detection. `VERCEL_ENV` is consumed by the app to use the live Payoneer API in production. |
+| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts` (**47** tests) |
+| **Deployment** | **Vercel** (Git-connected Next.js) |
+| **Vercel config** | `vercel.json` sets `buildCommand` to the same comments-schema script plus `next build`. `VERCEL_ENV` is consumed by the app to use the live Payoneer API in production. |
 | **E-commerce platform** | **Custom** — no Shopify/WooCommerce/Medusa. Cart is client-side (localStorage); catalogue is a static JSON file. |
 | **Payment integration** | **Payoneer Checkout** — server creates a LIST (`POST /api/lists`) and redirects to the hosted payment page. Live API in production. |
 | **Product data source** | `src/data/products.json` (~**30** products), typed via `src/lib/products.ts` |
 | **Analytics** | **None integrated** (no GA4, Vercel Analytics, Plausible, or PostHog). Privacy policy references cookies/analytics generically. AssistLoop is a chat widget, not analytics. |
 | **SEO implementation** | Next.js Metadata API (global + per-page `generateMetadata`), JSON-LD (`Organization`, `WebSite`+`SearchAction`, per-product `Product`/`Offer`/`AggregateOffer`), dynamic `sitemap.ts`, `robots.ts`, OpenGraph/Twitter cards. Site social images are `src/app/opengraph-image.png` and `src/app/twitter-image.png`. Product pages also pass the catalogue image. |
-| **Not part of the storefront** | Root `index.mts` calls the `ai` package (`generateText`). No App Router route imports it. |
+| **Database** | `db/comments.sql` is applied at build time when `DATABASE_URL` or `DATABASE_URL_UNPOOLED` is set. `@neondatabase/serverless` 1.1.0 is installed and is not imported; the script uses `fetch`. |
+| **Not part of the storefront** | Root `index.mts` calls the `ai` package (`generateText`). No App Router route imports it. The comments table is not read by any route. |
 
 ### Project structure map
 
@@ -59,7 +60,7 @@ catalogue, a persistent cart, and Payoneer Checkout.
 │   │   ├── product/[slug]/ # Product detail (SSG via generateStaticParams)
 │   │   ├── cart/ checkout/ account/  # Buying journey + account
 │   │   ├── api/checkout/   # Checkout API (Payoneer list)
-│   │   ├── actions/stripe.ts         # Server action entry point
+│   │   ├── actions/checkout.ts       # Server action entry point (Payoneer)
 │   │   ├── sitemap.ts robots.ts      # SEO crawl surfaces
 │   │   └── <policy pages> # about, faq, contact, privacy, refund, shipping, terms
 │   ├── components/         # UI components (Header, Footer, Cart*, Product*, JsonLd, …)
@@ -69,7 +70,10 @@ catalogue, a persistent cart, and Payoneer Checkout.
 │   │   ├── checkout-session.ts  # Payoneer checkout session seo.ts     # SEO helpers
 │   │   └── account-data.ts store-credit.ts company.ts …
 │   └── data/products.json  # Product catalogue (source of truth)
+├── db/comments.sql         # CREATE TABLE IF NOT EXISTS comments (comment TEXT)
+├── scripts/ensure-comments-table.mjs
 ├── next.config.ts          # Image remotePatterns + redirects
+├── vercel.json             # buildCommand (schema script + next build)
 ├── eslint.config.mjs tsconfig.json postcss.config.mjs
 ├── env.example             # Env var NAMES (no values)
 └── reports/                # Multi-agent maintenance reports (this directory)
@@ -85,9 +89,11 @@ git-ignored. See `reports/security-compliance-health.md` for the full table.
 - `NEXT_PUBLIC_SITE_URL` — optional; defaults to `https://redlinelabs.shop`.
 - `NEXT_PUBLIC_ASSISTLOOP_AGENT_ID` — optional chat widget.
 - `VERCEL_ENV` — injected by Vercel; `production` uses the live Payoneer API.
+- `DATABASE_URL` / `DATABASE_URL_UNPOOLED` — optional Neon connection strings. When either is set, `npm run build` applies `db/comments.sql`. Local builds skip that step when both are unset.
 
 > The app runs **without any secrets** for browsing/catalogue/cart. Only Payoneer checkout
-> requires credentials, and it **degrades gracefully to a 503** when they are absent.
+> requires credentials, and it **degrades gracefully to a 503** when they are absent. A build
+> with a Neon URL set will contact Neon before `next build`.
 
 ---
 
@@ -115,8 +121,8 @@ agent makes a change.
    into the default/production branch (`cursor/redlinelabs-shop-1c01`) are the authorization
    signal to deploy.
 
-3. **Vercel — build & host.** Vercel is Git-connected with the zero-config Next.js preset
-   (no `vercel.json`). On every push it builds automatically:
+3. **Vercel — build & host.** Vercel is Git-connected. `vercel.json` sets `buildCommand` to
+   `node scripts/ensure-comments-table.mjs && next build`. On every push it builds automatically:
    - **Preview deployments** for each branch/PR — a unique URL where changes are validated
      before merge. In Preview, `VERCEL_ENV` is `preview`, so the app does **not** force live
      Payoneer credentials.
@@ -189,3 +195,4 @@ Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue
 | 2026-09-25 | Overview added in `#38`. |
 | 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
 | 2026-09-26 | Checkout charges through Payoneer hosted payment instead of Stripe. |
+| 2026-09-26 | Re-checked at `5347da1`. `vercel.json` runs the comments schema script before `next build`. `@neondatabase/serverless` is installed and unused by app code. Unit suite is 47 tests. |
