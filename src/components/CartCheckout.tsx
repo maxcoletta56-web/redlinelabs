@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { startCartCheckoutSession } from "@/app/actions/checkout";
+import { startBankTransferCheckout } from "@/app/actions/checkout";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import type { CartLineInput } from "@/lib/order";
-import { paymentsProvider } from "@/lib/payments-provider";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** Longer than the server-side provider timeout so the server message wins. */
@@ -37,12 +36,12 @@ export function CartCheckout({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const provider = paymentsProvider();
+  const provider = "bank_transfer";
 
   useEffect(() => {
     let cancelled = false;
     withTimeout(
-      startCartCheckoutSession({
+      startBankTransferCheckout({
         items,
         email,
         firstName,

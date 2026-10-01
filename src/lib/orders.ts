@@ -1,7 +1,7 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "paid", "failed"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -39,6 +39,7 @@ export type StoredOrder = {
   shipping: OrderShippingSnapshot | null;
   createdAt: string | null;
   paidAt: string | null;
+  whopPaymentId: string | null;
 };
 
 export type NewOrder = {
@@ -51,6 +52,8 @@ export type NewOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  /** Card checkouts start as pending. Bank transfers omit this and stay awaiting payment. */
+  status?: "awaiting_payment" | "pending";
 };
 
 export class OrdersUnavailableError extends Error {
@@ -74,7 +77,8 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   items JSONB NOT NULL,
   shipping JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  paid_at TIMESTAMPTZ
+  paid_at TIMESTAMPTZ,
+  whop_payment_id TEXT
 )`;
 
 /** Postgres returns timestamptz in a driver-dependent shape, so pin it to ISO-8601 here. */
@@ -94,12 +98,27 @@ const ORDER_COLUMNS = [
   "shipping",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
+  "whop_payment_id",
 ].join(", ");
 
 const INSERT_ORDER =
   "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) " +
+  "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
+
+const WHOP_PAYMENT_ID = /^pay_[A-Za-z0-9]+$/;
+
+/** Pending or failed card orders become paid. A second delivery of the same payment does not match. */
+const MARK_WHOP_PAID =
+  `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()), whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND ((status = 'pending' AND (whop_payment_id IS NULL OR whop_payment_id = $2)) OR status = 'failed') ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+/** A failed card attempt only moves a still-pending order. Paid orders stay paid. */
+const MARK_WHOP_FAILED =
+  `UPDATE orders SET status = 'failed', whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND status = 'pending' AND (whop_payment_id IS NULL OR whop_payment_id = $2) ` +
+  `RETURNING ${ORDER_COLUMNS}`;
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
 
@@ -197,6 +216,7 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     shipping: readShipping(record.shipping),
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
+    whopPaymentId: readText(record.whop_payment_id) || null,
   };
 }
 
@@ -215,8 +235,10 @@ export async function insertOrder(
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const reference = generateOrderReference();
+    const status = order.status === "pending" ? "pending" : "awaiting_payment";
     const result = await sql.query(INSERT_ORDER, [
       reference,
+      status,
       order.currency,
       order.subtotalCents,
       order.totalCents,
@@ -256,6 +278,38 @@ export async function listRecentOrders(
   return rowsOf(result)
     .map(readOrderRow)
     .filter((order): order is StoredOrder => order !== null);
+}
+
+/**
+ * Marks a card order paid for one Whop payment. Returns null when this payment
+ * was already applied or the order is not a pending/failed card order, so the
+ * caller does not send a second confirmation email.
+ */
+export async function markWhopOrderPaid(
+  reference: string,
+  paymentId: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized || !WHOP_PAYMENT_ID.test(paymentId)) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_WHOP_PAID, [normalized, paymentId]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
+}
+
+/** Records a failed card attempt. A paid order is left alone. */
+export async function markWhopOrderFailed(
+  reference: string,
+  paymentId: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized || !WHOP_PAYMENT_ID.test(paymentId)) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_WHOP_FAILED, [normalized, paymentId]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
 }
 
 /** Idempotent: re-posting keeps the original paid_at. */

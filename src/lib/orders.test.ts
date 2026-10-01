@@ -6,6 +6,8 @@ import {
   insertOrder,
   listRecentOrders,
   markOrderPaid,
+  markWhopOrderFailed,
+  markWhopOrderPaid,
   readOrderRow,
   type NewOrder,
 } from "./orders.ts";
@@ -59,6 +61,7 @@ test("insert binds every order field as a parameter", async () => {
   assert.match(insert?.query ?? "", /ON CONFLICT \(reference\) DO NOTHING/);
   assert.deepEqual(insert?.params, [
     reference,
+    "awaiting_payment",
     "aud",
     20000,
     16000,
@@ -154,4 +157,38 @@ test("item and shipping snapshots survive a jsonb round trip as text", () => {
   assert.deepEqual(row?.items, order.items);
   assert.equal(row?.shipping?.line1, "1 Test St");
   assert.equal(row?.shipping?.country, "AU");
+  assert.equal(row?.whopPaymentId, null);
+});
+
+test("a pending card order reads its status and Whop payment id", () => {
+  const row = readOrderRow({
+    reference: "RL-7F3K2Q",
+    status: "pending",
+    whop_payment_id: "pay_abc123",
+  });
+  assert.equal(row?.status, "pending");
+  assert.equal(row?.whopPaymentId, "pay_abc123");
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "failed" })?.status, "failed");
+});
+
+test("Whop paid update is limited to pending or failed card orders", async () => {
+  const { calls, sql } = recorder((call) =>
+    call.query.startsWith("UPDATE")
+      ? [{ reference: "RL-7F3K2Q", status: "paid", whop_payment_id: "pay_abc123" }]
+      : [],
+  );
+  const updated = await markWhopOrderPaid("RL-7F3K2Q", "pay_abc123", sql);
+  assert.match(calls[1]?.query ?? "", /status = 'pending'/);
+  assert.match(calls[1]?.query ?? "", /status = 'failed'/);
+  assert.deepEqual(calls[1]?.params, ["RL-7F3K2Q", "pay_abc123"]);
+  assert.equal(updated?.status, "paid");
+  assert.equal(updated?.whopPaymentId, "pay_abc123");
+  assert.equal(await markWhopOrderPaid("RL-7F3K2Q", "not-a-payment", sql), null);
+});
+
+test("Whop failed update does not touch a paid order", async () => {
+  const { calls, sql } = recorder(() => []);
+  assert.equal(await markWhopOrderFailed("RL-7F3K2Q", "pay_abc123", sql), null);
+  assert.match(calls[1]?.query ?? "", /status = 'pending'/);
+  assert.doesNotMatch(calls[1]?.query ?? "", /status = 'paid'/);
 });

@@ -7,7 +7,9 @@ export {
   applyPercentOff,
   checkoutTotals,
   promoDiscountCents,
+  quoteCheckoutCents,
   stripeCouponParams,
+  volumeDiscountCents,
 } from "./promo-pricing.ts";
 
 export const CHECKOUT_PROMOS: Record<string, CheckoutPromo> = {
