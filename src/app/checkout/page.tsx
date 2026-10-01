@@ -491,6 +491,9 @@ export default function CheckoutPage() {
           </Link>{" "}
           for dispatch notes.
         </p>
+        <Link href="/shop" className="btn-ghost mt-4 w-full">
+          Continue shopping
+        </Link>
       </aside>
       </div>
     </div>
