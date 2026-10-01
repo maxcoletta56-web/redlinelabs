@@ -8,6 +8,12 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
+  browserSessionCookie,
+  readAccountSession,
+  writeAccountSession,
+  type SessionCookieJar,
+} from "@/lib/account-session";
+import {
   addAddress,
   addStockAlert,
   createUser,
@@ -35,7 +41,7 @@ type AccountSnapshot = {
 
 type AccountContextValue = AccountSnapshot & {
   signup: (input: SignupInput) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => void;
   saveAddress: (input: AddressInput, id?: string) => void;
   deleteAddress: (id: string) => void;
@@ -47,13 +53,13 @@ type AccountContextValue = AccountSnapshot & {
 
 const AccountContext = createContext<AccountContextValue | null>(null);
 const USERS_KEY = "redline-accounts-v1";
-const SESSION_KEY = "redline-session-v1";
 const GUEST_ORDERS_KEY = "redline-guest-orders-v1";
 
 const loggedOut: AccountSnapshot = { user: null, hydrated: false };
 
 let users: AccountUser[] = [];
 let sessionEmail: string | null = null;
+let rememberSession = true;
 let hydrated = false;
 const listeners = new Set<() => void>();
 
@@ -85,10 +91,16 @@ function writeJson(key: string, value: unknown) {
   }
 }
 
+function sessionCookie(): SessionCookieJar {
+  return browserSessionCookie(document, window.location.protocol === "https:");
+}
+
 function persist() {
   writeJson(USERS_KEY, users);
-  if (sessionEmail) writeJson(SESSION_KEY, sessionEmail);
-  else localStorage.removeItem(SESSION_KEY);
+  writeAccountSession(localStorage, sessionCookie(), {
+    email: sessionEmail,
+    remember: rememberSession,
+  });
   emit();
 }
 
@@ -153,11 +165,16 @@ function claimGuestOrders(user: AccountUser) {
 
 if (typeof window !== "undefined") {
   users = readJson<AccountUser[]>(USERS_KEY, []);
-  const stored = readJson<string | null>(SESSION_KEY, null);
-  sessionEmail =
-    typeof stored === "string" ? normalizeEmail(stored) : null;
+  const stored = readAccountSession(localStorage, sessionCookie());
+  sessionEmail = stored.email ? normalizeEmail(stored.email) : null;
+  rememberSession = sessionEmail ? stored.remember : true;
   if (sessionEmail && !users.some((user) => user.email === sessionEmail)) {
     sessionEmail = null;
+    rememberSession = true;
+    writeAccountSession(localStorage, sessionCookie(), {
+      email: null,
+      remember: true,
+    });
   }
   hydrated = true;
   snapshotCache = snapshot();
@@ -174,22 +191,25 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const created = claimGuestOrders(await createUser(input));
     users = [...users, created];
     sessionEmail = created.email;
+    rememberSession = true;
     persist();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, remember = true) => {
     const user = users.find((entry) => entry.email === normalizeEmail(email));
     if (!user || !(await verifyPassword(user, password))) {
       throw new Error("Email or password is incorrect");
     }
+    sessionEmail = user.email;
+    rememberSession = remember;
     const claimed = claimGuestOrders(user);
     if (claimed !== user) replaceUser(claimed);
-    sessionEmail = user.email;
     persist();
   }, []);
 
   const logout = useCallback(() => {
     sessionEmail = null;
+    rememberSession = true;
     persist();
   }, []);
 
