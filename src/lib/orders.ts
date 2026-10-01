@@ -270,3 +270,101 @@ export async function markOrderPaid(
   const result = await sql.query(MARK_ORDER_PAID, [normalized]);
   return readOrderRow(rowsOf(result)[0]) ?? null;
 }
+
+export type PaymentReceivedNotice = {
+  reference: string;
+  firstName: string;
+  email: string;
+  totalCents: number;
+};
+
+/** Test and caller overrides. Production uses the database and the mailer. */
+export type MarkPaidEmailHooks = {
+  findOrder?: (reference: string) => Promise<StoredOrder | null>;
+  markOrderPaid?: (reference: string) => Promise<StoredOrder | null>;
+  scheduleEmail?: (reference: string, task: () => Promise<void>) => void;
+  sendPaymentReceivedEmail?: (notice: PaymentReceivedNotice) => Promise<void>;
+};
+
+type PaymentEmailDeps = {
+  scheduleEmail: (reference: string, task: () => Promise<void>) => void;
+  sendPaymentReceivedEmail: (notice: PaymentReceivedNotice) => Promise<void>;
+};
+
+/**
+ * Loaded on the paid path only. A static import would pull `server-only`
+ * into the order unit tests, which run outside Next's server graph.
+ */
+let paymentEmailDeps: Promise<PaymentEmailDeps> | undefined;
+
+function loadPaymentEmailDeps(): Promise<PaymentEmailDeps> {
+  paymentEmailDeps ??= Promise.all([import("./schedule-email.ts"), import("./mailer.ts")])
+    .then(([schedule, mailer]) => ({
+      scheduleEmail: schedule.scheduleEmail,
+      sendPaymentReceivedEmail: mailer.sendPaymentReceivedEmail,
+    }))
+    .catch((error: unknown) => {
+      paymentEmailDeps = undefined;
+      throw error;
+    });
+  return paymentEmailDeps;
+}
+
+function paymentReceivedNotice(order: StoredOrder): PaymentReceivedNotice {
+  return {
+    reference: order.reference,
+    firstName: order.firstName,
+    email: order.email,
+    totalCents: order.totalCents,
+  };
+}
+
+/**
+ * Lookup, then mark paid, then schedule the receipt when this transition is
+ * the one that leaves `awaiting_payment`. A lookup failure is logged and does
+ * not block the update. The email task is not awaited: `scheduleEmail`
+ * already swallows mail errors and runs after the response.
+ */
+export async function markOrderPaidWithPaymentEmail(
+  reference: string,
+  hooks: MarkPaidEmailHooks = {},
+): Promise<StoredOrder | null> {
+  const lookup = hooks.findOrder ?? findOrder;
+  const markPaid = hooks.markOrderPaid ?? markOrderPaid;
+  const normalized = normalizeOrderReference(reference) ?? reference;
+
+  const existing = await lookup(reference).catch((error: unknown) => {
+    console.error("[admin] order lookup before paid email failed", {
+      reference: normalized,
+      errorName: error instanceof Error ? error.name : "unknown",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  });
+
+  const order = await markPaid(reference);
+  if (!order) return null;
+
+  if (existing?.status !== "paid") {
+    try {
+      const deps: PaymentEmailDeps =
+        hooks.scheduleEmail && hooks.sendPaymentReceivedEmail
+          ? {
+              scheduleEmail: hooks.scheduleEmail,
+              sendPaymentReceivedEmail: hooks.sendPaymentReceivedEmail,
+            }
+          : await loadPaymentEmailDeps();
+      const schedule = hooks.scheduleEmail ?? deps.scheduleEmail;
+      const send = hooks.sendPaymentReceivedEmail ?? deps.sendPaymentReceivedEmail;
+      schedule(order.reference, () => send(paymentReceivedNotice(order)));
+    } catch (error) {
+      // Mail setup must not turn a committed payment into a failed update.
+      console.error("[mailer] order email failed", {
+        reference: order.reference,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
+  }
+
+  return order;
+}
