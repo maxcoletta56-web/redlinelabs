@@ -59,6 +59,7 @@ test("insert binds every order field as a parameter", async () => {
   assert.match(insert?.query ?? "", /ON CONFLICT \(reference\) DO NOTHING/);
   assert.deepEqual(insert?.params, [
     reference,
+    "awaiting_payment",
     "aud",
     20000,
     16000,

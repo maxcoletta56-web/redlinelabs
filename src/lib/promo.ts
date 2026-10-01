@@ -6,8 +6,12 @@ export type { CheckoutPromo } from "./promo-pricing.ts";
 export {
   applyPercentOff,
   checkoutTotals,
+  priceCatalogue,
   promoDiscountCents,
   stripeCouponParams,
+  volumeDiscountCents,
+  VOLUME_DISCOUNT_MIN_CENTS,
+  VOLUME_DISCOUNT_PERCENT,
 } from "./promo-pricing.ts";
 
 export const CHECKOUT_PROMOS: Record<string, CheckoutPromo> = {

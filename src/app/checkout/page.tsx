@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
+import { WhopCardCheckout } from "@/components/WhopCardCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
@@ -11,7 +12,6 @@ import { useAccount } from "@/lib/account";
 import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -53,7 +53,24 @@ function shippingDraftError(draft: ShippingDraft) {
   return null;
 }
 
-const PROVIDER_COPY = {
+type PayMethod = "card" | "bank_transfer";
+
+const METHOD_COPY = {
+  card: {
+    intro:
+      "Pay by card in the form on this page. Whop handles the card and any bank check such as 3D Secure. The charge uses the catalogue total, including 10% off when the order is $200 or more.",
+    paying: "Paying as",
+    payingDetail: "Card details stay in the secure form below.",
+    addressNote: "This address is saved with the order before the card form opens.",
+    creditNote: "It is not deducted from the card charge.",
+    setup: (
+      <>
+        Card checkout is not configured. Add the server-only{" "}
+        <code className="text-[#d4af37]">WHOP_API_KEY</code> and{" "}
+        <code className="text-[#d4af37]">DATABASE_URL</code>.
+      </>
+    ),
+  },
   bank_transfer: {
     intro:
       "Payment is by Australian bank transfer or PayID. The next screen shows the PayID address, the amount, and the reference to quote in the transfer description.",
@@ -61,8 +78,6 @@ const PROVIDER_COPY = {
     payingDetail: "Payment instructions appear on the next screen.",
     addressNote: "This address is saved with the order before payment instructions are shown.",
     creditNote: "It is not deducted from the bank transfer total.",
-    summaryNote:
-      "Store credit saved in this browser is not deducted from the bank transfer total. Apply a coupon for 20% off the total order amount. The amount owed is taken from the catalogue, not from the browser cart.",
     setup: (
       <>
         Bank transfer checkout is not configured. Add{" "}
@@ -72,33 +87,15 @@ const PROVIDER_COPY = {
       </>
     ),
   },
-  stripe: {
-    intro:
-      "Payment continues on the card processor. It collects the card, and the charge is sent to the merchant account. You return here after payment.",
-    paying: "Paying as",
-    payingDetail: "Card details are handled by the card processor.",
-    addressNote: "This address is saved with the order before the card processor takes payment.",
-    creditNote: "It is not deducted from the card charge.",
-    summaryNote:
-      "Store credit saved in this browser is not deducted from the card charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
-    setup: (
-      <>
-        Payoneer checkout is not configured. Add{" "}
-        <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-        <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>. Production uses the live
-        Payoneer API.
-      </>
-    ),
-  },
 } as const;
 
 export default function CheckoutPage() {
-  const copy = PROVIDER_COPY[paymentsProvider()];
   const { items } = useCart();
   const { promo } = usePromo();
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [methods, setMethods] = useState<{ card: boolean; bankTransfer: boolean } | null>(null);
+  const [payMethod, setPayMethod] = useState<PayMethod>("card");
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
@@ -111,13 +108,19 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
+      .then((data: { card?: boolean; bankTransfer?: boolean }) => {
+        const card = Boolean(data.card);
+        const bankTransfer = Boolean(data.bankTransfer);
+        setMethods({ card, bankTransfer });
+        if (!card && bankTransfer) setPayMethod("bank_transfer");
       })
       .catch(() => {
-        setConfigured(false);
+        setMethods({ card: false, bankTransfer: false });
       });
   }, []);
+
+  const copy = METHOD_COPY[payMethod];
+  const methodReady = payMethod === "card" ? methods?.card === true : methods?.bankTransfer === true;
 
   const firstName = customer.firstName ?? user?.firstName ?? "";
   const lastName = customer.lastName ?? user?.lastName ?? "";
@@ -306,6 +309,43 @@ export default function CheckoutPage() {
                 </p>
               </fieldset>
             )}
+            <fieldset>
+              <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                Payment method
+              </legend>
+              <div className="space-y-2">
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="payMethod"
+                    className="mt-1"
+                    checked={payMethod === "card"}
+                    onChange={() => setPayMethod("card")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Card</span>
+                    <span className="text-[#8f8c84]">
+                      Pay on this page. The card form stays here, including a bank check when one is required.
+                    </span>
+                  </span>
+                </label>
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="payMethod"
+                    className="mt-1"
+                    checked={payMethod === "bank_transfer"}
+                    onChange={() => setPayMethod("bank_transfer")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Bank transfer or PayID</span>
+                    <span className="text-[#8f8c84]">
+                      Pay from an Australian account. Instructions appear after the order is saved.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <fieldset className="space-y-4">
               <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
@@ -409,12 +449,12 @@ export default function CheckoutPage() {
                 {error}
               </p>
             )}
-            {configured === false && (
+            {methods !== null && !methodReady && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
                 {copy.setup}
               </p>
             )}
-            <button type="submit" className="btn" disabled={configured !== true}>
+            <button type="submit" className="btn" disabled={!methodReady}>
               Continue to payment
             </button>
           </form>
@@ -427,16 +467,29 @@ export default function CheckoutPage() {
                 : ""}
             </p>
             <div className="surface overflow-hidden p-3">
-              <CartCheckout
-                items={cartItems}
-                email={email}
-                firstName={firstName}
-                lastName={lastName}
-                shipping={shipping}
-                promoCode={promo?.code ?? null}
-                ageConfirmed
-                researchUse
-              />
+              {payMethod === "card" ? (
+                <WhopCardCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              ) : (
+                <CartCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              )}
             </div>
             <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
@@ -462,11 +515,19 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
-        {totals.discountCents > 0 && (
+        {totals.volumeDiscountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders $200 or more</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+            </span>
+          </div>
+        )}
+        {totals.promoDiscountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(totals.discountCents))}
+              −{formatPrice(centsToDollars(totals.promoDiscountCents))}
             </span>
           </div>
         )}
@@ -485,7 +546,9 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
-          {copy.summaryNote} See the{" "}
+          Store credit saved in this browser is not deducted from the amount due. Orders of $200
+          or more take 10% off before a coupon. The amount charged is taken from the catalogue, not
+          from the browser cart. See the{" "}
           <Link href="/shipping-policy" className="text-[#d4af37]">
             Shipping Policy
           </Link>{" "}
