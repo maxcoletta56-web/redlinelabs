@@ -56,6 +56,7 @@ Each URL includes `lastModified`. After a slug rename the sitemap lists only the
 - Stripe: `https://js.stripe.com`, `https://checkout.stripe.com`, `https://hooks.stripe.com`, `https://api.stripe.com`, `https://m.stripe.network`
 - AssistLoop widget: `https://assistloop.ai`
 - Vercel Analytics / Speed Insights: `https://va.vercel-scripts.com`, `https://vitals.vercel-insights.com`
+- Vercel Live: `https://vercel.live`
 - Legacy product images (until all files are local): `https://i0.wp.com`
 - `mailto:` form actions for the contact compose flow
 

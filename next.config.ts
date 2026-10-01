@@ -7,7 +7,7 @@ const csp = [
   "form-action 'self' mailto: https://resources.live.oscato.com https://resources.sandbox.oscato.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com https://vercel.live",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://i0.wp.com",
   "font-src 'self' data:",
