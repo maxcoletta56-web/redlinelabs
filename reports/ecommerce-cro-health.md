@@ -45,9 +45,15 @@
 
 ## Current status
 
-_Baseline pending first audit._ Checkout uses Stripe **embedded** mode with dynamically
-built `price_data` line items and on-the-fly coupons; production enforces **live** keys
-(test keys ignored). Cart is client-side. Record conversion friction and defects here per run.
+Production checkout defaults to Australian bank transfer / PayID as of pull request #68
+(`59caa08`, 27 September 2026). `NEXT_PUBLIC_PAYMENTS_PROVIDER=stripe` selects the existing
+Payoneer hosted-list rail. Browser store credit is not deducted. The checkout page stores
+shipping through `startCartCheckoutSession`. `POST /api/checkout` does not. There is no
+email of the PayID instructions. `/order/[reference]` tells the customer to bookmark the
+page; the website-health change clears that cart only on the first visit for the reference.
+
+Confirm `PAYID_ADDRESS`, `PAYID_ACCOUNT_NAME`, and `DATABASE_URL` are set in Vercel
+production. If they are not, the pay button stays disabled.
 
 ## Change log
 
@@ -55,3 +61,4 @@ built `price_data` line items and on-the-fly coupons; production enforces **live
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
 | 2026-09-26 | checkout | Checkout charges through Payoneer hosted payment (`POST /api/lists`). Stripe is no longer used to take payment. |
+| 2026-09-27 | website health | Handed across: bank transfer is the default rail; Payoneer is behind the provider flag; HTTP checkout drops shipping; payment instructions are not emailed. |

@@ -37,11 +37,11 @@ catalogue, a persistent cart, and Payoneer Checkout.
 | **Build command** | `npm run build` → `next build` (also runs the TypeScript type-check) |
 | **Dev command** | `npm run dev` → `next dev` (serves on `http://localhost:3000`) |
 | **Lint** | `npm run lint` → `eslint` (flat config, `eslint-config-next` core-web-vitals + TS) |
-| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts` (**31** tests) |
+| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts`. GitHub CI runs lint, typecheck, and build, and does not run this script. |
 | **Deployment** | **Vercel** (Git-connected, zero-config Next.js preset) |
-| **Vercel config** | No `vercel.json` — relies on Vercel's automatic Next.js framework detection. `VERCEL_ENV` is consumed by the app to use the live Payoneer API in production. |
+| **Vercel config** | `vercel.json` sets `buildCommand` to apply `db/comments.sql` and `db/orders.sql`, then `next build`. `VERCEL_ENV=production` selects the live Payoneer API when the card rail is on. |
 | **E-commerce platform** | **Custom** — no Shopify/WooCommerce/Medusa. Cart is client-side (localStorage); catalogue is a static JSON file. |
-| **Payment integration** | **Payoneer Checkout** — server creates a LIST (`POST /api/lists`) and redirects to the hosted payment page. Live API in production. |
+| **Payment integration** | **Bank transfer / PayID by default** (`NEXT_PUBLIC_PAYMENTS_PROVIDER`, default `bank_transfer`). The server stores an `orders` row and sends the customer to `/order/[reference]`. `stripe` keeps the Payoneer hosted-list rail. The flag is inlined at build time. |
 | **Product data source** | `src/data/products.json` (~**30** products), typed via `src/lib/products.ts` |
 | **Analytics** | **None integrated** (no GA4, Vercel Analytics, Plausible, or PostHog). Privacy policy references cookies/analytics generically. AssistLoop is a chat widget, not analytics. |
 | **SEO implementation** | Next.js Metadata API (global + per-page `generateMetadata`), JSON-LD (`Organization`, `WebSite`+`SearchAction`, per-product `Product`/`Offer`/`AggregateOffer`), dynamic `sitemap.ts`, `robots.ts`, OpenGraph/Twitter cards. Site social images are `src/app/opengraph-image.png` and `src/app/twitter-image.png`. Product pages also pass the catalogue image. |
@@ -57,9 +57,10 @@ catalogue, a persistent cart, and Payoneer Checkout.
 │   │   ├── page.tsx        # Home
 │   │   ├── shop/           # Catalogue (search / category / sort)
 │   │   ├── product/[slug]/ # Product detail (SSG via generateStaticParams)
-│   │   ├── cart/ checkout/ account/  # Buying journey + account
-│   │   ├── api/checkout/   # Checkout API (Payoneer list)
-│   │   ├── actions/stripe.ts         # Server action entry point
+│   │   ├── cart/ checkout/ account/ order/[reference]/  # Buying journey, account, PayID instructions
+│   │   ├── api/checkout/   # Checkout API (bank transfer or Payoneer list)
+│   │   ├── api/admin/orders/         # Bearer-gated list and mark-paid
+│   │   ├── actions/checkout.ts       # Server action entry point
 │   │   ├── sitemap.ts robots.ts      # SEO crawl surfaces
 │   │   └── <policy pages> # about, faq, contact, privacy, refund, shipping, terms
 │   ├── components/         # UI components (Header, Footer, Cart*, Product*, JsonLd, …)
@@ -80,14 +81,22 @@ catalogue, a persistent cart, and Payoneer Checkout.
 Payoneer credentials are read from the environment; nothing is hard-coded. `.env*` is
 git-ignored. See `reports/security-compliance-health.md` for the full table.
 
-- `PAYONEER_MERCHANT_CODE` / `PAYONEER_PAYMENT_TOKEN` — server-only Payoneer Checkout credentials.
+- `NEXT_PUBLIC_PAYMENTS_PROVIDER` — `bank_transfer` (default) or `stripe` (Payoneer card rail). Read at build time.
+- `PAYID_ADDRESS` / `PAYID_ACCOUNT_NAME` — required for bank transfer. Shown on `/order/[reference]`.
+- `ADMIN_API_SECRET` — bearer secret for the admin order routes. Routes stay closed while unset.
+- `DATABASE_URL` / `DATABASE_URL_UNPOOLED` — Neon. Required to store bank-transfer orders. Build applies `db/comments.sql` and `db/orders.sql`.
+- `PAYONEER_MERCHANT_CODE` / `PAYONEER_PAYMENT_TOKEN` — server-only. Used when the provider is `stripe`.
 - `PAYONEER_ENV` — optional `live` or `sandbox`. Production ignores sandbox.
 - `NEXT_PUBLIC_SITE_URL` — optional; defaults to `https://redlinelabs.shop`.
 - `NEXT_PUBLIC_ASSISTLOOP_AGENT_ID` — optional chat widget.
-- `VERCEL_ENV` — injected by Vercel; `production` uses the live Payoneer API.
+- `VERCEL_ENV` — injected by Vercel; `production` uses the live Payoneer API when the card rail is selected.
 
-> The app runs **without any secrets** for browsing/catalogue/cart. Only Payoneer checkout
-> requires credentials, and it **degrades gracefully to a 503** when they are absent.
+> The app runs **without any secrets** for browsing, the catalogue, and the cart. Bank-transfer
+> checkout needs `PAYID_ADDRESS`, `PAYID_ACCOUNT_NAME`, and `DATABASE_URL`. The Payoneer card
+> rail needs its merchant credentials and is selected only when
+> `NEXT_PUBLIC_PAYMENTS_PROVIDER=stripe`. Either rail returns 503 from `POST /api/checkout`
+> when it is not configured. `ADMIN_API_SECRET` stays unset unless the admin order routes
+> are in use.
 
 ---
 
@@ -115,8 +124,8 @@ agent makes a change.
    into the default/production branch (`cursor/redlinelabs-shop-1c01`) are the authorization
    signal to deploy.
 
-3. **Vercel — build & host.** Vercel is Git-connected with the zero-config Next.js preset
-   (no `vercel.json`). On every push it builds automatically:
+3. **Vercel — build & host.** Vercel is Git-connected. `vercel.json` only overrides the
+   build command so the Neon schema scripts run before `next build`. On every push it builds automatically:
    - **Preview deployments** for each branch/PR — a unique URL where changes are validated
      before merge. In Preview, `VERCEL_ENV` is `preview`, so the app does **not** force live
      Payoneer credentials.
@@ -174,7 +183,7 @@ Follow these steps in order for **every** maintenance task. Do not skip steps.
 | `website-health.md` | Overall build/deploy/render health; umbrella for cross-cutting issues |
 | `seo-aeo-health.md` | Metadata, structured data, sitemap/robots, AEO answerability |
 | `catalogue-merchandising-health.md` | Product data integrity + merchandising surfaces |
-| `ecommerce-cro-health.md` | Cart, promotions, checkout, Payoneer, conversion |
+| `ecommerce-cro-health.md` | Cart, promotions, bank transfer / Payoneer, conversion |
 | `qa-performance-health.md` | Lint/type/test/build gates + Core Web Vitals |
 | `security-compliance-health.md` | Secrets, payment safety, dependencies, headers, compliance |
 
@@ -189,3 +198,4 @@ Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue
 | 2026-09-25 | Overview added in `#38`. |
 | 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
 | 2026-09-26 | Checkout charges through Payoneer hosted payment instead of Stripe. |
+| 2026-09-27 | Production checkout defaults to bank transfer / PayID. Payoneer remains behind `NEXT_PUBLIC_PAYMENTS_PROVIDER=stripe`. Orders live in Neon. `vercel.json` applies the comments and orders SQL on build. |

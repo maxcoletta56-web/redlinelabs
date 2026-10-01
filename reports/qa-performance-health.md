@@ -46,13 +46,15 @@ npm run build    # next build — also runs the TypeScript type-check
 
 ## Current status
 
-_Baseline pending first audit._ On setup: lint passes, **31/31** unit tests pass, and
-`next build` succeeds generating **52** routes (home/catalogue/policies static, product
-pages SSG via `generateStaticParams`, checkout/api dynamic). Record CWV measurements and
-any gate regressions here per run.
+GitHub Actions on `59caa08` (27 September 2026) passed lint, typecheck, and build. CI does
+not run `npm test`. `account-data.test.ts` was failing on the production branch because
+`src/lib/account-data.ts` imported `./variant-label` without the `.ts` extension Node's
+test runner requires. That import is restored. Comments and orders tests import
+`@neondatabase/serverless` and need `npm ci` before they can load.
 
 ## Change log
 
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
+| 2026-09-27 | website health | CI on the bank-transfer merge is green. `npm test` is still outside CI. The account-data import extension is restored so that suite can load. |

@@ -59,13 +59,17 @@
 
 ## Current status
 
-_Baseline pending first audit._ On setup: `.env*` is git-ignored, Stripe secret access is
-behind `server-only`, key resolution rejects live/test mismatches and enforces live keys in
-production, and checkout degrades to a 503 without keys. Record `npm audit` results and
-header/CSP posture here per run.
+As of 27 September 2026, bank-transfer checkout stores name, email, items, and shipping in
+Neon. `GET /api/admin/orders` and `POST /api/admin/orders/[reference]/paid` require
+`ADMIN_API_SECRET` via a bearer token compared as SHA-256 digests. They stay closed while
+the secret is unset. `/order/[reference]` is unauthenticated and renders name, email, and
+street address to anyone who has the reference (about 30 bits). `POST /api/checkout`
+returns the raw exception message. `PAYID_ADDRESS` and `PAYID_ACCOUNT_NAME` are shown to
+the customer; they are not secrets, and they must not be confused with `ADMIN_API_SECRET`.
 
 ## Change log
 
 | Date | Agent | Summary |
 | --- | --- | --- |
 | _initial_ | setup | Report scaffold created. |
+| 2026-09-27 | website health | Handed across: public order page, admin bearer routes, and raw checkout error bodies. |
