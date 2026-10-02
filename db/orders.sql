@@ -11,5 +11,7 @@ CREATE TABLE IF NOT EXISTS orders (
   items JSONB NOT NULL,
   shipping JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  paid_at TIMESTAMPTZ
+  paid_at TIMESTAMPTZ,
+  whop_checkout_id TEXT,
+  whop_payment_id TEXT
 );

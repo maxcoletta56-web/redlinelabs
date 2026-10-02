@@ -1,7 +1,7 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "paid", "failed"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -39,6 +39,8 @@ export type StoredOrder = {
   shipping: OrderShippingSnapshot | null;
   createdAt: string | null;
   paidAt: string | null;
+  whopCheckoutId: string | null;
+  whopPaymentId: string | null;
 };
 
 export type NewOrder = {
@@ -51,6 +53,8 @@ export type NewOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  status?: OrderStatus;
+  whopCheckoutId?: string | null;
 };
 
 export class OrdersUnavailableError extends Error {
@@ -74,7 +78,9 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   items JSONB NOT NULL,
   shipping JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  paid_at TIMESTAMPTZ
+  paid_at TIMESTAMPTZ,
+  whop_checkout_id TEXT,
+  whop_payment_id TEXT
 )`;
 
 /** Postgres returns timestamptz in a driver-dependent shape, so pin it to ISO-8601 here. */
@@ -94,12 +100,25 @@ const ORDER_COLUMNS = [
   "shipping",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
+  "whop_checkout_id",
+  "whop_payment_id",
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, whop_checkout_id) " +
+  "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
+
+const ATTACH_WHOP_CHECKOUT =
+  "UPDATE orders SET whop_checkout_id = $2 WHERE reference = $1 AND whop_checkout_id IS NULL";
+
+const MARK_WHOP_PAID =
+  `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()), whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND status <> 'paid' RETURNING ${ORDER_COLUMNS}`;
+
+const MARK_WHOP_FAILED =
+  `UPDATE orders SET status = 'failed', whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND status = 'pending' RETURNING ${ORDER_COLUMNS}`;
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
 
@@ -197,6 +216,8 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     shipping: readShipping(record.shipping),
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
+    whopCheckoutId: readText(record.whop_checkout_id) || null,
+    whopPaymentId: readText(record.whop_payment_id) || null,
   };
 }
 
@@ -215,8 +236,10 @@ export async function insertOrder(
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const reference = generateOrderReference();
+    const status = order.status ?? "awaiting_payment";
     const result = await sql.query(INSERT_ORDER, [
       reference,
+      status,
       order.currency,
       order.subtotalCents,
       order.totalCents,
@@ -226,6 +249,7 @@ export async function insertOrder(
       order.email,
       JSON.stringify(order.items),
       order.shipping ? JSON.stringify(order.shipping) : null,
+      order.whopCheckoutId ?? null,
     ]);
     if (rowsOf(result).length > 0) return reference;
   }
@@ -367,4 +391,51 @@ export async function markOrderPaidWithPaymentEmail(
   }
 
   return order;
+}
+
+export async function attachWhopCheckout(
+  reference: string,
+  checkoutId: string,
+  sql: Sql | null = getSql(),
+): Promise<void> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized || !checkoutId) return;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  await sql.query(ATTACH_WHOP_CHECKOUT, [normalized, checkoutId]);
+}
+
+/**
+ * Moves a card order to paid once. A repeat of the same settlement matches no
+ * rows because the status is already paid, so the caller does not email again.
+ */
+export async function markWhopOrderPaid(
+  reference: string,
+  paymentId: string,
+  sql: Sql | null = getSql(),
+): Promise<{ order: StoredOrder | null; applied: boolean }> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized || !paymentId) return { order: null, applied: false };
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_WHOP_PAID, [normalized, paymentId]);
+  const updated = readOrderRow(rowsOf(result)[0]);
+  if (updated) return { order: updated, applied: true };
+  return { order: await findOrder(normalized, sql), applied: false };
+}
+
+/** A failed card attempt only leaves pending. Paid orders stay paid. */
+export async function markWhopOrderFailed(
+  reference: string,
+  paymentId: string,
+  sql: Sql | null = getSql(),
+): Promise<{ order: StoredOrder | null; applied: boolean }> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized || !paymentId) return { order: null, applied: false };
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_WHOP_FAILED, [normalized, paymentId]);
+  const updated = readOrderRow(rowsOf(result)[0]);
+  if (updated) return { order: updated, applied: true };
+  return { order: await findOrder(normalized, sql), applied: false };
 }

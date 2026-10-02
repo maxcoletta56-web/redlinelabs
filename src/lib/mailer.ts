@@ -1,4 +1,5 @@
 import { resolveBankTransfer, transferDescription } from "./bank-transfer.ts";
+import { volumeDiscountCents } from "./promo-pricing.ts";
 import { COMPANY_EMAIL, RESEARCH_DISCLAIMER } from "./company.ts";
 import { formatShippingAddress, type ShippingAddressView } from "./order-shipping.ts";
 
@@ -219,12 +220,17 @@ function paymentInstructionsHtml(input: OrderConfirmationInput) {
 
 function totalsText(input: Pick<OrderConfirmationInput, "subtotalCents" | "totalCents" | "promoCode">) {
   const lines = [`Total: ${formatAudFromCents(input.totalCents)} AUD`];
-  if (input.promoCode) {
-    const discount = input.subtotalCents - input.totalCents;
-    lines.unshift(
-      `Subtotal: ${formatAudFromCents(input.subtotalCents)}`,
-      `Promo code ${input.promoCode}: −${formatAudFromCents(discount)}`,
-    );
+  const volume = volumeDiscountCents(input.subtotalCents);
+  if (input.promoCode || volume > 0) {
+    const breakdown = [`Subtotal: ${formatAudFromCents(input.subtotalCents)}`];
+    if (volume > 0) {
+      breakdown.push(`10% off orders of $200 or more: −${formatAudFromCents(volume)}`);
+    }
+    if (input.promoCode) {
+      const promoOff = Math.max(0, input.subtotalCents - volume - input.totalCents);
+      breakdown.push(`Promo code ${input.promoCode}: −${formatAudFromCents(promoOff)}`);
+    }
+    lines.unshift(...breakdown);
   }
   return lines.join("\n");
 }
@@ -244,10 +250,16 @@ function shippingHtml(shipping: ShippingAddressView | null | undefined) {
 
 function totalsHtml(input: Pick<OrderConfirmationInput, "subtotalCents" | "totalCents" | "promoCode">) {
   const rows = [];
-  if (input.promoCode) {
-    const discount = input.subtotalCents - input.totalCents;
+  const volume = volumeDiscountCents(input.subtotalCents);
+  if (input.promoCode || volume > 0) {
     rows.push(totalRow("Subtotal", formatAudFromCents(input.subtotalCents)));
-    rows.push(totalRow(`Promo code ${input.promoCode}`, `−${formatAudFromCents(discount)}`));
+    if (volume > 0) {
+      rows.push(totalRow("10% off orders of $200 or more", `−${formatAudFromCents(volume)}`));
+    }
+    if (input.promoCode) {
+      const promoOff = Math.max(0, input.subtotalCents - volume - input.totalCents);
+      rows.push(totalRow(`Promo code ${input.promoCode}`, `−${formatAudFromCents(promoOff)}`));
+    }
   }
   rows.push(totalRow("Total", `${formatAudFromCents(input.totalCents)} AUD`));
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">${rows.join("")}</table>`;

@@ -59,6 +59,7 @@ test("insert binds every order field as a parameter", async () => {
   assert.match(insert?.query ?? "", /ON CONFLICT \(reference\) DO NOTHING/);
   assert.deepEqual(insert?.params, [
     reference,
+    "awaiting_payment",
     "aud",
     20000,
     16000,
@@ -67,6 +68,7 @@ test("insert binds every order field as a parameter", async () => {
     "Lovelace",
     "ada@example.com",
     JSON.stringify(order.items),
+    null,
     null,
   ]);
 });
@@ -138,6 +140,8 @@ test("rows with an unusable reference or status are not trusted", () => {
     readOrderRow({ reference: "RL-7F3K2Q", status: "refunded" })?.status,
     "awaiting_payment",
   );
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "pending" })?.status, "pending");
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "failed" })?.status, "failed");
 });
 
 test("item and shipping snapshots survive a jsonb round trip as text", () => {

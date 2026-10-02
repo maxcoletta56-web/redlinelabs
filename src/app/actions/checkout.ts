@@ -3,11 +3,14 @@
 import { createBankTransferOrder } from "@/lib/bank-transfer-checkout";
 import { createPayoneerCheckout, type ShippingAddressInput } from "@/lib/checkout-session";
 import { paymentsProvider } from "@/lib/payments-provider";
+import { createWhopCardCheckout, type WhopCardCheckout } from "@/lib/whop-checkout";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
 const PROVIDER_TIMEOUT_MS = 15_000;
+
+export type CheckoutMethod = "card" | "bank_transfer";
 
 /**
  * Resolved rather than thrown. A thrown server action reaches the browser as
@@ -15,7 +18,8 @@ const PROVIDER_TIMEOUT_MS = 15_000;
  * spinner with nothing for the customer to act on.
  */
 export type CheckoutStart =
-  | { ok: true; redirectUrl: string }
+  | { ok: true; method: "bank_transfer"; redirectUrl: string }
+  | ({ ok: true; method: "card" } & WhopCardCheckout)
   | { ok: false; error: string };
 
 export async function startCartCheckoutSession(input: {
@@ -27,6 +31,7 @@ export async function startCartCheckoutSession(input: {
   promoCode?: string | null;
   ageConfirmed: boolean;
   researchUse: boolean;
+  method?: CheckoutMethod;
 }): Promise<CheckoutStart> {
   const parsed = checkoutBodySchema.safeParse({
     email: input.email,
@@ -42,10 +47,11 @@ export async function startCartCheckoutSession(input: {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" };
   }
 
+  const method = input.method;
   const provider = paymentsProvider();
 
   try {
-    if (provider === "bank_transfer") {
+    if (method === "bank_transfer" || (!method && provider === "bank_transfer")) {
       const order = await createBankTransferOrder({
         items: parsed.data.items,
         email: parsed.data.email,
@@ -56,7 +62,25 @@ export async function startCartCheckoutSession(input: {
         ageConfirmed: true,
         researchUse: true,
       });
-      return { ok: true, redirectUrl: order.redirectUrl };
+      return { ok: true, method: "bank_transfer", redirectUrl: order.redirectUrl };
+    }
+
+    if (method === "card") {
+      const session = await withTimeout(
+        createWhopCardCheckout({
+          items: parsed.data.items,
+          email: parsed.data.email,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          shipping: input.shipping,
+          promoCode: parsed.data.promoCode,
+          ageConfirmed: true,
+          researchUse: true,
+        }),
+        PROVIDER_TIMEOUT_MS,
+        "The card processor",
+      );
+      return { ok: true, method: "card", ...session };
     }
 
     const redirectUrl = await withTimeout(
@@ -73,10 +97,11 @@ export async function startCartCheckoutSession(input: {
       PROVIDER_TIMEOUT_MS,
       "The card processor",
     );
-    return { ok: true, redirectUrl };
+    return { ok: true, method: "bank_transfer", redirectUrl };
   } catch (error) {
     console.error("[checkout] submit failed", {
       provider,
+      method: method ?? null,
       slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
       quantities: parsed.data.items.map((item) => item.qty),
       promoCode: parsed.data.promoCode ?? null,
@@ -84,12 +109,12 @@ export async function startCartCheckoutSession(input: {
       errorName: error instanceof Error ? error.name : "unknown",
       errorMessage: error instanceof Error ? error.message : String(error),
     });
+    const card = method === "card" || (!method && provider !== "bank_transfer");
     return {
       ok: false,
-      error:
-        provider === "bank_transfer"
-          ? "We could not create your order. Nothing has been charged."
-          : "The card processor did not respond. Nothing has been charged.",
+      error: card
+        ? "The card processor did not respond. Nothing has been charged."
+        : "We could not create your order. Nothing has been charged.",
     };
   }
 }
