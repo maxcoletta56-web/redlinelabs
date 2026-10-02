@@ -39,14 +39,20 @@ function formatDate(iso: string | null) {
   }).format(date);
 }
 
+function statusLabel(status: StoredOrder["status"]) {
+  if (status === "paid") return "Payment received";
+  if (status === "pending") return "Payment processing";
+  if (status === "failed") return "Payment failed";
+  return "Awaiting payment";
+}
+
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : "Awaiting payment"}
+      {statusLabel(order.status)}
     </p>
   );
 }
@@ -67,13 +73,14 @@ export default async function OrderPage({ params }: Props) {
   if (!order) notFound();
 
   const paid = order.status === "paid";
+  const awaitingTransfer = order.status === "awaiting_payment";
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
 
   return (
     <div className="wrap max-w-[760px] py-16">
-      <ClearCartOnSuccess />
+      {(paid || awaitingTransfer) && <ClearCartOnSuccess />}
       <Breadcrumbs
         items={[
           { href: "/", label: "Home" },
@@ -88,7 +95,11 @@ export default async function OrderPage({ params }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+          : order.status === "pending"
+            ? "The card payment is still being confirmed. This page updates when Whop marks it paid, and the confirmation email is sent then."
+            : order.status === "failed"
+              ? "The card payment did not complete. Nothing has been marked paid. You can return to checkout and try again."
+              : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
@@ -146,7 +157,7 @@ export default async function OrderPage({ params }: Props) {
         </dl>
       </section>
 
-      {!paid && (
+      {awaitingTransfer && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"
