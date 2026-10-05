@@ -167,6 +167,7 @@ export default function AccountPage() {
                     await login(
                       String(form.get("email") ?? ""),
                       String(form.get("password") ?? ""),
+                      form.get("remember") === "on",
                     );
                   }
                   router.replace(next);
@@ -205,6 +206,23 @@ export default function AccountPage() {
                   <input type="checkbox" name="ageConfirmed" required className="mt-1" />
                   I confirm I am 18 years of age or older and will use this account for
                   laboratory research purchasing only.
+                </label>
+              )}
+              {mode === "login" && (
+                <label className="flex items-start gap-3 text-sm leading-6 text-[#8f8c84]">
+                  <input
+                    id="account-remember"
+                    type="checkbox"
+                    name="remember"
+                    defaultChecked
+                    className="mt-1"
+                  />
+                  <span>
+                    Remember me
+                    <span className="block text-[13px] leading-5">
+                      Stay signed in on this device after you close the browser.
+                    </span>
+                  </span>
                 </label>
               )}
               {error && (

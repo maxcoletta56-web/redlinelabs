@@ -35,9 +35,12 @@ export default function PrivacyPolicyPage() {
         name, email address, billing information, shipping details, account
         profile data (order history, saved addresses, store credit movements,
         and stock alerts), and communications submitted through our website.
-        Account sign-in, saved addresses, stock alerts, and order history for
-        this storefront are stored in your browser (local storage) on this
-        device, in addition to any data Payoneer collects to process payment.
+        Saved addresses, stock alerts, and order history for this storefront
+        are stored in your browser (local storage) on this device. Choosing
+        Remember me when you sign in keeps that sign-in in local storage after
+        you close the browser. Leaving it unchecked stores the sign-in in a
+        session cookie that the browser deletes when it closes. Payoneer may
+        also collect data to process payment.
       </p>
       <h2>How Information Is Used</h2>
       <p>
