@@ -522,6 +522,58 @@ export async function sendOrderCreatedEmails(
   }
 }
 
+export function buildMerchantPaymentReceivedEmail(
+  input: PaymentReceivedInput & { notifyEmail: string; customerEmail: string },
+): RenderedEmail {
+  const amount = formatAudFromCents(input.totalCents);
+  const text = [
+    `Payment received for order ${input.reference}`,
+    "",
+    `Customer: ${input.firstName}`,
+    `Email: ${input.customerEmail}`,
+    `Amount: ${amount} AUD`,
+    "",
+    `Order page: ${input.orderUrl}`,
+  ].join("\n");
+  const html = htmlShell(
+    `Payment received`,
+    `<p style="margin:0 0 8px;">Order ${escapeHtml(input.reference)} is paid.</p>
+    <p style="margin:0 0 4px;">Customer: ${escapeHtml(input.firstName)}</p>
+    <p style="margin:0 0 4px;">Email: ${escapeHtml(input.customerEmail)}</p>
+    <p style="margin:0 0 16px;color:#d4af37;">${escapeHtml(amount)} AUD</p>
+    <p style="margin:0;"><a href="${escapeHtml(input.orderUrl)}" style="color:#d4af37;">Open order ${escapeHtml(input.reference)}</a></p>`,
+  );
+  return {
+    to: singleLine(input.notifyEmail),
+    subject: singleLine(`Payment received for order ${input.reference} — ${amount} AUD`),
+    text,
+    html,
+  };
+}
+
+export async function sendPaymentConfirmedEmails(
+  notice: {
+    reference: string;
+    firstName: string;
+    email: string;
+    totalCents: number;
+  },
+  env?: MailEnv,
+  hooks: MailHooks = {},
+): Promise<void> {
+  const resolved = currentMailEnv(env);
+  await sendPaymentReceivedEmail(notice, resolved, hooks);
+  const notifyEmail = merchantNotifyEmail(resolved);
+  if (!notifyEmail) return;
+  const message = buildMerchantPaymentReceivedEmail({
+    ...notice,
+    customerEmail: notice.email,
+    notifyEmail,
+    orderUrl: orderPageUrl(notice.reference, resolved),
+  });
+  await deliver(message, notice.reference, resolved, hooks);
+}
+
 export async function sendPaymentReceivedEmail(
   notice: {
     reference: string;

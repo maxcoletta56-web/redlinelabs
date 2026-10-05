@@ -25,6 +25,7 @@ const ORDERS_COLUMNS = [
   "shipping",
   "created_at",
   "paid_at",
+  "whop_payment_id",
 ];
 
 type FakeState = { columns: string[]; legacyTables: string[] };
@@ -103,6 +104,7 @@ test("the legacy name steps past tables that already exist", () => {
 
 test("the migration is one statement Neon will accept", () => {
   const statement = ordersMigrationSql();
+  assert.match(statement, /orders_whop_payment_id_key/);
   assert.equal(statementForNeon(statement), statement);
   assert.match(statement, /^DO \$orders_migration\$/);
   assert.match(statement, /\$orders_migration\$$/);
