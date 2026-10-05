@@ -54,7 +54,7 @@ test("insert binds every order field as a parameter", async () => {
 
   assert.match(reference, /^RL-[A-Z2-9]{6}$/);
   assert.match(calls[0]?.query ?? "", /^CREATE TABLE IF NOT EXISTS orders/);
-  const insert = calls[1];
+  const insert = calls[3];
   assert.match(insert?.query ?? "", /^INSERT INTO orders /);
   assert.match(insert?.query ?? "", /ON CONFLICT \(reference\) DO NOTHING/);
   assert.deepEqual(insert?.params, [
@@ -68,6 +68,7 @@ test("insert binds every order field as a parameter", async () => {
     "ada@example.com",
     JSON.stringify(order.items),
     null,
+    "awaiting_payment",
   ]);
 });
 
@@ -108,7 +109,7 @@ test("lookup normalises the reference before binding it", async () => {
   );
   const found = await findOrder("rl-7f3k2q", sql);
   assert.equal(found?.reference, "RL-7F3K2Q");
-  assert.deepEqual(calls[1]?.params, ["RL-7F3K2Q"]);
+  assert.deepEqual(calls[3]?.params, ["RL-7F3K2Q"]);
 });
 
 test("marking paid is idempotent in SQL and returns the stored row", async () => {
@@ -118,7 +119,7 @@ test("marking paid is idempotent in SQL and returns the stored row", async () =>
       : [],
   );
   const updated = await markOrderPaid("RL-7F3K2Q", sql);
-  assert.match(calls[1]?.query ?? "", /paid_at = COALESCE\(paid_at, now\(\)\)/);
+  assert.match(calls[3]?.query ?? "", /paid_at = COALESCE\(paid_at, now\(\)\)/);
   assert.equal(updated?.status, "paid");
   assert.equal(updated?.paidAt, "2026-09-27T01:02:03Z");
 });
@@ -126,9 +127,9 @@ test("marking paid is idempotent in SQL and returns the stored row", async () =>
 test("listing caps the limit it sends to Postgres", async () => {
   const { calls, sql } = recorder(() => []);
   await listRecentOrders(10_000, sql);
-  assert.deepEqual(calls[1]?.params, [200]);
+  assert.deepEqual(calls[3]?.params, [200]);
   await listRecentOrders(0, sql);
-  assert.deepEqual(calls[2]?.params, [1]);
+  assert.deepEqual(calls[4]?.params, [1]);
 });
 
 test("rows with an unusable reference or status are not trusted", () => {
@@ -138,6 +139,9 @@ test("rows with an unusable reference or status are not trusted", () => {
     readOrderRow({ reference: "RL-7F3K2Q", status: "refunded" })?.status,
     "awaiting_payment",
   );
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "pending" })?.status, "pending");
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "failed" })?.status, "failed");
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "pending" })?.whopPaymentId, null);
 });
 
 test("item and shipping snapshots survive a jsonb round trip as text", () => {

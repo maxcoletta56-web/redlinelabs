@@ -113,6 +113,8 @@ export function ordersMigrationSql(options = {}) {
   const backfill = addColumnStatements(createSql)
     .map((statement) => `  ${statement};`)
     .join("\n");
+  const paymentIndex =
+    "  CREATE UNIQUE INDEX IF NOT EXISTS orders_whop_payment_id_key ON public.orders (whop_payment_id) WHERE whop_payment_id IS NOT NULL;";
 
   return `DO $orders_migration$
 BEGIN
@@ -129,6 +131,9 @@ ${indent(createSql)};
 
   -- Self-heal a database that was left part-way through this migration.
 ${backfill}
+
+  -- One Whop payment can mark only one order paid.
+${paymentIndex}
 END
 $orders_migration$`;
 }

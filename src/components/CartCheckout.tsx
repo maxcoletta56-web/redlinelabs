@@ -51,6 +51,7 @@ export function CartCheckout({
         promoCode,
         ageConfirmed,
         researchUse,
+        paymentMethod: "bank_transfer",
       }),
       SUBMIT_TIMEOUT_MS,
       "Checkout",
