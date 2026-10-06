@@ -1,13 +1,16 @@
 "use server";
 
 import { createBankTransferOrder } from "@/lib/bank-transfer-checkout";
-import { createPaypalCheckout, type ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
+import type { ShippingAddressInput } from "@/lib/checkout-session";
+import { createWhopCardCheckout } from "@/lib/whop-checkout";
+import type { WhopEnvironment } from "@/lib/whop";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
 const PROVIDER_TIMEOUT_MS = 15_000;
+
+export type CheckoutMethod = "card" | "bank_transfer";
 
 /**
  * Resolved rather than thrown. A thrown server action reaches the browser as
@@ -15,10 +18,20 @@ const PROVIDER_TIMEOUT_MS = 15_000;
  * spinner with nothing for the customer to act on.
  */
 export type CheckoutStart =
-  | { ok: true; redirectUrl: string }
+  | { ok: true; method: "bank_transfer"; redirectUrl: string }
+  | {
+      ok: true;
+      method: "card";
+      reference: string;
+      sessionId: string;
+      planId: string;
+      environment: WhopEnvironment;
+      returnUrl: string;
+    }
   | { ok: false; error: string };
 
 export async function startCartCheckoutSession(input: {
+  method: CheckoutMethod;
   items: { slug: string; option?: string | null; qty: number }[];
   email: string;
   firstName: string;
@@ -42,10 +55,10 @@ export async function startCartCheckoutSession(input: {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" };
   }
 
-  const provider = paymentsProvider();
+  const method = input.method === "card" ? "card" : "bank_transfer";
 
   try {
-    if (provider === "bank_transfer") {
+    if (method === "bank_transfer") {
       const order = await createBankTransferOrder({
         items: parsed.data.items,
         email: parsed.data.email,
@@ -56,11 +69,11 @@ export async function startCartCheckoutSession(input: {
         ageConfirmed: true,
         researchUse: true,
       });
-      return { ok: true, redirectUrl: order.redirectUrl };
+      return { ok: true, method: "bank_transfer", redirectUrl: order.redirectUrl };
     }
 
-    const redirectUrl = await withTimeout(
-      createPaypalCheckout({
+    const session = await withTimeout(
+      createWhopCardCheckout({
         items: parsed.data.items,
         email: parsed.data.email,
         firstName: parsed.data.firstName,
@@ -71,12 +84,20 @@ export async function startCartCheckoutSession(input: {
         researchUse: true,
       }),
       PROVIDER_TIMEOUT_MS,
-      "PayPal",
+      "Whop",
     );
-    return { ok: true, redirectUrl };
+    return {
+      ok: true,
+      method: "card",
+      reference: session.reference,
+      sessionId: session.sessionId,
+      planId: session.planId,
+      environment: session.environment,
+      returnUrl: session.returnUrl,
+    };
   } catch (error) {
     console.error("[checkout] submit failed", {
-      provider,
+      method,
       slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
       quantities: parsed.data.items.map((item) => item.qty),
       promoCode: parsed.data.promoCode ?? null,
@@ -87,9 +108,9 @@ export async function startCartCheckoutSession(input: {
     return {
       ok: false,
       error:
-        provider === "bank_transfer"
+        method === "bank_transfer"
           ? "We could not create your order. Nothing has been charged."
-          : "PayPal did not respond. Nothing has been charged.",
+          : "Card checkout did not start. Nothing has been charged.",
     };
   }
 }

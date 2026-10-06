@@ -40,13 +40,20 @@ function formatDate(iso: string | null) {
 }
 
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
+  const label =
+    order.status === "paid"
+      ? "Payment received"
+      : order.status === "failed"
+        ? "Payment failed"
+        : order.status === "pending"
+          ? "Payment pending"
+          : "Awaiting payment";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : "Awaiting payment"}
+      {label}
     </p>
   );
 }
@@ -67,6 +74,8 @@ export default async function OrderPage({ params }: Props) {
   if (!order) notFound();
 
   const paid = order.status === "paid";
+  const failed = order.status === "failed";
+  const pending = order.status === "pending";
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
@@ -88,7 +97,11 @@ export default async function OrderPage({ params }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+          : failed
+            ? "The card payment did not go through. You can return to checkout and try again. Nothing is marked paid until a payment clears."
+            : pending
+              ? "The card payment is pending. This page updates when it clears, and a confirmation email is sent then."
+              : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
@@ -146,7 +159,7 @@ export default async function OrderPage({ params }: Props) {
         </dl>
       </section>
 
-      {!paid && (
+      {!paid && !failed && !pending ? (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"
@@ -199,7 +212,7 @@ export default async function OrderPage({ params }: Props) {
             </p>
           )}
         </section>
-      )}
+      ) : null}
 
       <p className="mb-8 text-sm leading-6 text-[#8f8c84]">
         Keep this page bookmarked to check the status. Questions about this order go to{" "}

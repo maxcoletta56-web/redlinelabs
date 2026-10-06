@@ -14,6 +14,7 @@ import {
   formatAudCents,
   formatSydneyDateTime,
   gateAdminData,
+  orderCanBeMarkedPaid,
   orderStatusLabel,
   promoLabel,
   sortAdminOrders,
@@ -209,7 +210,7 @@ function AdminDesk({
                   <OrderRow
                     key={order.reference}
                     order={order}
-                    confirming={confirming === order.reference && order.status === "awaiting_payment"}
+                    confirming={confirming === order.reference && orderCanBeMarkedPaid(order.status)}
                   />
                 ))
               )}
@@ -277,7 +278,7 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
       </Cell>
       <Cell label="Status">
         <StatusBadge status={order.status} />
-        {order.status === "awaiting_payment" ? (
+        {orderCanBeMarkedPaid(order.status) ? (
           <div className="mt-3">
             <MarkPaid reference={order.reference} confirming={confirming} />
           </div>

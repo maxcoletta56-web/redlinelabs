@@ -6,6 +6,7 @@ import {
   lookupPromo,
   normalizePromoCode,
   promoDiscountCents,
+  quoteFromSubtotal,
 } from "./promo.ts";
 import { creditToApplyCents } from "./store-credit.ts";
 
@@ -61,6 +62,18 @@ test("takes 20 percent off the order total, not each line", () => {
   assert.equal(totals.catalogCents, 6666);
   assert.equal(totals.discountedCents, orderTotal);
   assert.equal(totals.discountCents, 1333);
+});
+
+test("orders of $200 or more take 10 percent off before a coupon", () => {
+  assert.equal(quoteFromSubtotal(19_999, null).volumeCents, 0);
+  assert.equal(quoteFromSubtotal(19_999, null).discountedCents, 19_999);
+  const volumeOnly = quoteFromSubtotal(20_000, null);
+  assert.equal(volumeOnly.volumeCents, 2_000);
+  assert.equal(volumeOnly.discountedCents, 18_000);
+  const stacked = quoteFromSubtotal(20_000, lookupPromo("DGC20"));
+  assert.equal(stacked.volumeCents, 2_000);
+  assert.equal(stacked.promoCents, 3_600);
+  assert.equal(stacked.discountedCents, 14_400);
 });
 
 test("applies store credit after 20 percent off the total", () => {
