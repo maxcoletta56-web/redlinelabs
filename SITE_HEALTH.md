@@ -53,7 +53,7 @@ Each URL includes `lastModified`. After a slug rename the sitemap lists only the
 `Content-Security-Policy-Report-Only` in `next.config.ts` currently allows:
 
 - `'self'`
-- Stripe: `https://js.stripe.com`, `https://checkout.stripe.com`, `https://hooks.stripe.com`, `https://api.stripe.com`, `https://m.stripe.network`
+- PayPal card checkout: `https://www.paypal.com`, `https://www.sandbox.paypal.com`
 - AssistLoop widget: `https://assistloop.ai`
 - Vercel Analytics / Speed Insights: `https://va.vercel-scripts.com`, `https://vitals.vercel-insights.com`
 - Legacy product images (until all files are local): `https://i0.wp.com`
@@ -81,10 +81,10 @@ Checkout validation uses a local schema in `src/lib/validation.ts` for the same 
 
 | Rank | Module | Why it is large | Recommendation |
 | --- | --- | --- | --- |
-| 1 | `@stripe/stripe-js` + `@stripe/react-stripe-js` | Embedded Checkout on `/checkout` via `CartCheckout` | Keep the import only in `CartCheckout`. Optionally `next/dynamic` that component so the checkout chrome paints before Stripe downloads. |
+| 1 | PayPal card checkout | Hosted redirect from `CartCheckout`; no PayPal JavaScript on the page | Keep the PayPal call on the server. Do not add a browser PayPal SDK to the cart or header. |
 | 2 | Next.js / React runtime | Framework client for every `"use client"` island | Leave as-is. |
 | 3 | `src/app/account/page.tsx` (~21 KB source) | Largest app client page (profile, orders, addresses, alerts) | Split orders / addresses / alerts into lazy sections if Lighthouse TBT is high. |
-| 4 | `src/app/checkout/page.tsx` (~14 KB source) | Checkout form + totals; pulls Stripe through `CartCheckout` | Already a dedicated route. Do not import `CartCheckout` from the header or cart drawer. |
+| 4 | `src/app/checkout/page.tsx` (~14 KB source) | Checkout form + totals; starts PayPal through `CartCheckout` | Already a dedicated route. Do not import `CartCheckout` from the header or cart drawer. |
 | 5 | `src/components/Header.tsx` + `CartDrawer` + `src/lib/cart.tsx` | Shared chrome on every page | Leave unless the drawer ships unused checkout helpers. |
 
 `FaqList` is already `next/dynamic` on the homepage. Shop search/sort lives in `ShopCatalog` (client) under a server `shop/page.tsx` + `Suspense` layout.

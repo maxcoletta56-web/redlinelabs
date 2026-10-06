@@ -13,7 +13,7 @@ const SUBMIT_TIMEOUT_MS = 25_000;
 
 const PENDING_COPY = {
   bank_transfer: "Creating your order and payment instructions.",
-  stripe: "Redirecting to PayPal card checkout to take payment.",
+  paypal: "Redirecting to PayPal card checkout to take payment.",
 } as const;
 
 export function CartCheckout({

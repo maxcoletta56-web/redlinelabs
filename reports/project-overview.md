@@ -59,7 +59,7 @@ catalogue, a persistent cart, and PayPal card checkout.
 │   │   ├── product/[slug]/ # Product detail (SSG via generateStaticParams)
 │   │   ├── cart/ checkout/ account/  # Buying journey + account
 │   │   ├── api/checkout/   # Checkout API (PayPal card checkout)
-│   │   ├── actions/stripe.ts         # Server action entry point
+│   │   ├── actions/checkout.ts       # Checkout server action
 │   │   ├── sitemap.ts robots.ts      # SEO crawl surfaces
 │   │   └── <policy pages> # about, faq, contact, privacy, refund, shipping, terms
 │   ├── components/         # UI components (Header, Footer, Cart*, Product*, JsonLd, …)

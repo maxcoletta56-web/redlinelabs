@@ -72,7 +72,7 @@ const PROVIDER_COPY = {
       </>
     ),
   },
-  stripe: {
+  paypal: {
     intro:
       "Payment continues on PayPal card checkout. PayPal collects the card, and the charge is sent to the merchant account. You return here after payment.",
     paying: "Paying as",

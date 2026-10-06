@@ -49,7 +49,7 @@ export type OrderStatus = "processing" | "dispatched" | "delivered";
 
 export type OrderRecord = {
   id: string;
-  stripeSessionId: string | null;
+  paypalOrderId: string | null;
   createdAt: string;
   email: string;
   status: OrderStatus;
@@ -376,11 +376,20 @@ export function grantStoreCredit(
   };
 }
 
+export function normalizeStoredOrder(
+  order: OrderRecord & { stripeSessionId?: string | null },
+): OrderRecord {
+  const paypalOrderId = order.paypalOrderId || order.stripeSessionId || null;
+  const stored = { ...order, paypalOrderId };
+  delete stored.stripeSessionId;
+  return stored;
+}
+
 export function recordOrder(user: AccountUser, order: OrderRecord): AccountUser {
   if (user.orders.some((existing) => existing.id === order.id)) return user;
   if (
-    order.stripeSessionId &&
-    user.orders.some((existing) => existing.stripeSessionId === order.stripeSessionId)
+    order.paypalOrderId &&
+    user.orders.some((existing) => existing.paypalOrderId === order.paypalOrderId)
   ) {
     return user;
   }

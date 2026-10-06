@@ -59,7 +59,7 @@ function asOrder(session: SessionPayload): OrderRecord | null {
   const state = address?.state?.trim() ?? "";
   return {
     id: `RL-${session.id.slice(-8).toUpperCase()}`,
-    stripeSessionId: session.id,
+    paypalOrderId: session.id,
     createdAt: new Date().toISOString(),
     email: (session.email ?? "").trim().toLowerCase(),
     status: "processing",

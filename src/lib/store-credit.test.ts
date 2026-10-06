@@ -11,7 +11,7 @@ test("applies no credit when the balance or cart is empty", () => {
   assert.equal(creditToApplyCents(2500, 0), 0);
 });
 
-test("never reduces a Stripe charge below fifty cents", () => {
+test("never reduces a charge below fifty cents", () => {
   assert.equal(creditToApplyCents(8900, 8900), 8850);
   assert.equal(creditToApplyCents(40, 40), 0);
 });

@@ -1,4 +1,4 @@
-export const STRIPE_MIN_CHARGE_CENTS = 50;
+export const MIN_CHARGE_CENTS = 50;
 
 export function dollarsToCents(amount: number) {
   return Math.round(amount * 100);
@@ -16,11 +16,11 @@ export function serverStoreCreditCents() {
   return 0;
 }
 
-/** Largest store-credit amount that can be applied without a $0 Stripe charge. */
+/** Largest store-credit amount that still leaves a payable charge. */
 export function creditToApplyCents(balanceCents: number, subtotalCents: number) {
   const balance = Math.max(0, Math.floor(balanceCents));
   const subtotal = Math.max(0, Math.floor(subtotalCents));
   if (balance <= 0 || subtotal <= 0) return 0;
-  if (subtotal <= STRIPE_MIN_CHARGE_CENTS) return 0;
-  return Math.min(balance, subtotal - STRIPE_MIN_CHARGE_CENTS);
+  if (subtotal <= MIN_CHARGE_CENTS) return 0;
+  return Math.min(balance, subtotal - MIN_CHARGE_CENTS);
 }
