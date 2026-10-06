@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CapturePaidOrder } from "@/components/CapturePaidOrder";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
-import { loadPayoneerReceipt } from "@/lib/checkout-session";
+import { loadPaypalReceipt } from "@/lib/checkout-session";
 import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Order received",
   description:
-    "Confirmation for a Redline Labs research-use order paid through Payoneer. This checkout success page is not indexed.",
+    "Confirmation for a Redline Labs research-use order paid through PayPal card checkout. This checkout success page is not indexed.",
   path: "/checkout/success",
   index: false,
 });
@@ -18,7 +18,7 @@ type Props = { searchParams: Promise<{ session_id?: string }> };
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const { session_id: sessionId } = await searchParams;
-  const loaded = await loadPayoneerReceipt(sessionId).catch(() => null);
+  const loaded = await loadPaypalReceipt(sessionId).catch(() => null);
 
   if (!loaded) {
     return (
@@ -26,7 +26,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         <p className="kicker mb-3">Checkout</p>
         <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em]">Payment not confirmed</h1>
         <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
-          Payoneer could not confirm this checkout. If you paid, use the receipt
+          PayPal could not confirm this checkout. If you paid, use the receipt
           email or contact support.
         </p>
         <Link href="/cart" className="btn">
@@ -49,8 +49,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       </h1>
       <p className="mb-4 text-sm leading-7 text-[#8f8c84]">
         {paid
-          ? "Payoneer accepted this payment. A receipt is sent by Payoneer to the email used at checkout. Signed-in orders, COA requests, and tracking appear on your account."
-          : "Payoneer has not marked this payment as charged yet. Refresh this page or check your email."}
+          ? "PayPal accepted this card payment. A receipt is sent by PayPal to the email used at checkout. Signed-in orders, COA requests, and tracking appear on your account."
+          : "PayPal has not marked this card payment as captured yet. Refresh this page or check your email."}
       </p>
       <p className="mb-8 text-[15px] text-[#d4af37]">Amount {total} AUD</p>
       <div className="flex flex-wrap items-center justify-center gap-3">

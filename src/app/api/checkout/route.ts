@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { bankTransferConfigured, createBankTransferOrder } from "@/lib/bank-transfer-checkout";
-import { createPayoneerCheckout, payoneerConfigured } from "@/lib/checkout-session";
+import { createPaypalCheckout, paypalConfigured } from "@/lib/checkout-session";
 import { paymentsProvider } from "@/lib/payments-provider";
-import { resolvePayoneer } from "@/lib/payoneer";
+import { resolvePaypal } from "@/lib/paypal";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
 
@@ -12,8 +12,8 @@ const PROVIDER_TIMEOUT_MS = 15_000;
 const BANK_TRANSFER_SETUP =
   "Bank transfer checkout is not configured. Add PAYID_ADDRESS, PAYID_ACCOUNT_NAME, and DATABASE_URL.";
 
-const PAYONEER_SETUP =
-  "Payoneer is not configured. Add PAYONEER_MERCHANT_CODE and PAYONEER_PAYMENT_TOKEN. Production uses the live Payoneer API.";
+const PAYPAL_SETUP =
+  "PayPal is not configured. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET. Production uses the live PayPal API.";
 
 export async function GET() {
   const provider = paymentsProvider();
@@ -26,17 +26,17 @@ export async function GET() {
   }
   return NextResponse.json({
     provider,
-    configured: payoneerConfigured(),
-    mode: resolvePayoneer(process.env)?.mode ?? null,
+    configured: paypalConfigured(),
+    mode: resolvePaypal(process.env)?.mode ?? null,
   });
 }
 
 export async function POST(request: Request) {
   const provider = paymentsProvider();
-  const configured = provider === "bank_transfer" ? bankTransferConfigured() : payoneerConfigured();
+  const configured = provider === "bank_transfer" ? bankTransferConfigured() : paypalConfigured();
   if (!configured) {
     return NextResponse.json(
-      { error: provider === "bank_transfer" ? BANK_TRANSFER_SETUP : PAYONEER_SETUP },
+      { error: provider === "bank_transfer" ? BANK_TRANSFER_SETUP : PAYPAL_SETUP },
       { status: 503 },
     );
   }
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     const redirectUrl = await withTimeout(
-      createPayoneerCheckout({
+      createPaypalCheckout({
         items: parsed.data.items,
         email: parsed.data.email,
         firstName: parsed.data.firstName,
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
         researchUse: true,
       }),
       PROVIDER_TIMEOUT_MS,
-      "The card processor",
+      "PayPal",
     );
     return NextResponse.json({ provider, redirectUrl });
   } catch (error) {

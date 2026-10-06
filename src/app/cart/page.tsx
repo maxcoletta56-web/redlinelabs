@@ -108,7 +108,7 @@ export default function CartPage() {
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
               {paymentsProvider() === "bank_transfer"
                 ? "Checkout is paid by Australian bank transfer or PayID."
-                : "Checkout is charged through the card processor."}{" "}
+                : "Checkout is charged through PayPal card checkout."}{" "}
               Apply a coupon for 20% off the
               total order amount. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">

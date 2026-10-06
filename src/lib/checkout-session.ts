@@ -1,17 +1,17 @@
 import "server-only";
 
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
+import { BRAND_NAME } from "@/lib/company";
 import { lineLabel, resolveCartLines, type CartLineInput, type ResolvedLine } from "@/lib/order";
 import {
-  audAmount,
-  createPayoneerList,
-  hostedPaymentPageUrl,
-  payoneerListIsPaid,
-  readPayoneerList,
-  resolvePayoneer,
-  type PayoneerList,
-} from "@/lib/payoneer";
+  buildPaypalOrder,
+  confirmPaypalOrder,
+  createPaypalOrder,
+  isPaypalOrderId,
+  paypalMoney,
+  resolvePaypal,
+} from "@/lib/paypal";
 import { lookupPromo, promoDiscountCents } from "@/lib/promo";
 import { absoluteUrl } from "@/lib/seo";
 
@@ -25,9 +25,9 @@ export type ShippingAddressInput = {
   country?: string;
 };
 
-export type PayoneerReceipt = {
+export type PaypalReceipt = {
   transactionId: string;
-  listUrl: string;
+  orderId: string;
   email: string;
   amountCents: number;
   subtotalCents: number;
@@ -38,17 +38,34 @@ export type PayoneerReceipt = {
   promoPercentOff: number;
 };
 
-const RECEIPT_COOKIE = "rl_payoneer_checkout";
+const RECEIPT_COOKIE = "rl_paypal_checkout";
 
-function customerNumber(email: string) {
-  return createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 20);
+export function paypalConfigured() {
+  return Boolean(resolvePaypal(process.env));
 }
 
-export function payoneerConfigured() {
-  return Boolean(resolvePayoneer(process.env));
+function paypalAddress(shipping: ShippingAddressInput | null | undefined) {
+  const line1 = shipping?.line1.trim() ?? "";
+  const city = shipping?.city.trim() ?? "";
+  const state = shipping?.state.trim() ?? "";
+  const postalCode = shipping?.postal_code.trim() ?? "";
+  const country = (shipping?.country?.trim() || "AU").toUpperCase();
+  if (!line1 || !city || !state || !/^\d{4}$/.test(postalCode) || country !== "AU") {
+    throw new Error("A complete Australian shipping address is required");
+  }
+  const line2 = shipping?.line2?.trim() ?? "";
+  return {
+    name: shipping?.name.trim() || "Customer",
+    line1,
+    ...(line2 ? { line2 } : {}),
+    city,
+    state,
+    postalCode,
+    countryCode: "AU" as const,
+  };
 }
 
-export async function createPayoneerCheckout(input: {
+export async function createPaypalCheckout(input: {
   items: CartLineInput[];
   email?: string;
   firstName?: string;
@@ -58,9 +75,9 @@ export async function createPayoneerCheckout(input: {
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
-  const config = resolvePayoneer(process.env);
+  const config = resolvePaypal(process.env);
   if (!config) {
-    throw new Error("Payoneer is not configured");
+    throw new Error("PayPal is not configured");
   }
   if (!input.ageConfirmed || !input.researchUse) {
     throw new Error("Age and research-use confirmation are required");
@@ -75,31 +92,35 @@ export async function createPayoneerCheckout(input: {
   const transactionId = `rl_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
   const firstName = input.firstName?.trim() || "Customer";
   const lastName = input.lastName?.trim() || "Account";
+  const description = lines.map((line) => lineLabel(line)).join(", ");
 
-  const list = await createPayoneerList(config, {
-    transactionId,
-    country: "AU",
-    customer: {
-      number: customerNumber(email || transactionId),
-      email: email || undefined,
-      name: { firstName, lastName },
-    },
-    payment: {
-      amount: audAmount(amountCents),
-      currency: "AUD",
-      reference: lines.map((line) => lineLabel(line)).join(", ").slice(0, 120),
-    },
-    style: { hostedVersion: "v3" },
-    callback: {
+  const order = await createPaypalOrder(
+    config,
+    buildPaypalOrder({
+      transactionId,
+      amountCents,
+      subtotalCents,
+      discountCents: promoOffCents,
+      lines: lines.map((line) => ({
+        name: lineLabel(line) || description,
+        sku: line.sku,
+        qty: line.qty,
+        unitAmountCents: line.unitAmountCents,
+      })),
+      shipping: paypalAddress(input.shipping),
+      email,
+      firstName,
+      lastName,
       returnUrl: absoluteUrl(`/checkout/success?session_id=${transactionId}`),
       cancelUrl: absoluteUrl("/checkout"),
-      notificationUrl: absoluteUrl("/api/checkout/notify"),
-    },
-  });
-
-  const receipt: PayoneerReceipt = {
+      brandName: BRAND_NAME,
+    }),
     transactionId,
-    listUrl: list.listUrl,
+  );
+
+  const receipt: PaypalReceipt = {
+    transactionId,
+    orderId: order.id,
     email,
     amountCents,
     subtotalCents,
@@ -118,33 +139,37 @@ export async function createPayoneerCheckout(input: {
     maxAge: 60 * 30,
   });
 
-  return hostedPaymentPageUrl(config.mode, list.listUrl);
+  return order.approvalUrl;
 }
 
-function readReceipt(value: string | undefined): PayoneerReceipt | null {
+function readReceipt(value: string | undefined): PaypalReceipt | null {
   if (!value) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as PayoneerReceipt;
-    if (!parsed?.transactionId || !parsed.listUrl || !Array.isArray(parsed.lines)) return null;
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as PaypalReceipt;
+    if (!parsed?.transactionId || !isPaypalOrderId(parsed.orderId) || !Array.isArray(parsed.lines)) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;
   }
 }
 
-export async function loadPayoneerReceipt(sessionId?: string | null): Promise<{
-  receipt: PayoneerReceipt;
-  list: PayoneerList;
+export async function loadPaypalReceipt(sessionId?: string | null): Promise<{
+  receipt: PaypalReceipt;
   paid: boolean;
+  status: string | null;
 } | null> {
-  const config = resolvePayoneer(process.env);
+  const config = resolvePaypal(process.env);
   if (!config) return null;
   const jar = await cookies();
   const receipt = readReceipt(jar.get(RECEIPT_COOKIE)?.value);
   if (!receipt) return null;
+  if (sessionId && sessionId !== receipt.transactionId) return null;
 
-  const list = await readPayoneerList(config, receipt.listUrl);
-  const identifiers = [receipt.transactionId, list.longId, list.transactionId].filter(Boolean);
-  if (sessionId && !identifiers.includes(sessionId)) return null;
-  return { receipt, list, paid: payoneerListIsPaid(list.statusCode) };
+  const confirmed = await confirmPaypalOrder(config, receipt.orderId, {
+    transactionId: receipt.transactionId,
+    amount: paypalMoney(receipt.amountCents),
+  });
+  return { receipt, paid: confirmed.paid, status: confirmed.order.status };
 }

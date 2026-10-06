@@ -8,6 +8,7 @@ import {
   grantStoreCredit,
   hasStockAlert,
   lineDisplayName,
+  normalizeStoredOrder,
   publicAccount,
   recordOrder,
   removeAddress,
@@ -144,7 +145,7 @@ test("toggles stock alerts without duplicating a listing", async () => {
 test("records each paid order once and keeps history newest first", async () => {
   const order = (id: string, session: string): OrderRecord => ({
     id,
-    stripeSessionId: session,
+    paypalOrderId: session,
     createdAt: "2026-09-17T00:00:00.000Z",
     email: "max@example.com",
     status: "processing",
@@ -181,7 +182,7 @@ test("debits only the store credit recorded on the paid order", async () => {
   let user = grantStoreCredit(await sampleUser(), 2000, "Batch adjustment");
   const paid: OrderRecord = {
     id: "RL-CREDIT",
-    stripeSessionId: "cs_credit",
+    paypalOrderId: "cs_credit",
     createdAt: "2026-09-17T00:00:00.000Z",
     email: "max@example.com",
     status: "processing",
@@ -207,4 +208,25 @@ test("debits only the store credit recorded on the paid order", async () => {
   assert.equal(user.storeCreditCents, 1000);
   assert.equal(user.orders[0]?.trackingNumber, "ABC123");
   assert.equal(user.creditLedger[0]?.amountCents, -1000);
+});
+
+test("a stored checkout session id is kept as the PayPal order id", () => {
+  const stored = normalizeStoredOrder({
+    id: "RL-OLD",
+    paypalOrderId: null,
+    stripeSessionId: "cs_old",
+    createdAt: "2026-09-17T00:00:00.000Z",
+    email: "max@example.com",
+    status: "processing",
+    items: [],
+    subtotalCents: 0,
+    storeCreditCents: 0,
+    totalCents: 0,
+    currency: "aud",
+    trackingNumber: null,
+    trackingUrl: null,
+    shipping: null,
+  });
+  assert.equal(stored.paypalOrderId, "cs_old");
+  assert.equal("stripeSessionId" in stored, false);
 });

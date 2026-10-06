@@ -1,7 +1,7 @@
 "use server";
 
 import { createBankTransferOrder } from "@/lib/bank-transfer-checkout";
-import { createPayoneerCheckout, type ShippingAddressInput } from "@/lib/checkout-session";
+import { createPaypalCheckout, type ShippingAddressInput } from "@/lib/checkout-session";
 import { paymentsProvider } from "@/lib/payments-provider";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
@@ -60,7 +60,7 @@ export async function startCartCheckoutSession(input: {
     }
 
     const redirectUrl = await withTimeout(
-      createPayoneerCheckout({
+      createPaypalCheckout({
         items: parsed.data.items,
         email: parsed.data.email,
         firstName: parsed.data.firstName,
@@ -71,7 +71,7 @@ export async function startCartCheckoutSession(input: {
         researchUse: true,
       }),
       PROVIDER_TIMEOUT_MS,
-      "The card processor",
+      "PayPal",
     );
     return { ok: true, redirectUrl };
   } catch (error) {
@@ -89,7 +89,7 @@ export async function startCartCheckoutSession(input: {
       error:
         provider === "bank_transfer"
           ? "We could not create your order. Nothing has been charged."
-          : "The card processor did not respond. Nothing has been charged.",
+          : "PayPal did not respond. Nothing has been charged.",
     };
   }
 }

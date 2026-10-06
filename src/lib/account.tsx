@@ -21,6 +21,7 @@ import {
   mergeOrders,
   normalizeEmail,
   publicAccount,
+  normalizeStoredOrder,
   recordOrder,
   removeAddress,
   removeStockAlert,
@@ -146,7 +147,9 @@ function getServerSnapshot() {
 }
 
 function readGuestOrders() {
-  return readJson<OrderRecord[]>(GUEST_ORDERS_KEY, []);
+  return readJson<Array<OrderRecord & { stripeSessionId?: string | null }>>(GUEST_ORDERS_KEY, []).map(
+    normalizeStoredOrder,
+  );
 }
 
 function writeGuestOrders(orders: OrderRecord[]) {
@@ -164,7 +167,12 @@ function claimGuestOrders(user: AccountUser) {
 }
 
 if (typeof window !== "undefined") {
-  users = readJson<AccountUser[]>(USERS_KEY, []);
+  users = readJson<AccountUser[]>(USERS_KEY, []).map((user) => ({
+    ...user,
+    orders: (user.orders ?? []).map((order) =>
+      normalizeStoredOrder(order as OrderRecord & { stripeSessionId?: string | null }),
+    ),
+  }));
   const stored = readAccountSession(localStorage, sessionCookie());
   sessionEmail = stored.email ? normalizeEmail(stored.email) : null;
   rememberSession = sessionEmail ? stored.remember : true;
@@ -256,7 +264,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const exists = guest.some(
       (entry) =>
         entry.id === order.id ||
-        (order.stripeSessionId && entry.stripeSessionId === order.stripeSessionId),
+        (order.paypalOrderId && entry.paypalOrderId === order.paypalOrderId),
     );
     if (!exists) writeGuestOrders([order, ...guest]);
   }, []);

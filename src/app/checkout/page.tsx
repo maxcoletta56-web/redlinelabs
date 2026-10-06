@@ -72,21 +72,21 @@ const PROVIDER_COPY = {
       </>
     ),
   },
-  stripe: {
+  paypal: {
     intro:
-      "Payment continues on the card processor. It collects the card, and the charge is sent to the merchant account. You return here after payment.",
+      "Payment continues on PayPal card checkout. PayPal collects the card, and the charge is sent to the merchant account. You return here after payment.",
     paying: "Paying as",
-    payingDetail: "Card details are handled by the card processor.",
-    addressNote: "This address is saved with the order before the card processor takes payment.",
-    creditNote: "It is not deducted from the card charge.",
+    payingDetail: "Card details are handled by PayPal.",
+    addressNote: "This address is saved with the order before PayPal takes payment.",
+    creditNote: "It is not deducted from the PayPal charge.",
     summaryNote:
-      "Store credit saved in this browser is not deducted from the card charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
+      "Store credit saved in this browser is not deducted from the PayPal charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
     setup: (
       <>
-        Payoneer checkout is not configured. Add{" "}
-        <code className="text-[#d4af37]">PAYONEER_MERCHANT_CODE</code> and{" "}
-        <code className="text-[#d4af37]">PAYONEER_PAYMENT_TOKEN</code>. Production uses the live
-        Payoneer API.
+        PayPal checkout is not configured. Add{" "}
+        <code className="text-[#d4af37]">PAYPAL_CLIENT_ID</code> and{" "}
+        <code className="text-[#d4af37]">PAYPAL_CLIENT_SECRET</code>. Production uses the live
+        PayPal API.
       </>
     ),
   },

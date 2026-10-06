@@ -123,7 +123,7 @@ export default function AboutPage() {
             Australia-wide dispatch. Tracking may be sent once an order is
             processed, when the carrier provides it. Delivery dates are not
             guaranteed. Checkout collects an Australian shipping address before
-            Payoneer takes payment and does not offer shipping-method selection.
+            PayPal takes payment and does not offer shipping-method selection.
           </p>
         </div>
       </section>

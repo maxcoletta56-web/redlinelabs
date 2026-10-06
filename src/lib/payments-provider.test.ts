@@ -12,11 +12,12 @@ test("bank transfer is the default rail", () => {
 
 test("an unknown provider never silently enables a card processor", () => {
   assert.equal(parsePaymentsProvider("payoneer"), "bank_transfer");
+  assert.equal(parsePaymentsProvider("stripe"), "bank_transfer");
   assert.equal(parsePaymentsProvider("stripe_connect"), "bank_transfer");
 });
 
 test("known providers are read case insensitively", () => {
-  assert.equal(parsePaymentsProvider("stripe"), "stripe");
-  assert.equal(parsePaymentsProvider(" STRIPE "), "stripe");
+  assert.equal(parsePaymentsProvider("paypal"), "paypal");
+  assert.equal(parsePaymentsProvider(" PAYPAL "), "paypal");
   assert.equal(parsePaymentsProvider("Bank_Transfer"), "bank_transfer");
 });
