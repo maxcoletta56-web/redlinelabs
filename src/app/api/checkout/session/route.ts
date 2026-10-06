@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadPayoneerReceipt, payoneerConfigured } from "@/lib/checkout-session";
+import { loadPaypalReceipt, paypalConfigured } from "@/lib/checkout-session";
 import { checkoutSessionQuerySchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
-  if (!payoneerConfigured()) {
-    return NextResponse.json({ error: "Payoneer is not configured" }, { status: 503 });
+  if (!paypalConfigured()) {
+    return NextResponse.json({ error: "PayPal is not configured" }, { status: 503 });
   }
 
   const parsed = checkoutSessionQuerySchema.safeParse({
@@ -15,15 +15,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const loaded = await loadPayoneerReceipt(parsed.data.session_id);
+    const loaded = await loadPaypalReceipt(parsed.data.session_id);
     if (!loaded) {
       return NextResponse.json({ error: "Checkout session was not found" }, { status: 404 });
     }
-    const { receipt, list, paid } = loaded;
+    const { receipt, paid, status } = loaded;
     return NextResponse.json({
       id: receipt.transactionId,
-      status: paid ? "complete" : list.statusCode,
-      payment_status: paid ? "paid" : list.statusCode,
+      status: paid ? "complete" : status,
+      payment_status: paid ? "paid" : status,
       email: receipt.email,
       amount_total: receipt.amountCents,
       amount_subtotal: receipt.subtotalCents,

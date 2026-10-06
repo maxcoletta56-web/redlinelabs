@@ -4,7 +4,7 @@ import { productRedirects } from "./src/lib/slugs";
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
-  "form-action 'self' mailto: https://resources.live.oscato.com https://resources.sandbox.oscato.com",
+  "form-action 'self' mailto: https://www.paypal.com https://www.sandbox.paypal.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com",

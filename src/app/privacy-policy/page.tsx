@@ -39,8 +39,8 @@ export default function PrivacyPolicyPage() {
         are stored in your browser (local storage) on this device. Choosing
         Remember me when you sign in keeps that sign-in in local storage after
         you close the browser. Leaving it unchecked stores the sign-in in a
-        session cookie that the browser deletes when it closes. Payoneer may
-        also collect data to process payment.
+        session cookie that the browser deletes when it closes. PayPal may
+        also collect data to process card payment.
       </p>
       <h2>How Information Is Used</h2>
       <p>
