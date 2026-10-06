@@ -12,14 +12,13 @@ export function parsePaymentsProvider(value: string | null | undefined): Payment
 }
 
 /**
- * The selected rail. `bank_transfer` takes a manual Australian transfer or
- * PayID and settles it out of band. `paypal` selects PayPal card checkout
- * in checkout-session.ts. PayPal opens its guest card form, takes the card,
- * and returns the buyer here for capture. A `stripe` value is not a provider.
+ * Legacy single-rail switch. Checkout now offers Whop card checkout and bank
+ * transfer together, so this value no longer hides one of them. `paypal` is
+ * not a provider and falls back to bank transfer. A `stripe` value is not a
+ * provider either.
  *
  * Read through `process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER` directly so the
- * value is inlined into the client bundle at build time and the browser and
- * the server always agree on one provider.
+ * value is inlined into the client bundle at build time.
  */
 export function paymentsProvider(): PaymentsProvider {
   return parsePaymentsProvider(process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER);

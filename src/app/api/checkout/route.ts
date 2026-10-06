@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { bankTransferConfigured, createBankTransferOrder } from "@/lib/bank-transfer-checkout";
-import { createPaypalCheckout, paypalConfigured } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
-import { resolvePaypal } from "@/lib/paypal";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
+import { createWhopCardCheckout, whopCardConfigured } from "@/lib/whop-checkout";
+import { resolveWhop } from "@/lib/whop";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
 const PROVIDER_TIMEOUT_MS = 15_000;
@@ -12,40 +11,43 @@ const PROVIDER_TIMEOUT_MS = 15_000;
 const BANK_TRANSFER_SETUP =
   "Bank transfer checkout is not configured. Add PAYID_ADDRESS, PAYID_ACCOUNT_NAME, and DATABASE_URL.";
 
-const PAYPAL_SETUP =
-  "PayPal is not configured. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET. Production uses the live PayPal API.";
+const WHOP_SETUP =
+  "Card checkout is not configured. Add WHOP_API_KEY, WHOP_COMPANY_ID, WHOP_WEBHOOK_SECRET, and DATABASE_URL.";
 
 export async function GET() {
-  const provider = paymentsProvider();
-  if (provider === "bank_transfer") {
-    return NextResponse.json({
-      provider,
-      configured: bankTransferConfigured(),
-      mode: null,
-    });
-  }
+  const whop = resolveWhop(process.env);
   return NextResponse.json({
-    provider,
-    configured: paypalConfigured(),
-    mode: resolvePaypal(process.env)?.mode ?? null,
+    card: {
+      provider: "whop",
+      configured: whopCardConfigured(),
+      environment: whop?.environment ?? "sandbox",
+    },
+    bankTransfer: {
+      configured: bankTransferConfigured(),
+    },
   });
 }
 
 export async function POST(request: Request) {
-  const provider = paymentsProvider();
-  const configured = provider === "bank_transfer" ? bankTransferConfigured() : paypalConfigured();
-  if (!configured) {
-    return NextResponse.json(
-      { error: provider === "bank_transfer" ? BANK_TRANSFER_SETUP : PAYPAL_SETUP },
-      { status: 503 },
-    );
-  }
-
   let json: unknown;
   try {
     json = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid checkout payload" }, { status: 400 });
+  }
+
+  const record = json && typeof json === "object" ? (json as { method?: unknown }) : {};
+  const method = record.method === "card" ? "card" : record.method === "bank_transfer" ? "bank_transfer" : null;
+  if (!method) {
+    return NextResponse.json({ error: "Choose card or bank transfer" }, { status: 400 });
+  }
+
+  const configured = method === "bank_transfer" ? bankTransferConfigured() : whopCardConfigured();
+  if (!configured) {
+    return NextResponse.json(
+      { error: method === "bank_transfer" ? BANK_TRANSFER_SETUP : WHOP_SETUP },
+      { status: 503 },
+    );
   }
 
   const parsed = checkoutBodySchema.safeParse(json);
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (provider === "bank_transfer") {
+    if (method === "bank_transfer") {
       const order = await createBankTransferOrder({
         items: parsed.data.items,
         email: parsed.data.email,
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
         researchUse: true,
       });
       return NextResponse.json({
-        provider,
+        method,
         reference: order.reference,
         redirectUrl: order.redirectUrl,
         amountCents: order.totalCents,
@@ -77,8 +79,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const redirectUrl = await withTimeout(
-      createPaypalCheckout({
+    const session = await withTimeout(
+      createWhopCardCheckout({
         items: parsed.data.items,
         email: parsed.data.email,
         firstName: parsed.data.firstName,
@@ -89,13 +91,22 @@ export async function POST(request: Request) {
         researchUse: true,
       }),
       PROVIDER_TIMEOUT_MS,
-      "PayPal",
+      "Whop",
     );
-    return NextResponse.json({ provider, redirectUrl });
+    return NextResponse.json({
+      method,
+      reference: session.reference,
+      sessionId: session.sessionId,
+      planId: session.planId,
+      environment: session.environment,
+      returnUrl: session.returnUrl,
+      amountCents: session.totalCents,
+      currency: "aud",
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout failed";
     console.error("[checkout] POST failed", {
-      provider,
+      method,
       slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
       quantities: parsed.data.items.map((item) => item.qty),
       promoCode: parsed.data.promoCode ?? null,
@@ -109,6 +120,10 @@ export async function POST(request: Request) {
       message.includes("shipping address")
         ? 400
         : 502;
-    return NextResponse.json({ error: message }, { status });
+    const publicMessage =
+      method === "bank_transfer"
+        ? "We could not create your order. Nothing has been charged."
+        : "Card checkout did not start. Nothing has been charged.";
+    return NextResponse.json({ error: publicMessage }, { status });
   }
 }

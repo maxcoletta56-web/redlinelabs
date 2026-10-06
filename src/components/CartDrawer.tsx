@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
-import { checkoutTotals } from "@/lib/promo-pricing";
+import { quoteCheckout } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
@@ -14,7 +14,7 @@ export function CartDrawer() {
   const { items, drawerOpen, setDrawerOpen, updateQty, removeItem } =
     useCart();
   const { promo } = usePromo();
-  const totals = checkoutTotals({ items, promo });
+  const totals = quoteCheckout({ items, promo });
   const closeRef = useRef<HTMLButtonElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -131,14 +131,22 @@ export function CartDrawer() {
               </span>
             </div>
             <PromoCodeForm id="drawer-checkout-code" />
-            {totals.discountCents > 0 && (
+            {totals.volumeCents > 0 ? (
+              <div className="mb-4 flex justify-between text-sm">
+                <span>10% off orders of $200 or more</span>
+                <span className="text-[#d4af37]">
+                  −{formatPrice(centsToDollars(totals.volumeCents))}
+                </span>
+              </div>
+            ) : null}
+            {totals.promoCents > 0 ? (
               <div className="mb-4 flex justify-between text-sm">
                 <span>{promo?.percentOff}% off total</span>
                 <span className="text-[#d4af37]">
-                  −{formatPrice(centsToDollars(totals.discountCents))}
+                  −{formatPrice(centsToDollars(totals.promoCents))}
                 </span>
               </div>
-            )}
+            ) : null}
             <Link
               href="/checkout"
               onClick={() => setDrawerOpen(false)}

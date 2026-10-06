@@ -5,16 +5,10 @@ import { startCartCheckoutSession } from "@/app/actions/checkout";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import type { CartLineInput } from "@/lib/order";
-import { paymentsProvider } from "@/lib/payments-provider";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** Longer than the server-side provider timeout so the server message wins. */
 const SUBMIT_TIMEOUT_MS = 25_000;
-
-const PENDING_COPY = {
-  bank_transfer: "Creating your order and payment instructions.",
-  paypal: "Redirecting to PayPal card checkout to take payment.",
-} as const;
 
 export function CartCheckout({
   items,
@@ -37,12 +31,12 @@ export function CartCheckout({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const provider = paymentsProvider();
 
   useEffect(() => {
     let cancelled = false;
     withTimeout(
       startCartCheckoutSession({
+        method: "bank_transfer",
         items,
         email,
         firstName,
@@ -57,11 +51,11 @@ export function CartCheckout({
     )
       .then((result) => {
         if (cancelled) return;
-        if (result.ok) {
+        if (result.ok && result.method === "bank_transfer") {
           window.location.assign(result.redirectUrl);
           return;
         }
-        setError(result.error);
+        setError(result.ok ? "Bank transfer could not be started." : result.error);
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
@@ -104,7 +98,7 @@ export function CartCheckout({
 
   return (
     <p className="text-sm leading-6 text-[#8f8c84]" role="status">
-      {PENDING_COPY[provider]}
+      Creating your order and payment instructions.
     </p>
   );
 }

@@ -3,7 +3,16 @@ import type { CheckoutPromo } from "./promo-pricing.ts";
 
 export type { CheckoutPromo } from "./promo-pricing.ts";
 
-export { applyPercentOff, checkoutTotals, promoDiscountCents } from "./promo-pricing.ts";
+export {
+  applyPercentOff,
+  checkoutTotals,
+  promoDiscountCents,
+  quoteCheckout,
+  quoteFromSubtotal,
+  volumeDiscountCents,
+  VOLUME_DISCOUNT_PERCENT,
+  VOLUME_DISCOUNT_THRESHOLD_CENTS,
+} from "./promo-pricing.ts";
 
 export const CHECKOUT_PROMOS: Record<string, CheckoutPromo> = {
   DGC20: {

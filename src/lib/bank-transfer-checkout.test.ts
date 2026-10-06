@@ -119,7 +119,7 @@ test("createBankTransferOrder stores a trimmed address and still succeeds if mai
     assert.equal(created.redirectUrl, `/order/${created.reference}`);
     assert.equal(created.totalCents, 8900);
     const insert = calls.find((call) => call.query.startsWith("INSERT"));
-    const stored = JSON.parse(String(insert?.params?.[9])) as { line1: string; postcode: string };
+    const stored = JSON.parse(String(insert?.params?.[10])) as { line1: string; postcode: string };
     assert.equal(stored.line1, "1 Laboratory Road");
     assert.equal(stored.postcode, "2000");
     assert.equal(mailed?.shipping?.line1, "1 Laboratory Road");
@@ -137,6 +137,12 @@ test("createBankTransferOrder stores a trimmed address and still succeeds if mai
       },
     );
     assert.match(stillCreated.reference, /^RL-[A-Z2-9]{6}$/);
+
+    const volume = await createBankTransferOrder(
+      { ...orderInput, items: [{ slug: "bpc-157", option: "10", qty: 3 }], shipping: goodAddress },
+      { sql: recorder().sql, deliver: async () => undefined },
+    );
+    assert.equal(volume.totalCents, 24030);
     assert.equal(
       failedMail.calls.some((call) => call.query.startsWith("INSERT")),
       true,

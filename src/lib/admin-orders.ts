@@ -89,7 +89,13 @@ export function promoLabel(code: string | null): string {
 export function orderStatusLabel(status: string): string {
   if (status === "paid") return "Paid";
   if (status === "awaiting_payment") return "Awaiting payment";
+  if (status === "pending") return "Pending";
+  if (status === "failed") return "Failed";
   return status;
+}
+
+export function orderCanBeMarkedPaid(status: string) {
+  return status === "awaiting_payment" || status === "pending" || status === "failed";
 }
 
 export type AdminOrderStats = {
@@ -120,7 +126,7 @@ export function sortAdminOrders<T extends { status: string; createdAt: string | 
   orders: readonly T[],
 ): T[] {
   return [...orders].sort((a, b) => {
-    const rank = (status: string) => (status === "awaiting_payment" ? 0 : 1);
+    const rank = (status: string) => (orderCanBeMarkedPaid(status) ? 0 : 1);
     const byStatus = rank(a.status) - rank(b.status);
     if (byStatus !== 0) return byStatus;
     return createdAtMs(b.createdAt) - createdAtMs(a.createdAt);
