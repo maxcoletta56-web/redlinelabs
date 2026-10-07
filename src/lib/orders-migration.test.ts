@@ -25,6 +25,8 @@ const ORDERS_COLUMNS = [
   "shipping",
   "created_at",
   "paid_at",
+  "payment_method",
+  "paypal_order_id",
 ];
 
 type FakeState = { columns: string[]; legacyTables: string[] };
