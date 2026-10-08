@@ -12,7 +12,8 @@ import {
   type OrderShippingSnapshot,
 } from "@/lib/orders";
 import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
-import { lookupPromo, promoDiscountCents } from "@/lib/promo";
+import { lookupPromo } from "@/lib/promo";
+import { priceOrderCents } from "@/lib/promo-pricing";
 import { withTimeout } from "@/lib/with-timeout";
 
 export type BankTransferShippingInput = {
@@ -56,6 +57,8 @@ export type CreateBankTransferOrderOptions = {
   deliver?: (notice: OrderCreatedNotice) => Promise<void>;
   paymentMethod?: CheckoutPaymentMethod;
   paypalOrderId?: string | null;
+  /** Card checkout confirms by webhook, so it does not send PayID instructions. */
+  skipOrderEmail?: boolean;
   /**
    * PayPal records the order before a card is captured, and does not need
    * PayID details to do that. Bank transfer still requires them.
@@ -144,7 +147,12 @@ export async function createCheckoutOrder(
   input: CheckoutOrderInput,
   options?: CreateBankTransferOrderOptions,
 ): Promise<CheckoutOrder> {
-  const paymentMethod = options?.paymentMethod === "paypal" ? "paypal" : "bank_transfer";
+  const paymentMethod =
+    options?.paymentMethod === "paypal"
+      ? "paypal"
+      : options?.paymentMethod === "whop"
+        ? "whop"
+        : "bank_transfer";
   if (!options?.skipBankConfiguration && !resolveBankTransfer(process.env)) {
     throw new Error("Bank transfer is not configured");
   }
@@ -163,7 +171,8 @@ export async function createCheckoutOrder(
   const lines = resolveCartLines(input.items);
   const promo = lookupPromo(input.promoCode);
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const totalCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
+  const priced = priceOrderCents(subtotalCents, promo);
+  const totalCents = priced.totalCents;
   if (totalCents <= 0) {
     throw new Error("Order total must be greater than zero");
   }
@@ -196,6 +205,7 @@ export async function createCheckoutOrder(
         shipping,
         paymentMethod,
         paypalOrderId: options?.paypalOrderId ?? null,
+        status: paymentMethod === "whop" ? "pending" : "awaiting_payment",
       },
       sql,
     ),
@@ -214,18 +224,17 @@ export async function createCheckoutOrder(
     promoCode,
     shipping,
   };
-  try {
-    if (options?.deliver) {
-      await options.deliver(notice);
-    } else {
-      await deliverOrderNotice(reference, notice);
+  if (!options?.skipOrderEmail) {
+    try {
+      if (options?.deliver) await options.deliver(notice);
+      else await deliverOrderNotice(reference, notice);
+    } catch (error) {
+      console.error("[mailer] order email failed", {
+        reference,
+        errorName: error instanceof Error ? error.name : "unknown",
+        errorMessage: redactError(error),
+      });
     }
-  } catch (error) {
-    console.error("[mailer] order email failed", {
-      reference,
-      errorName: error instanceof Error ? error.name : "unknown",
-      errorMessage: redactError(error),
-    });
   }
 
   return {

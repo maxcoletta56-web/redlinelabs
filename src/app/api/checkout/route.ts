@@ -6,8 +6,11 @@ import {
   paymentsProvider,
   paypalCheckoutOffered,
   resolveRequestedPaymentMethod,
+  whopCheckoutOffered,
 } from "@/lib/payments-provider";
 import { PaypalOrderSavedError } from "@/lib/paypal-checkout";
+import { WhopOrderSavedError, openWhopCheckout, whopCheckoutConfigured } from "@/lib/whop-checkout";
+import { whopEnvironment } from "@/lib/whop";
 import { resolvePaypal } from "@/lib/paypal";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
@@ -21,25 +24,34 @@ const BANK_TRANSFER_SETUP =
 const PAYPAL_SETUP =
   "PayPal is not configured. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET. Production uses the live PayPal API.";
 
+const WHOP_SETUP =
+  "Card checkout is not configured. Add WHOP_API_KEY and DATABASE_URL. Sandbox is the default until WHOP_ENV=live.";
+
 export async function GET() {
   const provider = paymentsProvider();
   const paypalReady = paypalConfigured();
   const bankReady = bankTransferConfigured();
+  const whopReady = whopCheckoutConfigured();
   const surface = checkoutSurface({
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured: paypalReady,
     bankTransferConfigured: bankReady,
+    whopConfigured: whopReady,
   });
   return NextResponse.json({
     provider,
     configured: surface.setup === null,
     showChoice: surface.showChoice,
     defaultMethod: surface.defaultMethod,
+    methods: surface.methods,
     setup: surface.setup,
-    paypalOffered: surface.showChoice,
+    paypalOffered: surface.paypalOffered,
+    whopOffered: surface.whopOffered,
     paypalConfigured: paypalReady,
     bankTransferConfigured: bankReady,
+    whopConfigured: whopReady,
     mode: paypalReady ? (resolvePaypal(process.env)?.mode ?? null) : null,
+    whopEnvironment: whopReady ? whopEnvironment(process.env) : null,
   });
 }
 
@@ -47,6 +59,10 @@ export async function POST(request: Request) {
   const paypalOffered = paypalCheckoutOffered(
     process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured(),
+  );
+  const whopOffered = whopCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    whopCheckoutConfigured(),
   );
 
   let json: unknown;
@@ -68,15 +84,22 @@ export async function POST(request: Request) {
     requested: parsed.data.paymentMethod,
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalOffered,
+    whopOffered,
   });
   if (method === "unavailable") {
-    return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+    return NextResponse.json(
+      { error: parsed.data.paymentMethod === "whop" ? WHOP_SETUP : PAYPAL_SETUP },
+      { status: 503 },
+    );
   }
   if (method === "bank_transfer" && !bankTransferConfigured()) {
     return NextResponse.json({ error: BANK_TRANSFER_SETUP }, { status: 503 });
   }
   if (method === "paypal" && !paypalConfigured()) {
     return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+  }
+  if (method === "whop" && !whopCheckoutConfigured()) {
+    return NextResponse.json({ error: WHOP_SETUP }, { status: 503 });
   }
 
   try {
@@ -96,6 +119,33 @@ export async function POST(request: Request) {
         reference: order.reference,
         redirectUrl: order.redirectUrl,
         amountCents: order.totalCents,
+        currency: "aud",
+      });
+    }
+
+    if (method === "whop") {
+      const session = await withTimeout(
+        openWhopCheckout({
+          items: parsed.data.items,
+          email: parsed.data.email,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          shipping: parsed.data.shipping,
+          promoCode: parsed.data.promoCode,
+          ageConfirmed: true,
+          researchUse: true,
+        }),
+        PROVIDER_TIMEOUT_MS,
+        "Card checkout",
+      );
+      return NextResponse.json({
+        provider: method,
+        reference: session.reference,
+        sessionId: session.sessionId,
+        planId: session.planId,
+        environment: session.environment,
+        returnUrl: session.returnUrl,
+        amountCents: session.totalCents,
         currency: "aud",
       });
     }
@@ -122,6 +172,15 @@ export async function POST(request: Request) {
         reference: error.reference,
         redirectUrl: `/order/${error.reference}?paypal=unavailable`,
       });
+    }
+    if (error instanceof WhopOrderSavedError) {
+      return NextResponse.json(
+        {
+          error: "Card checkout did not start. Nothing has been charged.",
+          reference: error.reference,
+        },
+        { status: 502 },
+      );
     }
     const message = error instanceof Error ? error.message : "Checkout failed";
     console.error("[checkout] POST failed", {

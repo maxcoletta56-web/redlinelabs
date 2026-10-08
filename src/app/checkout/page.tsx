@@ -94,11 +94,32 @@ const PROVIDER_COPY = {
       </>
     ),
   },
+  whop: {
+    intro:
+      "Pay by card on this page. Whop collects the card. A bank or 3D Secure check may open and then return here. The order is marked paid when Whop confirms the payment.",
+    paying: "Paying as",
+    payingDetail: "Card details are handled by Whop and never reach this site.",
+    addressNote: "This address is saved with the order before the card form opens.",
+    creditNote: "It is not deducted from the card charge.",
+    summaryNote:
+      "Store credit saved in this browser is not deducted from the card charge. Orders of $200 or more take 10% off, then a coupon if you apply one. Prices charged are taken from the catalogue, not from the browser cart.",
+    setup: (
+      <>
+        Card checkout is not configured. Add the server-only{" "}
+        <code className="text-[#d4af37]">WHOP_API_KEY</code> and{" "}
+        <code className="text-[#d4af37]">DATABASE_URL</code>. Sandbox is used until{" "}
+        <code className="text-[#d4af37]">WHOP_ENV=live</code>.
+      </>
+    ),
+  },
 } as const;
 
 export default function CheckoutPage() {
   const availability = useCheckoutAvailability();
-  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const { method, choose } = useSelectedPaymentMethod(
+    availability.showChoice,
+    availability.methods,
+  );
   const copy =
     PROVIDER_COPY[availability.showChoice ? method : availability.defaultMethod];
   const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
@@ -304,7 +325,11 @@ export default function CheckoutPage() {
               </fieldset>
             )}
             {availability.showChoice && (
-              <PaymentMethodChoice value={method} onChange={choose} />
+              <PaymentMethodChoice
+                value={method}
+                onChange={choose}
+                methods={availability.methods}
+              />
             )}
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <fieldset className="space-y-4">
@@ -463,6 +488,14 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
+        {totals.volumeDiscountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders $200 or more</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+            </span>
+          </div>
+        )}
         {totals.discountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>

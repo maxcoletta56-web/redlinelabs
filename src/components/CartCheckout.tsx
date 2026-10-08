@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { startCartCheckoutSession } from "@/app/actions/checkout";
+import { WhopCheckoutElement } from "@/components/WhopCheckoutElement";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import type { CartLineInput } from "@/lib/order";
 import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
+import type { WhopEmbedSession } from "@/lib/whop-embed";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** Longer than the server-side provider timeout so the server message wins. */
@@ -13,6 +15,7 @@ const SUBMIT_TIMEOUT_MS = 25_000;
 
 const PENDING_COPY = {
   bank_transfer: "Creating your order and payment instructions.",
+  whop: "Opening secure card checkout.",
   paypal: "Redirecting to PayPal card checkout to take payment.",
 } as const;
 
@@ -39,8 +42,11 @@ export function CartCheckout({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const resumeReference = useRef<string | null>(null);
+  const [embed, setEmbed] = useState<WhopEmbedSession | null>(null);
 
   useEffect(() => {
+    if (embed) return;
     let cancelled = false;
     withTimeout(
       startCartCheckoutSession({
@@ -53,17 +59,25 @@ export function CartCheckout({
         paymentMethod,
         ageConfirmed,
         researchUse,
+        orderReference: resumeReference.current,
       }),
       SUBMIT_TIMEOUT_MS,
       "Checkout",
     )
       .then((result) => {
         if (cancelled) return;
-        if (result.ok) {
+        if (result.ok && result.embed) {
+          setEmbed(result.embed);
+          return;
+        }
+        if (result.ok && result.redirectUrl) {
           window.location.assign(result.redirectUrl);
           return;
         }
-        setError(result.error);
+        if (!result.ok) {
+          resumeReference.current = result.reference ?? resumeReference.current;
+          setError(result.error);
+        }
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
@@ -79,6 +93,7 @@ export function CartCheckout({
     };
   }, [
     attempt,
+    embed,
     items,
     email,
     firstName,
@@ -99,6 +114,7 @@ export function CartCheckout({
           className="btn"
           onClick={() => {
             setError(null);
+            setEmbed(null);
             setAttempt((count) => count + 1);
           }}
         >
@@ -113,6 +129,10 @@ export function CartCheckout({
         </p>
       </div>
     );
+  }
+
+  if (embed) {
+    return <WhopCheckoutElement session={embed} />;
   }
 
   return (

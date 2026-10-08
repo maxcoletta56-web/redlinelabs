@@ -20,11 +20,16 @@ export function CartDrawer() {
     useCart();
   const { promo } = usePromo();
   const availability = useCheckoutAvailability();
-  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const { method, choose } = useSelectedPaymentMethod(
+    availability.showChoice,
+    availability.methods,
+  );
   const checkoutHref = availability.showChoice
     ? method === "paypal"
       ? "/checkout?pay=paypal"
-      : "/checkout?pay=payid"
+      : method === "whop"
+        ? "/checkout?pay=whop"
+        : "/checkout?pay=payid"
     : "/checkout";
   const totals = checkoutTotals({ items, promo });
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -143,6 +148,14 @@ export function CartDrawer() {
               </span>
             </div>
             <PromoCodeForm id="drawer-checkout-code" />
+            {totals.volumeDiscountCents > 0 && (
+              <div className="mb-4 flex justify-between text-sm">
+                <span>10% off orders $200 or more</span>
+                <span className="text-[#d4af37]">
+                  −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+                </span>
+              </div>
+            )}
             {totals.discountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
                 <span>{promo?.percentOff}% off total</span>
@@ -153,7 +166,13 @@ export function CartDrawer() {
             )}
             {availability.showChoice && (
               <div className="mb-4">
-                <PaymentMethodChoice value={method} onChange={choose} name="drawerPaymentMethod" stacked />
+                <PaymentMethodChoice
+                  value={method}
+                  onChange={choose}
+                  methods={availability.methods}
+                  name="drawerPaymentMethod"
+                  stacked
+                />
               </div>
             )}
             <Link
