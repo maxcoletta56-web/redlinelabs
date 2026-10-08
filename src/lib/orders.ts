@@ -1,7 +1,7 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "paid", "failed"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -39,6 +39,8 @@ export type StoredOrder = {
   shipping: OrderShippingSnapshot | null;
   clubEmail: string | null;
   clubPointsRedeemed: number;
+  volumeDiscountCents: number;
+  whopPaymentId: string | null;
   createdAt: string | null;
   paidAt: string | null;
 };
@@ -55,6 +57,9 @@ export type NewOrder = {
   shipping: OrderShippingSnapshot | null;
   clubEmail?: string | null;
   clubPointsRedeemed?: number;
+  /** Card checkout inserts `pending`. Bank transfer leaves this unset. */
+  status?: "awaiting_payment" | "pending";
+  volumeDiscountCents?: number;
 };
 
 export class OrdersUnavailableError extends Error {
@@ -80,7 +85,9 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   club_email TEXT,
   club_points_redeemed INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  paid_at TIMESTAMPTZ
+  paid_at TIMESTAMPTZ,
+  volume_discount_cents INTEGER NOT NULL DEFAULT 0,
+  whop_payment_id TEXT
 )`;
 
 /** Postgres returns timestamptz in a driver-dependent shape, so pin it to ISO-8601 here. */
@@ -100,13 +107,15 @@ const ORDER_COLUMNS = [
   "shipping",
   "club_email",
   "club_points_redeemed",
+  "volume_discount_cents",
+  "whop_payment_id",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, volume_discount_cents) " +
+  "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13, $14) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
@@ -116,6 +125,28 @@ const LIST_ORDERS = `SELECT ${ORDER_COLUMNS} FROM orders ORDER BY orders.created
 const MARK_ORDER_PAID =
   `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()) WHERE reference = $1 ` +
   `RETURNING ${ORDER_COLUMNS}`;
+
+/**
+ * One Whop payment id can move an order to paid exactly once. A later success
+ * for a different payment id is accepted only when the order is still unpaid
+ * (including a previous card failure). A paid row is never updated again.
+ */
+const MARK_WHOP_PAID =
+  `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()), whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND status <> 'paid' AND (` +
+  `whop_payment_id IS NULL OR whop_payment_id = $2 OR status = 'failed') ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+/** A failed card attempt must not overwrite an order that already paid. */
+const MARK_WHOP_FAILED =
+  `UPDATE orders SET status = 'failed', whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND status IN ('pending', 'awaiting_payment') ` +
+  `AND (whop_payment_id IS NULL OR whop_payment_id = $2) ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+const MARK_PENDING_FAILED =
+  `UPDATE orders SET status = 'failed' WHERE reference = $1 AND status = 'pending' ` +
+  `AND whop_payment_id IS NULL RETURNING ${ORDER_COLUMNS}`;
 
 export function ensureOrdersTable(sql: Sql) {
   return ensureTable(sql, "orders", CREATE_ORDERS);
@@ -205,6 +236,8 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     shipping: readShipping(record.shipping),
     clubEmail: readText(record.club_email) || null,
     clubPointsRedeemed: readInt(record.club_points_redeemed),
+    volumeDiscountCents: readInt(record.volume_discount_cents),
+    whopPaymentId: readText(record.whop_payment_id) || null,
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
   };
@@ -227,6 +260,7 @@ export async function insertOrder(
     const reference = generateOrderReference();
     const result = await sql.query(INSERT_ORDER, [
       reference,
+      order.status === "pending" ? "pending" : "awaiting_payment",
       order.currency,
       order.subtotalCents,
       order.totalCents,
@@ -238,6 +272,7 @@ export async function insertOrder(
       order.shipping ? JSON.stringify(order.shipping) : null,
       order.clubEmail ?? null,
       Math.max(0, Math.floor(order.clubPointsRedeemed ?? 0)),
+      Math.max(0, Math.floor(order.volumeDiscountCents ?? 0)),
     ]);
     if (rowsOf(result).length > 0) return reference;
   }
@@ -346,8 +381,42 @@ function paymentReceivedNotice(order: StoredOrder): PaymentReceivedNotice {
 }
 
 /**
+ * Points and the payment confirmation email. Mail and club failures are
+ * logged and do not undo the paid row. The email task is not awaited.
+ */
+async function deliverPaidSideEffects(order: StoredOrder, hooks: MarkPaidEmailHooks = {}) {
+  try {
+    const award = hooks.awardClubPoints ?? awardClubPointsForOrder;
+    await award(order);
+  } catch (error) {
+    console.error("[club] award on paid failed", {
+      reference: order.reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+  }
+
+  try {
+    const deps: PaymentEmailDeps =
+      hooks.scheduleEmail && hooks.sendPaymentReceivedEmail
+        ? {
+            scheduleEmail: hooks.scheduleEmail,
+            sendPaymentReceivedEmail: hooks.sendPaymentReceivedEmail,
+          }
+        : await loadPaymentEmailDeps();
+    const schedule = hooks.scheduleEmail ?? deps.scheduleEmail;
+    const send = hooks.sendPaymentReceivedEmail ?? deps.sendPaymentReceivedEmail;
+    schedule(order.reference, () => send(paymentReceivedNotice(order)));
+  } catch (error) {
+    console.error("[mailer] order email failed", {
+      reference: order.reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+  }
+}
+
+/**
  * Lookup, then mark paid, then schedule the receipt when this transition is
- * the one that leaves `awaiting_payment`. A lookup failure is logged and does
+ * the one that leaves an unpaid status. A lookup failure is logged and does
  * not block the update. The email task is not awaited: `scheduleEmail`
  * already swallows mail errors and runs after the response.
  */
@@ -372,36 +441,112 @@ export async function markOrderPaidWithPaymentEmail(
   if (!order) return null;
 
   if (existing?.status !== "paid") {
-    // Rewards must never turn a received payment into a failed update.
-    try {
-      const award = hooks.awardClubPoints ?? awardClubPointsForOrder;
-      await award(order);
-    } catch (error) {
-      console.error("[club] award on paid failed", {
-        reference: order.reference,
-        errorName: error instanceof Error ? error.name : "unknown",
-      });
-    }
-
-    try {
-      const deps: PaymentEmailDeps =
-        hooks.scheduleEmail && hooks.sendPaymentReceivedEmail
-          ? {
-              scheduleEmail: hooks.scheduleEmail,
-              sendPaymentReceivedEmail: hooks.sendPaymentReceivedEmail,
-            }
-          : await loadPaymentEmailDeps();
-      const schedule = hooks.scheduleEmail ?? deps.scheduleEmail;
-      const send = hooks.sendPaymentReceivedEmail ?? deps.sendPaymentReceivedEmail;
-      schedule(order.reference, () => send(paymentReceivedNotice(order)));
-    } catch (error) {
-      // Mail setup must not turn a committed payment into a failed update.
-      console.error("[mailer] order email failed", {
-        reference: order.reference,
-        errorName: error instanceof Error ? error.name : "unknown",
-      });
-    }
+    await deliverPaidSideEffects(order, hooks);
   }
 
   return order;
+}
+
+export type WhopPaymentOutcome = "succeeded" | "failed";
+
+export type WhopPaymentResult = {
+  outcome: "paid" | "failed" | "already_done" | "ignored";
+  reference: string | null;
+  reason?: string;
+};
+
+const WHOP_PAYMENT_ID = /^pay_[A-Za-z0-9]+$/;
+
+/**
+ * The signed webhook's gross amount, in major units, must match the cents
+ * stored on the order. A missing amount is allowed: some Whop payloads only
+ * echo metadata. `amount_after_fees` is net of Whop's fee and is not compared.
+ */
+export function whopChargeMatches(
+  order: { totalCents: number; currency: string },
+  payment: { currency?: string | null; total?: number | null },
+) {
+  if (payment.currency && payment.currency.toLowerCase() !== order.currency.toLowerCase()) {
+    return false;
+  }
+  if (payment.total == null) return true;
+  if (!Number.isFinite(payment.total)) return false;
+  return Math.round(payment.total * 100) === order.totalCents;
+}
+
+/**
+ * Applies one Whop payment id. Repeating the same id does not send another
+ * confirmation email. A success after a failed attempt with a new payment id
+ * can still mark the order paid.
+ */
+export async function applyWhopPayment(
+  input: {
+    orderId: string;
+    paymentId: string;
+    outcome: WhopPaymentOutcome;
+    currency?: string | null;
+    total?: number | null;
+  },
+  sql: Sql | null = getSql(),
+  hooks: MarkPaidEmailHooks = {},
+): Promise<WhopPaymentResult> {
+  const reference = normalizeOrderReference(input.orderId);
+  const paymentId = input.paymentId.trim();
+  if (!reference || !WHOP_PAYMENT_ID.test(paymentId)) {
+    return { outcome: "ignored", reference, reason: "unusable_ids" };
+  }
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+
+  const existing = await findOrder(reference, sql);
+  if (!existing) return { outcome: "ignored", reference, reason: "unknown_order" };
+
+  if (input.outcome === "succeeded") {
+    if (existing.status === "paid") {
+      if (existing.whopPaymentId && existing.whopPaymentId !== paymentId) {
+        console.error("[whop] additional payment for an order that is already paid", {
+          reference,
+          paymentId,
+        });
+      }
+      return { outcome: "already_done", reference };
+    }
+    if (!whopChargeMatches(existing, { currency: input.currency, total: input.total })) {
+      console.error("[whop] payment amount did not match the stored order", {
+        reference,
+        paymentId,
+        currency: input.currency ?? null,
+      });
+      return { outcome: "ignored", reference, reason: "amount_mismatch" };
+    }
+    const result = await sql.query(MARK_WHOP_PAID, [reference, paymentId]);
+    const order = readOrderRow(rowsOf(result)[0]);
+    if (!order) return { outcome: "already_done", reference };
+    await deliverPaidSideEffects(order, hooks);
+    return { outcome: "paid", reference };
+  }
+
+  if (existing.status === "paid") {
+    return { outcome: "already_done", reference };
+  }
+  if (existing.status === "failed" && existing.whopPaymentId === paymentId) {
+    return { outcome: "already_done", reference };
+  }
+  const result = await sql.query(MARK_WHOP_FAILED, [reference, paymentId]);
+  const order = readOrderRow(rowsOf(result)[0]);
+  if (!order) return { outcome: "already_done", reference };
+  return { outcome: "failed", reference };
+}
+
+/** Used when Whop never issued a checkout configuration for a pending order. */
+export async function markPendingOrderFailed(
+  reference: string,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_PENDING_FAILED, [normalized]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
 }

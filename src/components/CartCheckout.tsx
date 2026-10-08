@@ -53,6 +53,7 @@ export function CartCheckout({
         promoCode,
         // Points are a request; the server re-verifies the member and re-caps them.
         club: provider === "bank_transfer" && member && points > 0 ? { email: member.email, code: member.code, points } : null,
+        method: "bank_transfer",
         ageConfirmed,
         researchUse,
       }),
@@ -61,8 +62,12 @@ export function CartCheckout({
     )
       .then((result) => {
         if (cancelled) return;
-        if (result.ok) {
+        if (result.ok && "redirectUrl" in result) {
           window.location.assign(result.redirectUrl);
+          return;
+        }
+        if (result.ok) {
+          setError("Checkout could not be started. Nothing has been charged.");
           return;
         }
         setError(result.error);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
+import { WhopCardCheckout } from "@/components/WhopCheckout";
 import { ClubRedeem } from "@/components/ClubRedeem";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
@@ -12,8 +13,7 @@ import { useAccount } from "@/lib/account";
 import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
-import { checkoutTotals } from "@/lib/promo-pricing";
+import { cardPayableCents, checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPoints, pointsValueCents } from "@/lib/club";
 import { useClub } from "@/lib/club-state";
@@ -56,7 +56,26 @@ function shippingDraftError(draft: ShippingDraft) {
   return null;
 }
 
-const PROVIDER_COPY = {
+type CheckoutMethod = "card" | "bank_transfer";
+
+const METHOD_COPY = {
+  card: {
+    intro:
+      "Pay by card in the Whop checkout on this page. 3D Secure, when your bank asks for it, continues here and returns to this site. Orders of $200 or more take 10% off before the card is charged.",
+    paying: "Paying as",
+    payingDetail: "The card form is embedded below. Whop collects the card.",
+    addressNote: "This address is saved with the order before the card form is shown.",
+    creditNote: "It is not deducted from the card total.",
+    summaryNote:
+      "Store credit saved in this browser is not deducted from the card total. Orders of $200 or more take 10% off. A coupon, when valid, is applied by the server. The amount charged is taken from the catalogue, not from the browser cart.",
+    setup: (
+      <>
+        Card checkout is not configured. Add <code className="text-[#d4af37]">WHOP_API_KEY</code>,{" "}
+        <code className="text-[#d4af37]">WHOP_COMPANY_ID</code>, and{" "}
+        <code className="text-[#d4af37]">DATABASE_URL</code>.
+      </>
+    ),
+  },
   bank_transfer: {
     intro:
       "Payment is by Australian bank transfer or PayID. The next screen shows the PayID address, the amount, and the reference to quote in the transfer description.",
@@ -75,36 +94,18 @@ const PROVIDER_COPY = {
       </>
     ),
   },
-  paypal: {
-    intro:
-      "Payment continues on PayPal card checkout. PayPal collects the card, and the charge is sent to the merchant account. You return here after payment.",
-    paying: "Paying as",
-    payingDetail: "Card details are handled by PayPal.",
-    addressNote: "This address is saved with the order before PayPal takes payment.",
-    creditNote: "It is not deducted from the PayPal charge.",
-    summaryNote:
-      "Store credit saved in this browser is not deducted from the PayPal charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
-    setup: (
-      <>
-        PayPal checkout is not configured. Add{" "}
-        <code className="text-[#d4af37]">PAYPAL_CLIENT_ID</code> and{" "}
-        <code className="text-[#d4af37]">PAYPAL_CLIENT_SECRET</code>. Production uses the live
-        PayPal API.
-      </>
-    ),
-  },
 } as const;
 
 export default function CheckoutPage() {
-  const copy = PROVIDER_COPY[paymentsProvider()];
   const { items } = useCart();
   const { promo } = usePromo();
   const { points: selectedClubPoints } = useClub();
-  // Points only apply on the bank-transfer rail; card checkout charges the full total.
-  const clubPoints = paymentsProvider() === "bank_transfer" ? selectedClubPoints : 0;
+  const [method, setMethod] = useState<CheckoutMethod>("card");
+  const [rails, setRails] = useState<{ card: boolean; bankTransfer: boolean } | null>(null);
+  // Points only apply on the bank-transfer rail. Card checkout uses the volume discount instead.
+  const clubPoints = method === "bank_transfer" ? selectedClubPoints : 0;
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
@@ -117,11 +118,19 @@ export default function CheckoutPage() {
   useEffect(() => {
     fetch("/api/checkout")
       .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
+      .then((data: { card?: { configured?: boolean }; bankTransfer?: { configured?: boolean }; configured?: boolean }) => {
+        const card = Boolean(data.card?.configured);
+        const bankTransfer = Boolean(data.bankTransfer?.configured ?? data.configured);
+        setRails({ card, bankTransfer });
+        setMethod((current) => {
+          if (current === "card" && card) return "card";
+          if (current === "bank_transfer" && bankTransfer) return "bank_transfer";
+          if (card) return "card";
+          return "bank_transfer";
+        });
       })
       .catch(() => {
-        setConfigured(false);
+        setRails({ card: false, bankTransfer: false });
       });
   }, []);
 
@@ -133,12 +142,15 @@ export default function CheckoutPage() {
     (user ? defaultAddress(user) : null);
   const savedShipping = selectedAddress ? draftFromSaved(selectedAddress) : EMPTY_SHIPPING;
   const shippingDraft = shippingOverrides ?? savedShipping;
+  const copy = METHOD_COPY[method];
   const totals = checkoutTotals({
     items,
     promo,
   });
+  const cardTotals = cardPayableCents(totals.catalogCents, promo);
   const browserCreditCents = user?.storeCreditCents ?? 0;
-  const payable = centsToDollars(totals.discountedCents);
+  const bankPayable = centsToDollars(totals.discountedCents);
+  const methodReady = method === "card" ? rails?.card === true : rails?.bankTransfer === true;
 
   const cartItems = useMemo(
     () =>
@@ -312,6 +324,43 @@ export default function CheckoutPage() {
                 </p>
               </fieldset>
             )}
+            <fieldset>
+              <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+                Payment method
+              </legend>
+              <div className="space-y-2">
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "card"}
+                    onChange={() => setMethod("card")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Card</span>
+                    <span className="text-[#8f8c84]">
+                      Whop checkout on this page. Orders of $200 or more take 10% off.
+                    </span>
+                  </span>
+                </label>
+                <label className="surface flex cursor-pointer items-start gap-3 p-4 text-sm leading-6">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    className="mt-1"
+                    checked={method === "bank_transfer"}
+                    onChange={() => setMethod("bank_transfer")}
+                  />
+                  <span>
+                    <span className="block font-medium text-white">Bank transfer or PayID</span>
+                    <span className="text-[#8f8c84]">
+                      Instructions appear on the next screen. Club points can be applied here.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <fieldset className="space-y-4">
               <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
@@ -415,12 +464,12 @@ export default function CheckoutPage() {
                 {error}
               </p>
             )}
-            {configured === false && (
+            {rails && !methodReady && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
                 {copy.setup}
               </p>
             )}
-            <button type="submit" className="btn" disabled={configured !== true}>
+            <button type="submit" className="btn" disabled={!methodReady}>
               Continue to payment
             </button>
           </form>
@@ -433,16 +482,29 @@ export default function CheckoutPage() {
                 : ""}
             </p>
             <div className="surface overflow-hidden p-3">
-              <CartCheckout
-                items={cartItems}
-                email={email}
-                firstName={firstName}
-                lastName={lastName}
-                shipping={shipping}
-                promoCode={promo?.code ?? null}
-                ageConfirmed
-                researchUse
-              />
+              {method === "card" ? (
+                <WhopCardCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              ) : (
+                <CartCheckout
+                  items={cartItems}
+                  email={email}
+                  firstName={firstName}
+                  lastName={lastName}
+                  shipping={shipping}
+                  promoCode={promo?.code ?? null}
+                  ageConfirmed
+                  researchUse
+                />
+              )}
             </div>
             <button type="button" className="btn-ghost" onClick={() => setReady(false)}>
               Edit details
@@ -468,12 +530,23 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
-        <ClubRedeem payableCents={totals.discountedCents} />
-        {totals.discountCents > 0 && (
+        {method === "bank_transfer" ? <ClubRedeem payableCents={totals.discountedCents} /> : null}
+        {method === "card" && cardTotals.volumeDiscountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders of $200 or more</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(cardTotals.volumeDiscountCents))}
+            </span>
+          </div>
+        )}
+        {(method === "card" ? cardTotals.promoDiscountCents : totals.discountCents) > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(totals.discountCents))}
+              −
+              {formatPrice(
+                centsToDollars(method === "card" ? cardTotals.promoDiscountCents : totals.discountCents),
+              )}
             </span>
           </div>
         )}
@@ -498,7 +571,11 @@ export default function CheckoutPage() {
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
           <span>Due now</span>
           <span className="text-[#d4af37]">
-            {formatPrice(Math.max(0, payable - centsToDollars(pointsValueCents(clubPoints))))}
+            {formatPrice(
+              method === "card"
+                ? centsToDollars(cardTotals.totalCents)
+                : Math.max(0, bankPayable - centsToDollars(pointsValueCents(clubPoints))),
+            )}
           </span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">

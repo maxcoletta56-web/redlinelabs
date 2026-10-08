@@ -27,6 +27,8 @@ const ORDERS_COLUMNS = [
   "club_points_redeemed",
   "created_at",
   "paid_at",
+  "volume_discount_cents",
+  "whop_payment_id",
 ];
 
 type FakeState = { columns: string[]; legacyTables: string[] };

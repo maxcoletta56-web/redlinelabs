@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Sql } from "./db.ts";
 import {
+  applyWhopPayment,
   findOrder,
   insertOrder,
   listRecentOrders,
   markOrderPaid,
   readOrderRow,
+  whopChargeMatches,
   type NewOrder,
 } from "./orders.ts";
 
@@ -59,6 +61,7 @@ test("insert binds every order field as a parameter", async () => {
   assert.match(insert?.query ?? "", /ON CONFLICT \(reference\) DO NOTHING/);
   assert.deepEqual(insert?.params, [
     reference,
+    "awaiting_payment",
     "aud",
     20000,
     16000,
@@ -69,6 +72,7 @@ test("insert binds every order field as a parameter", async () => {
     JSON.stringify(order.items),
     null,
     null,
+    0,
     0,
   ]);
 });
@@ -140,6 +144,8 @@ test("rows with an unusable reference or status are not trusted", () => {
     readOrderRow({ reference: "RL-7F3K2Q", status: "refunded" })?.status,
     "awaiting_payment",
   );
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "pending" })?.status, "pending");
+  assert.equal(readOrderRow({ reference: "RL-7F3K2Q", status: "failed" })?.status, "failed");
 });
 
 test("item and shipping snapshots survive a jsonb round trip as text", () => {
@@ -156,4 +162,93 @@ test("item and shipping snapshots survive a jsonb round trip as text", () => {
   assert.deepEqual(row?.items, order.items);
   assert.equal(row?.shipping?.line1, "1 Test St");
   assert.equal(row?.shipping?.country, "AU");
+});
+
+test("the gross Whop amount must match the stored order", () => {
+  const order = { totalCents: 18_000, currency: "aud" };
+  assert.equal(whopChargeMatches(order, { currency: "aud", total: 180 }), true);
+  assert.equal(whopChargeMatches(order, { currency: "AUD", total: null }), true);
+  assert.equal(whopChargeMatches(order, { currency: "usd", total: 180 }), false);
+  assert.equal(whopChargeMatches(order, { currency: "aud", total: 1 }), false);
+});
+
+test("the same Whop payment id marks an order paid once and does not email again", async () => {
+  let status = "pending";
+  let whopPaymentId: string | null = null;
+  const sent: string[] = [];
+  const sql: Sql = {
+    query: async (query, params) => {
+      if (query.startsWith("SELECT")) {
+        return [
+          {
+            reference: "RL-7F3K2Q",
+            status,
+            currency: "aud",
+            total_cents: 18000,
+            email: "ada@example.com",
+            first_name: "Ada",
+            whop_payment_id: whopPaymentId,
+          },
+        ];
+      }
+      if (query.includes("whop_payment_id = $2") && query.includes("status = 'paid'")) {
+        if (status === "paid") return [];
+        status = "paid";
+        whopPaymentId = String(params?.[1] ?? "");
+        return [
+          {
+            reference: "RL-7F3K2Q",
+            status: "paid",
+            currency: "aud",
+            total_cents: 18000,
+            email: "ada@example.com",
+            first_name: "Ada",
+            whop_payment_id: whopPaymentId,
+          },
+        ];
+      }
+      return [];
+    },
+  };
+  const hooks = {
+    awardClubPoints: async () => null,
+    scheduleEmail: (_reference: string, task: () => Promise<void>) => {
+      void task();
+    },
+    sendPaymentReceivedEmail: async (notice: { reference: string }) => {
+      sent.push(notice.reference);
+    },
+  };
+  const first = await applyWhopPayment(
+    { orderId: "RL-7F3K2Q", paymentId: "pay_abc", outcome: "succeeded", currency: "aud", total: 180 },
+    sql,
+    hooks,
+  );
+  const second = await applyWhopPayment(
+    { orderId: "RL-7F3K2Q", paymentId: "pay_abc", outcome: "succeeded", currency: "aud", total: 180 },
+    sql,
+    hooks,
+  );
+  assert.equal(first.outcome, "paid");
+  assert.equal(second.outcome, "already_done");
+  assert.deepEqual(sent, ["RL-7F3K2Q"]);
+});
+
+test("a failed payment does not overwrite a paid order", async () => {
+  const calls: string[] = [];
+  const sql: Sql = {
+    query: async (query) => {
+      calls.push(query.slice(0, 24));
+      if (query.startsWith("SELECT")) {
+        return [{ reference: "RL-7F3K2Q", status: "paid", currency: "aud", total_cents: 18000 }];
+      }
+      return [{ reference: "RL-7F3K2Q", status: "failed" }];
+    },
+  };
+  const result = await applyWhopPayment(
+    { orderId: "RL-7F3K2Q", paymentId: "pay_fail", outcome: "failed" },
+    sql,
+  );
+  assert.equal(result.outcome, "already_done");
+  assert.equal(calls.some((query) => query.startsWith("UPDATE")), false);
 });

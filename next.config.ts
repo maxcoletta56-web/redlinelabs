@@ -7,12 +7,12 @@ const csp = [
   "form-action 'self' mailto: https://www.paypal.com https://www.sandbox.paypal.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com https://cdn.whop.com https://pay.google.com https://applepay.cdn-apple.com https://js.braintreegateway.com https://www.paypal.com https://www.sandbox.paypal.com https://c.paypal.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://i0.wp.com",
+  "img-src 'self' data: blob: https://i0.wp.com https://www.paypalobjects.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://assistloop.ai https://vitals.vercel-insights.com https://va.vercel-scripts.com",
-  "frame-src 'none'",
+  "connect-src 'self' https://assistloop.ai https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.whop.com https://sandbox-api.whop.com https://pay.google.com https://google.com https://account.google.com https://www.google.com https://api.basistheory.com https://payments.braintree-api.com https://payments.sandbox.braintree-api.com https://api.braintreegateway.com https://api.sandbox.braintreegateway.com https://api-m.paypal.com https://api-m.sandbox.paypal.com https://www.paypal.com https://www.sandbox.paypal.com",
+  "frame-src https://cdn.whop.com https://checkout.paypal.com https://assets.braintreegateway.com https://www.paypal.com https://www.sandbox.paypal.com",
 ].join("; ");
 
 const securityHeaders = [
