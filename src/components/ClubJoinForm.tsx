@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { JOIN_BONUS_POINTS, formatCents, pointsValueCents } from "@/lib/club";
+import { RESEARCH_DISCLAIMER } from "@/lib/company";
 
 type JoinState =
   | { status: "idle" }
@@ -20,10 +20,6 @@ export function ClubJoinForm({ id = "club-join" }: { id?: string }) {
     return (
       <div className="surface p-6" role="status">
         <p className="kicker mb-2">Welcome to the club</p>
-        <p className="text-sm leading-7 text-[#cfc8b8]">
-          {JOIN_BONUS_POINTS} points — worth {formatCents(pointsValueCents(JOIN_BONUS_POINTS))} —
-          are on your balance. Another {JOIN_BONUS_POINTS} land after your first order is paid.
-        </p>
         <p className="mt-4 text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
           Your member code
         </p>
@@ -37,6 +33,7 @@ export function ClubJoinForm({ id = "club-join" }: { id?: string }) {
         <Link href="/club/balance" className="btn-ghost mt-4 inline-flex">
           Check my balance
         </Link>
+        <p className="mt-4 text-[11px] leading-5 text-[#8f8c84]">{RESEARCH_DISCLAIMER}</p>
       </div>
     );
   }
@@ -48,6 +45,7 @@ export function ClubJoinForm({ id = "club-join" }: { id?: string }) {
         <Link href="/club/balance" className="btn-ghost mt-4 inline-flex">
           Go to balance lookup
         </Link>
+        <p className="mt-4 text-[11px] leading-5 text-[#8f8c84]">{RESEARCH_DISCLAIMER}</p>
       </div>
     );
   }
@@ -127,8 +125,9 @@ export function ClubJoinForm({ id = "club-join" }: { id?: string }) {
       </button>
       <p className="text-xs leading-6 text-[#8f8c84]">
         Membership is free. Use the same email at checkout and points are added automatically once
-        payment clears.
+        payment clears. Your member code is shown once and cannot be recovered from this page.
       </p>
+      <p className="text-[11px] leading-5 text-[#8f8c84]">{RESEARCH_DISCLAIMER}</p>
     </form>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClubBalanceLookup } from "@/components/ClubBalanceLookup";
 import { PageIntro } from "@/components/PageIntro";
+import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -15,8 +16,9 @@ export const metadata: Metadata = pageMetadata({
 export default function ClubBalancePage() {
   return (
     <div className="wrap max-w-[620px] py-16">
+      <ResearchDisclaimer className="mb-10" />
       <PageIntro kicker="Redline Club" title="Your points balance" crumb="Club balance">
-        Enter the email you joined with and the member code from your welcome message.
+        Enter the email you joined with and the member code shown when you joined.
       </PageIntro>
       <ClubBalanceLookup />
       <p className="mt-8 text-sm leading-7 text-[#8f8c84]">

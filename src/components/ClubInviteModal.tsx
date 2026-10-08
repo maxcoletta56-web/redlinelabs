@@ -3,21 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { JOIN_BONUS_POINTS, formatCents, pointsValueCents } from "@/lib/club";
+import { shouldInviteOnPath } from "@/lib/club-invite";
 import { RESEARCH_DISCLAIMER } from "@/lib/company";
 
 const DISMISSED_KEY = "redline-club-invite-v1";
 
 /** Long enough that the page the customer came for renders first. */
 const DELAY_MS = 6_000;
-
-const INVITED_ROUTES = ["/shop", "/product", "/cart"];
-
-function shouldInvite(pathname: string) {
-  return INVITED_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
-}
 
 function alreadySeen() {
   try {
@@ -51,7 +43,7 @@ export function ClubInviteModal() {
   }, []);
 
   useEffect(() => {
-    if (!shouldInvite(pathname) || alreadySeen()) return;
+    if (!shouldInviteOnPath(pathname) || alreadySeen()) return;
     const timer = window.setTimeout(() => {
       if (!alreadySeen()) setOpen(true);
     }, DELAY_MS);
@@ -100,12 +92,11 @@ export function ClubInviteModal() {
           id="club-invite-title"
           className="mt-2 text-[1.6rem] leading-tight font-semibold tracking-[-0.02em] text-white"
         >
-          {formatCents(pointsValueCents(JOIN_BONUS_POINTS))} in points, just for joining.
+          Join the Redline Club.
         </h2>
         <p className="mt-3 text-sm leading-7 text-[#8f8c84]">
-          Members earn at least 1 point per $1 spent, and 100 points is{" "}
-          {formatCents(pointsValueCents(100))} off. Join free and we add {JOIN_BONUS_POINTS} points
-          now, plus another {JOIN_BONUS_POINTS} after your first order.
+          Free membership with a personal member code, four tiers set by your lifetime spend, and
+          points on paid orders once programme rates are published.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link href="/club" className="btn" onClick={dismiss}>

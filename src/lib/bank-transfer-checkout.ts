@@ -1,18 +1,14 @@
 import "server-only";
 
 import { isAuState } from "@/lib/account-data";
-import { pointsValueCents, resolveRedemption } from "@/lib/club";
-import {
-  authenticateMember,
-  holdRedemption,
-  releaseRedemption,
-  tagRedemption,
-  type RedemptionHold,
-} from "@/lib/club-db";
+import { activeClubProgram, resolveRedemption, type ActiveClubProgram } from "@/lib/club";
+import { authenticateMember, releaseRedemption, reserveRedemption } from "@/lib/club-db";
+import { allowCredentialAttempt } from "@/lib/club-rate-limit";
 import { resolveBankTransfer } from "@/lib/bank-transfer";
 import { getSql, type Sql } from "@/lib/db";
 import { sendOrderCreatedEmails, type OrderCreatedNotice } from "@/lib/mailer";
 import { lineLabel, resolveCartLines, type CartLineInput, type ResolvedLine } from "@/lib/order";
+import { generateOrderReference } from "@/lib/order-reference";
 import {
   insertOrder,
   ordersConfigured,
@@ -68,10 +64,12 @@ export type CreateBankTransferOrderOptions = {
   sql?: Sql | null;
   /** Injected by tests. Production reads the club tables through club-db. */
   club?: {
-    authenticate: typeof authenticateMember;
-    hold: typeof holdRedemption;
-    tag: typeof tagRedemption;
-    release: typeof releaseRedemption;
+    program?: ActiveClubProgram | null;
+    authenticate?: typeof authenticateMember;
+    reserve?: typeof reserveRedemption;
+    release?: typeof releaseRedemption;
+    allowAttempt?: (email: string) => { ok: boolean };
+    reference?: () => string;
   };
   /** Injected by tests. Production schedules mail and never awaits the send. */
   deliver?: (notice: OrderCreatedNotice) => Promise<void>;
@@ -191,12 +189,14 @@ export async function createCheckoutOrder(
   }
 
   // Redemption is per order, and only on PayID. A club payload sent with PayPal
-  // is ignored so the card is charged the full total.
-  const hold =
+  // is ignored so the card is charged the full total. Points are reserved
+  // against a reference allocated up front, so the reservation, the order and
+  // any later release all share one idempotency key.
+  const reservation =
     paymentMethod === "bank_transfer"
-      ? await holdClubPoints(input.club, payableCents, options)
+      ? await reserveClubPoints(input.club, payableCents, options)
       : null;
-  const totalCents = payableCents - (hold ? pointsValueCents(hold.points) : 0);
+  const totalCents = payableCents - (reservation?.discountCents ?? 0);
 
   const items: OrderItemSnapshot[] = lines.map((line) => ({
     slug: line.slug,
@@ -217,6 +217,7 @@ export async function createCheckoutOrder(
     reference = await withTimeout(
       insertOrder(
         {
+          reference: reservation?.reference,
           currency: "aud",
           subtotalCents,
           totalCents,
@@ -226,8 +227,9 @@ export async function createCheckoutOrder(
           email,
           items,
           shipping,
-          clubEmail: hold?.member.email ?? null,
-          clubPointsRedeemed: hold?.points ?? 0,
+          clubEmail: reservation?.email ?? null,
+          clubPointsRedeemed: reservation?.points ?? 0,
+          clubDiscountCents: reservation?.discountCents ?? 0,
           paymentMethod,
           paypalOrderId: options?.paypalOrderId ?? null,
         },
@@ -238,23 +240,12 @@ export async function createCheckoutOrder(
     );
   } catch (error) {
     // The points were taken off the balance before the insert; give them back.
-    if (hold) await releaseClubPoints(hold, options);
+    if (reservation) await releaseClubPoints(reservation.reference, options);
     throw error;
   }
 
-  if (hold) {
-    try {
-      await (options?.club?.tag ?? tagRedemption)(hold, reference, sql);
-    } catch (error) {
-      console.error("[club] could not tag the redemption with its order", {
-        reference,
-        errorName: error instanceof Error ? error.name : "unknown",
-      });
-    }
-  }
-
   const notice: OrderCreatedNotice = {
-    clubPointsRedeemed: hold?.points ?? 0,
+    clubDiscountCents: reservation?.discountCents ?? 0,
     reference,
     firstName,
     lastName,
@@ -296,19 +287,32 @@ export async function createCheckoutOrder(
   };
 }
 
+type ClubReservation = {
+  reference: string;
+  email: string;
+  points: number;
+  discountCents: number;
+};
+
 /**
  * Verifies the member server-side, re-caps the requested points against the
- * live balance and this order's size, then takes them off the balance before
- * the order is written. A club failure never blocks the order: the customer
+ * live balance and this order's size, then reserves them in one atomic
+ * statement before the order is written. Nothing here trusts the client's
+ * balance or discount. A club failure never blocks the order: the customer
  * simply pays the undiscounted total.
  */
-async function holdClubPoints(
+async function reserveClubPoints(
   club: ClubRedemptionInput | null | undefined,
   payableCents: number,
   options?: CreateBankTransferOrderOptions,
-): Promise<RedemptionHold | null> {
-  if (!club) return null;
+): Promise<ClubReservation | null> {
+  if (!club || club.points <= 0) return null;
+  const program =
+    options?.club && "program" in options.club ? options.club.program ?? null : activeClubProgram();
+  if (!program) return null;
   try {
+    const allowed = (options?.club?.allowAttempt ?? allowCredentialAttempt)(club.email);
+    if (!allowed.ok) return null;
     const sql = databaseFor(options);
     const member = await (options?.club?.authenticate ?? authenticateMember)(
       club.email,
@@ -316,16 +320,19 @@ async function holdClubPoints(
       sql,
     );
     if (!member) return null;
-    const { points } = resolveRedemption({
+    const { points, discountCents } = resolveRedemption(program, {
       requestedPoints: club.points,
       balancePoints: member.pointsBalance,
       payableCents,
     });
     if (points <= 0) return null;
-    return await (options?.club?.hold ?? holdRedemption)(
-      { email: member.email, points },
+    const reference = (options?.club?.reference ?? generateOrderReference)();
+    const result = await (options?.club?.reserve ?? reserveRedemption)(
+      { email: member.email, points, orderReference: reference },
       sql,
     );
+    if (result.status !== "reserved") return null;
+    return { reference, email: member.email, points, discountCents };
   } catch (error) {
     console.error("[club] could not apply points at checkout", {
       errorName: error instanceof Error ? error.name : "unknown",
@@ -334,14 +341,16 @@ async function holdClubPoints(
   }
 }
 
-async function releaseClubPoints(
-  hold: RedemptionHold,
-  options?: CreateBankTransferOrderOptions,
-) {
+async function releaseClubPoints(reference: string, options?: CreateBankTransferOrderOptions) {
   try {
-    await (options?.club?.release ?? releaseRedemption)(hold, databaseFor(options));
+    await (options?.club?.release ?? releaseRedemption)(
+      reference,
+      "Order was not created",
+      databaseFor(options),
+    );
   } catch (error) {
-    console.error("[club] could not return held points", {
+    console.error("[club] could not return held points; run club reconciliation", {
+      reference,
       errorName: error instanceof Error ? error.name : "unknown",
     });
   }

@@ -25,6 +25,7 @@ function storedOrder(status: StoredOrder["status"]): StoredOrder {
     shipping: null,
     clubEmail: null,
     clubPointsRedeemed: 0,
+    clubDiscountCents: 0,
     paymentMethod: "bank_transfer",
     paypalOrderId: null,
     createdAt: "2026-09-27T01:00:00.000Z",

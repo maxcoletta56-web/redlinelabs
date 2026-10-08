@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Field } from "@/components/Field";
-import { loginAdmin, logoutAdmin, markAdminOrderPaid } from "@/app/admin/orders/actions";
+import {
+  cancelAdminOrder,
+  loginAdmin,
+  logoutAdmin,
+  markAdminOrderPaid,
+} from "@/app/admin/orders/actions";
 import {
   ADMIN_RECENT_ORDER_LIMIT,
   adminDeskNotice,
@@ -19,7 +24,7 @@ import {
   sortAdminOrders,
   summarizeOrderItems,
 } from "@/lib/admin-orders";
-import { formatPoints, pointsValueCents } from "@/lib/club";
+import { clubDiscountText } from "@/lib/club";
 import { readAdminSessionToken } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { formatShippingAddress } from "@/lib/order-shipping";
@@ -274,11 +279,8 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
       </Cell>
       <Cell label="Total">
         <p className="font-semibold text-[#d4af37]">{formatAudCents(order.totalCents)}</p>
-        {order.clubPointsRedeemed > 0 && (
-          <p className="mt-1 text-xs text-[#8f8c84]">
-            Club points: {formatPoints(order.clubPointsRedeemed)} (−
-            {formatAudCents(pointsValueCents(order.clubPointsRedeemed))})
-          </p>
+        {order.clubDiscountCents > 0 && (
+          <p className="mt-1 text-xs text-[#8f8c84]">{clubDiscountText(order.clubDiscountCents)}</p>
         )}
       </Cell>
       <Cell label="Promo">
@@ -292,6 +294,7 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
         {order.status === "awaiting_payment" ? (
           <div className="mt-3">
             <MarkPaid reference={order.reference} confirming={confirming} />
+            <CancelOrder reference={order.reference} pointsHeld={order.clubPointsRedeemed > 0} />
           </div>
         ) : null}
       </Cell>
@@ -348,5 +351,25 @@ function MarkPaid({ reference, confirming }: { reference: string; confirming: bo
         Cancel
       </Link>
     </form>
+  );
+}
+
+function CancelOrder({ reference, pointsHeld }: { reference: string; pointsHeld: boolean }) {
+  return (
+    <details className="mt-2">
+      <summary className="min-h-11 cursor-pointer py-2 text-sm text-[#8f8c84] hover:text-[#d4af37]">
+        Cancel order
+      </summary>
+      <form action={cancelAdminOrder} className="mt-2 flex flex-col gap-2">
+        <input type="hidden" name="reference" value={reference} />
+        <input type="hidden" name="confirm" value="yes" />
+        <p className="text-sm text-[#f3f1ea]">
+          Cancel {reference}?{pointsHeld ? " Its reserved Club points are returned." : ""}
+        </p>
+        <button type="submit" className="btn-ghost min-h-11 w-full sm:w-auto">
+          Confirm cancel
+        </button>
+      </form>
+    </details>
   );
 }

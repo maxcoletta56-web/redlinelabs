@@ -2,7 +2,7 @@ import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 import type { CheckoutPaymentMethod } from "./payments-provider.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "paid", "cancelled"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -40,6 +40,8 @@ export type StoredOrder = {
   shipping: OrderShippingSnapshot | null;
   clubEmail: string | null;
   clubPointsRedeemed: number;
+  /** Dollar value taken off at checkout, frozen on the order so it never depends on later config. */
+  clubDiscountCents: number;
   paymentMethod: CheckoutPaymentMethod;
   paypalOrderId: string | null;
   createdAt: string | null;
@@ -47,6 +49,8 @@ export type StoredOrder = {
 };
 
 export type NewOrder = {
+  /** Pre-allocated reference, used when club points were reserved against it. */
+  reference?: string;
   currency: string;
   subtotalCents: number;
   totalCents: number;
@@ -58,9 +62,17 @@ export type NewOrder = {
   shipping: OrderShippingSnapshot | null;
   clubEmail?: string | null;
   clubPointsRedeemed?: number;
+  clubDiscountCents?: number;
   paymentMethod?: CheckoutPaymentMethod;
   paypalOrderId?: string | null;
 };
+
+export class OrderCancelledError extends Error {
+  constructor() {
+    super("The order was cancelled and its Club points were released");
+    this.name = "OrderCancelledError";
+  }
+}
 
 export class OrdersUnavailableError extends Error {
   constructor() {
@@ -84,6 +96,7 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   shipping JSONB,
   club_email TEXT,
   club_points_redeemed INTEGER NOT NULL DEFAULT 0,
+  club_discount_cents INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ,
   payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
@@ -107,6 +120,7 @@ const ORDER_COLUMNS = [
   "shipping",
   "club_email",
   "club_points_redeemed",
+  "club_discount_cents",
   "payment_method",
   "paypal_order_id",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
@@ -114,8 +128,8 @@ const ORDER_COLUMNS = [
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, payment_method, paypal_order_id) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, club_discount_cents, payment_method, paypal_order_id) " +
+  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const ATTACH_PAYPAL_ORDER =
@@ -126,8 +140,16 @@ const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
 
 const LIST_ORDERS = `SELECT ${ORDER_COLUMNS} FROM orders ORDER BY orders.created_at DESC LIMIT $1`;
 
+/**
+ * A cancelled order that carried a Club redemption has had its points released,
+ * so it cannot quietly become paid with the discount intact.
+ */
 const MARK_ORDER_PAID =
   `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()) WHERE reference = $1 ` +
+  `AND NOT (status = 'cancelled' AND club_points_redeemed > 0) RETURNING ${ORDER_COLUMNS}`;
+
+const CANCEL_ORDER =
+  `UPDATE orders SET status = 'cancelled' WHERE reference = $1 AND status = 'awaiting_payment' ` +
   `RETURNING ${ORDER_COLUMNS}`;
 
 export function ensureOrdersTable(sql: Sql) {
@@ -222,6 +244,7 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     shipping: readShipping(record.shipping),
     clubEmail: readText(record.club_email) || null,
     clubPointsRedeemed: readInt(record.club_points_redeemed),
+    clubDiscountCents: readInt(record.club_discount_cents),
     paymentMethod: readPaymentMethod(record.payment_method),
     paypalOrderId: readText(record.paypal_order_id) || null,
     createdAt: readTimestamp(record.created_at),
@@ -232,7 +255,8 @@ export function readOrderRow(row: unknown): StoredOrder | null {
 /**
  * Inserts the order under a freshly generated reference. `ON CONFLICT DO
  * NOTHING` makes a collision return no rows, so a retry picks a new reference
- * instead of overwriting somebody else's order.
+ * instead of overwriting somebody else's order. A caller-supplied reference
+ * (club points were reserved against it) is tried once and never replaced.
  */
 export async function insertOrder(
   order: NewOrder,
@@ -242,8 +266,10 @@ export async function insertOrder(
   if (!sql) throw new OrdersUnavailableError();
   await ensureOrdersTable(sql);
 
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const reference = generateOrderReference();
+  const fixed = order.reference ? normalizeOrderReference(order.reference) : null;
+  if (order.reference && !fixed) throw new Error("Invalid order reference");
+  for (let attempt = 0; attempt < (fixed ? 1 : attempts); attempt += 1) {
+    const reference = fixed ?? generateOrderReference();
     const result = await sql.query(INSERT_ORDER, [
       reference,
       order.currency,
@@ -257,6 +283,7 @@ export async function insertOrder(
       order.shipping ? JSON.stringify(order.shipping) : null,
       order.clubEmail ?? null,
       Math.max(0, Math.floor(order.clubPointsRedeemed ?? 0)),
+      Math.max(0, Math.floor(order.clubDiscountCents ?? 0)),
       order.paymentMethod === "paypal" ? "paypal" : "bank_transfer",
       order.paypalOrderId ?? null,
     ]);
@@ -316,7 +343,76 @@ export async function markOrderPaid(
   if (!sql) throw new OrdersUnavailableError();
   await ensureOrdersTable(sql);
   const result = await sql.query(MARK_ORDER_PAID, [normalized]);
-  return readOrderRow(rowsOf(result)[0]) ?? null;
+  const order = readOrderRow(rowsOf(result)[0]);
+  if (order) return order;
+  // No row updated: either there is no such order, or it is the blocked case.
+  const existing = await findOrder(normalized, sql);
+  if (existing?.status === "cancelled") throw new OrderCancelledError();
+  return null;
+}
+
+export type CancelOrderResult =
+  | { outcome: "cancelled" | "already_cancelled"; order: StoredOrder }
+  | { outcome: "paid"; order: StoredOrder }
+  | { outcome: "missing" };
+
+/**
+ * Only an unpaid order can be cancelled; the status guard in the UPDATE makes
+ * that decision race-safe against a concurrent mark-paid.
+ */
+export async function cancelOrder(
+  reference: string,
+  sql: Sql | null = getSql(),
+): Promise<CancelOrderResult> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized) return { outcome: "missing" };
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(CANCEL_ORDER, [normalized]);
+  const cancelled = readOrderRow(rowsOf(result)[0]);
+  if (cancelled) return { outcome: "cancelled", order: cancelled };
+  const existing = await findOrder(normalized, sql);
+  if (!existing) return { outcome: "missing" };
+  return { outcome: existing.status === "cancelled" ? "already_cancelled" : "paid", order: existing };
+}
+
+export type CancelOrderHooks = {
+  cancelOrder?: (reference: string) => Promise<CancelOrderResult>;
+  releaseClubPoints?: (reference: string) => Promise<unknown>;
+};
+
+export type CancelOrderSettlement = CancelOrderResult & { releaseFailed: boolean };
+
+async function releaseClubPointsForOrder(reference: string) {
+  const { releaseRedemption } = await import("./club-db.ts");
+  return releaseRedemption(reference, "Order cancelled");
+}
+
+/**
+ * Cancels an unpaid order, then gives back any Club points reserved for it.
+ * Cancelling again retries the release, which is idempotent, so a failed
+ * release is recoverable from the same button. A release failure never undoes
+ * the cancellation: it is reported and logged for reconciliation.
+ */
+export async function cancelOrderAndReleasePoints(
+  reference: string,
+  hooks: CancelOrderHooks = {},
+): Promise<CancelOrderSettlement> {
+  const result = await (hooks.cancelOrder ?? cancelOrder)(reference);
+  if (result.outcome === "missing" || result.outcome === "paid") {
+    return { ...result, releaseFailed: false };
+  }
+  if (result.order.clubPointsRedeemed <= 0) return { ...result, releaseFailed: false };
+  try {
+    await (hooks.releaseClubPoints ?? releaseClubPointsForOrder)(result.order.reference);
+    return { ...result, releaseFailed: false };
+  } catch (error) {
+    console.error("[club] release on cancel failed; run club reconciliation", {
+      reference: result.order.reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return { ...result, releaseFailed: true };
+  }
 }
 
 export type PaymentReceivedNotice = {
@@ -407,18 +503,21 @@ export async function markOrderPaidWithPaymentEmail(
   const order = await markPaid(reference);
   if (!order) return null;
 
-  if (existing?.status !== "paid") {
-    // Rewards must never turn a received payment into a failed update.
-    try {
-      const award = hooks.awardClubPoints ?? awardClubPointsForOrder;
-      await award(order);
-    } catch (error) {
-      console.error("[club] award on paid failed", {
-        reference: order.reference,
-        errorName: error instanceof Error ? error.name : "unknown",
-      });
-    }
+  // The award runs on every call that returns a paid order, not only the
+  // first: it is idempotent in the database, so marking a paid order paid
+  // again is the manual retry for an award that failed the first time.
+  // Rewards must never turn a received payment into a failed update.
+  try {
+    const award = hooks.awardClubPoints ?? awardClubPointsForOrder;
+    await award(order);
+  } catch (error) {
+    console.error("[club] award on paid failed; mark paid again or run club reconciliation", {
+      reference: order.reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+  }
 
+  if (existing?.status !== "paid") {
     try {
       const deps: PaymentEmailDeps =
         hooks.scheduleEmail && hooks.sendPaymentReceivedEmail

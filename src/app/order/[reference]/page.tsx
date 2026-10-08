@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { retryPaypalOrder } from "@/app/actions/checkout";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
-import { formatPoints, pointsValueCents } from "@/lib/club";
+import { CLUB_DISCOUNT_LABEL, formatCents } from "@/lib/club";
 import { paypalConfigured } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
@@ -53,7 +53,7 @@ function StatusBadge({ order }: { order: StoredOrder }) {
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : "Awaiting payment"}
+      {paid ? "Payment received" : order.status === "cancelled" ? "Order cancelled" : "Awaiting payment"}
     </p>
   );
 }
@@ -84,6 +84,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
   if (!order) notFound();
 
   const paid = order.status === "paid";
+  const awaiting = order.status === "awaiting_payment";
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
@@ -117,6 +118,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
+          : !awaiting
+            ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
           : paypalOrder
             ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
             : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
@@ -146,24 +149,19 @@ export default async function OrderPage({ params, searchParams }: Props) {
             <span>Promo code {order.promoCode}</span>
             <span className="text-[#d4af37]">
               −{formatPrice(
-                (order.subtotalCents -
-                  order.totalCents -
-                  pointsValueCents(order.clubPointsRedeemed)) /
-                  100,
+                (order.subtotalCents - order.totalCents - order.clubDiscountCents) / 100,
               )}
             </span>
           </div>
         )}
-        {order.clubPointsRedeemed > 0 && (
+        {order.clubDiscountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
-            <span>Redline Club points ({formatPoints(order.clubPointsRedeemed)})</span>
-            <span className="text-[#d4af37]">
-              −{formatPrice(pointsValueCents(order.clubPointsRedeemed) / 100)}
-            </span>
+            <span>{CLUB_DISCOUNT_LABEL}</span>
+            <span className="text-[#d4af37]">−{formatCents(order.clubDiscountCents)}</span>
           </div>
         )}
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
-          <span>{paid ? "Paid" : "Amount due"}</span>
+          <span>{paid ? "Paid" : awaiting ? "Amount due" : "Order total"}</span>
           <span className="text-[#d4af37]">
             {formatPrice(order.totalCents / 100)} {order.currency.toUpperCase()}
           </span>
@@ -194,7 +192,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
         </dl>
       </section>
 
-      {!paid && paypalOrder && paypalOffered && (
+      {awaiting && paypalOrder && paypalOffered && (
         <form action={retryPaypalOrder} className="mb-8">
           <input type="hidden" name="reference" value={order.reference} />
           <button type="submit" className="btn">
@@ -203,7 +201,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
         </form>
       )}
 
-      {!paid && (
+      {awaiting && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"

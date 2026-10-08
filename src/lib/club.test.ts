@@ -1,136 +1,200 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  CLUB_TIERS,
+  CLUB_PROGRAM,
+  CLUB_PROGRAM_ACTIVE,
   MEMBER_CODE_PREFIX,
+  MIN_PAYABLE_CENTS,
   REDEEM_STEP_POINTS,
+  activeClubProgram,
+  clubDiscountText,
+  formatCents,
   generateMemberCode,
   maxRedeemablePoints,
   normalizeMemberCode,
-  percentBack,
   pointsForOrder,
   pointsValueCents,
   resolveRedemption,
+  tierCardLabel,
   tierForSpend,
   tierProgress,
+  validateClubProgram,
+  type ClubProgramConfig,
 } from "./club.ts";
+import { TEST_PROGRAM, TEST_PROGRAM_CONFIG } from "./club-test-fixtures.ts";
 
-test("tiers return the advertised percentage back", () => {
-  assert.deepEqual(
-    CLUB_TIERS.map((tier) => [tier.name, percentBack(tier)]),
-    [
-      ["Member", 5],
-      ["Silver", 6.25],
-      ["Gold", 7.5],
-      ["VIP", 10],
-    ],
-  );
+const [A, B, C, D] = TEST_PROGRAM.tiers;
+
+test("the shipped programme is unapproved, so earning and redemption are off", () => {
+  assert.equal(CLUB_PROGRAM.approved, false);
+  assert.equal(CLUB_PROGRAM_ACTIVE, false);
+  assert.equal(activeClubProgram(), null);
+  assert.equal(CLUB_PROGRAM.tiers.length, 4);
+  for (const tier of CLUB_PROGRAM.tiers) {
+    assert.equal(tier.name, null);
+    assert.equal(tier.fromCents, null);
+    assert.equal(tier.earnBasis, null);
+  }
+  assert.equal(CLUB_PROGRAM.centsPerRedeemBlock, null);
 });
 
-test("tier is set by lifetime spend, at the threshold and below it", () => {
-  assert.equal(tierForSpend(0).id, "member");
-  assert.equal(tierForSpend(49_999).id, "member");
-  assert.equal(tierForSpend(50_000).id, "silver");
-  assert.equal(tierForSpend(99_999).id, "silver");
-  assert.equal(tierForSpend(100_000).id, "gold");
-  assert.equal(tierForSpend(149_999).id, "gold");
-  assert.equal(tierForSpend(150_000).id, "vip");
-  assert.equal(tierForSpend(10_000_000).id, "vip");
-  assert.equal(tierForSpend(-500).id, "member");
+test("an approved flag alone does not activate placeholder values", () => {
+  const result = validateClubProgram({ ...CLUB_PROGRAM, approved: true });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.ok(result.problems.length >= 4);
 });
 
-test("progress reports the spend still needed for the next tier", () => {
-  const silver = tierProgress(75_000);
-  assert.equal(silver.tier.id, "silver");
-  assert.equal(silver.next?.id, "gold");
-  assert.equal(silver.remainingCents, 25_000);
-  assert.equal(silver.percent, 50);
-
-  const vip = tierProgress(900_000);
-  assert.equal(vip.next, null);
-  assert.equal(vip.remainingCents, 0);
-  assert.equal(vip.percent, 100);
+test("a complete, approved configuration validates", () => {
+  const result = validateClubProgram(TEST_PROGRAM_CONFIG);
+  assert.equal(result.ok, true);
 });
 
-test("points are earned at the tier rate on the amount paid", () => {
-  assert.equal(pointsForOrder(10_000, CLUB_TIERS[0]), 100);
-  assert.equal(pointsForOrder(10_000, CLUB_TIERS[1]), 125);
-  assert.equal(pointsForOrder(10_000, CLUB_TIERS[2]), 150);
-  assert.equal(pointsForOrder(10_000, CLUB_TIERS[3]), 200);
-  // Part dollars round down, once, in the store's favour.
-  assert.equal(pointsForOrder(10_099, CLUB_TIERS[0]), 100);
-  assert.equal(pointsForOrder(0, CLUB_TIERS[3]), 0);
-  assert.equal(pointsForOrder(-10_000, CLUB_TIERS[0]), 0);
-});
-
-test("100 points is worth five dollars", () => {
-  assert.equal(pointsValueCents(100), 500);
-  assert.equal(pointsValueCents(0), 0);
-  assert.equal(pointsValueCents(-100), 0);
-});
-
-test("redemption is capped by balance, by whole blocks and by the order", () => {
-  // Balance is the binding limit.
-  assert.equal(maxRedeemablePoints(250, 50_000), 200);
-  // Order size is the binding limit: $20 order can absorb $19 of points.
-  assert.equal(maxRedeemablePoints(10_000, 2_000), 300);
-  // An order must keep at least $1 payable.
-  assert.equal(maxRedeemablePoints(10_000, 500), 0);
-  assert.equal(maxRedeemablePoints(99, 50_000), 0);
-});
-
-test("a redemption request is re-capped rather than trusted", () => {
-  assert.deepEqual(
-    resolveRedemption({ requestedPoints: 1_000, balancePoints: 450, payableCents: 50_000 }),
-    { points: 400, discountCents: 2_000 },
-  );
-  // Odd requests fall back to whole blocks.
-  assert.deepEqual(
-    resolveRedemption({ requestedPoints: 150, balancePoints: 10_000, payableCents: 50_000 }),
-    { points: 100, discountCents: 500 },
-  );
-  // Negative and absurd inputs are harmless.
-  assert.deepEqual(
-    resolveRedemption({ requestedPoints: -5, balancePoints: 10_000, payableCents: 50_000 }),
-    { points: 0, discountCents: 0 },
-  );
-  assert.deepEqual(
-    resolveRedemption({
-      requestedPoints: Number.MAX_SAFE_INTEGER,
-      balancePoints: 10_000,
-      payableCents: 1_000,
-    }),
-    { points: 100, discountCents: 500 },
-  );
-});
-
-test("redeeming never takes an order below a dollar", () => {
-  for (const payable of [100, 599, 600, 1_000, 2_500]) {
-    const { discountCents } = resolveRedemption({
-      requestedPoints: 100_000,
-      balancePoints: 100_000,
-      payableCents: payable,
-    });
-    assert.ok(payable - discountCents >= 100, `order of ${payable} kept ${payable - discountCents}`);
+test("each way a configuration can be wrong is reported", () => {
+  const withTiers = (tiers: ClubProgramConfig["tiers"]): ClubProgramConfig => ({
+    ...TEST_PROGRAM_CONFIG,
+    tiers,
+  });
+  const tiers = TEST_PROGRAM_CONFIG.tiers;
+  const cases: [string, ClubProgramConfig, RegExp][] = [
+    ["unapproved", { ...TEST_PROGRAM_CONFIG, approved: false }, /not marked approved/],
+    ["no conversion", { ...TEST_PROGRAM_CONFIG, centsPerRedeemBlock: null }, /centsPerRedeemBlock/],
+    ["fractional conversion", { ...TEST_PROGRAM_CONFIG, centsPerRedeemBlock: 12.5 }, /centsPerRedeemBlock/],
+    ["bad date", { ...TEST_PROGRAM_CONFIG, earningStartsAt: "soon" }, /earningStartsAt/],
+    ["three tiers", withTiers(tiers.slice(0, 3)), /exactly 4/],
+    ["tier 1 not zero", withTiers([{ ...tiers[0], fromCents: 100 }, ...tiers.slice(1)]), /tier 1 must start at 0/],
+    ["thresholds not ascending", withTiers([tiers[0], tiers[2], tiers[1], tiers[3]]), /must be higher/],
+    ["zero rate", withTiers([{ ...tiers[0], earnBasis: 0 }, ...tiers.slice(1)]), /earn rate/],
+    ["duplicate name", withTiers([tiers[0], { ...tiers[1], name: "test a" }, ...tiers.slice(2)]), /repeats/],
+    ["blank name", withTiers([{ ...tiers[0], name: " " }, ...tiers.slice(1)]), /needs a name/],
+  ];
+  for (const [label, config, pattern] of cases) {
+    const result = validateClubProgram(config);
+    assert.equal(result.ok, false, label);
+    if (!result.ok) assert.ok(result.problems.some((p) => pattern.test(p)), `${label}: ${result.problems}`);
   }
 });
 
-test("member codes are prefixed, readable and stable under normalisation", () => {
+test("tier is set by lifetime spend, at the threshold and below it", () => {
+  assert.equal(tierForSpend(TEST_PROGRAM, 0), A);
+  assert.equal(tierForSpend(TEST_PROGRAM, 9_999), A);
+  assert.equal(tierForSpend(TEST_PROGRAM, 10_000), B);
+  assert.equal(tierForSpend(TEST_PROGRAM, 20_000), C);
+  assert.equal(tierForSpend(TEST_PROGRAM, 10_000_000), D);
+  assert.equal(tierForSpend(TEST_PROGRAM, -500), A);
+});
+
+test("progress reports the spend still needed for the next tier", () => {
+  const mid = tierProgress(TEST_PROGRAM, 15_000);
+  assert.equal(mid.tier, B);
+  assert.equal(mid.next, C);
+  assert.equal(mid.remainingCents, 5_000);
+  assert.equal(mid.percent, 50);
+
+  const top = tierProgress(TEST_PROGRAM, 900_000);
+  assert.equal(top.next, null);
+  assert.equal(top.remainingCents, 0);
+  assert.equal(top.percent, 100);
+});
+
+test("points are earned at the tier rate on the amount paid, rounding down", () => {
+  assert.equal(pointsForOrder(A, 10_000), 100);
+  assert.equal(pointsForOrder(B, 10_000), 150);
+  assert.equal(pointsForOrder(D, 10_000), 250);
+  assert.equal(pointsForOrder(A, 10_099), 100);
+  assert.equal(pointsForOrder(A, 0), 0);
+  assert.equal(pointsForOrder(A, -10_000), 0);
+});
+
+test("points convert to dollars only in whole blocks", () => {
+  assert.equal(pointsValueCents(TEST_PROGRAM, 100), 500);
+  assert.equal(pointsValueCents(TEST_PROGRAM, 199), 500);
+  assert.equal(pointsValueCents(TEST_PROGRAM, 0), 0);
+  assert.equal(pointsValueCents(TEST_PROGRAM, -100), 0);
+});
+
+test("redemption is capped by balance, by whole blocks and by the order", () => {
+  assert.equal(maxRedeemablePoints(TEST_PROGRAM, 250, 50_000), 200);
+  // $20 order keeps $1 payable, so $19 of points at $5 a block is 3 blocks.
+  assert.equal(maxRedeemablePoints(TEST_PROGRAM, 10_000, 2_000), 300);
+  assert.equal(maxRedeemablePoints(TEST_PROGRAM, 10_000, 500), 0);
+  assert.equal(maxRedeemablePoints(TEST_PROGRAM, 99, 50_000), 0);
+});
+
+test("a redemption request is re-capped, not trusted: multiples of 100 only", () => {
+  assert.deepEqual(
+    resolveRedemption(TEST_PROGRAM, { requestedPoints: 1_000, balancePoints: 450, payableCents: 50_000 }),
+    { points: 400, discountCents: 2_000 },
+  );
+  assert.deepEqual(
+    resolveRedemption(TEST_PROGRAM, { requestedPoints: 150, balancePoints: 10_000, payableCents: 50_000 }),
+    { points: 100, discountCents: 500 },
+  );
+  assert.deepEqual(
+    resolveRedemption(TEST_PROGRAM, { requestedPoints: 99, balancePoints: 10_000, payableCents: 50_000 }),
+    { points: 0, discountCents: 0 },
+  );
+  assert.deepEqual(
+    resolveRedemption(TEST_PROGRAM, { requestedPoints: -5, balancePoints: 10_000, payableCents: 50_000 }),
+    { points: 0, discountCents: 0 },
+  );
+  assert.deepEqual(
+    resolveRedemption(TEST_PROGRAM, {
+      requestedPoints: Number.NaN,
+      balancePoints: 10_000,
+      payableCents: 50_000,
+    }),
+    { points: 0, discountCents: 0 },
+  );
+});
+
+test("redeeming never takes an order below AUD $1 payable", () => {
+  assert.equal(MIN_PAYABLE_CENTS, 100);
+  for (const payable of [100, 599, 600, 601, 1_000, 2_500, 12_345]) {
+    const { discountCents } = resolveRedemption(TEST_PROGRAM, {
+      requestedPoints: 1_000_000,
+      balancePoints: 1_000_000,
+      payableCents: payable,
+    });
+    assert.ok(payable - discountCents >= MIN_PAYABLE_CENTS, `order of ${payable} kept ${payable - discountCents}`);
+  }
+  // Exactly at the boundary: $6 order, $5 block leaves $1.
+  assert.equal(
+    resolveRedemption(TEST_PROGRAM, { requestedPoints: 100, balancePoints: 100, payableCents: 600 }).discountCents,
+    500,
+  );
+  assert.equal(
+    resolveRedemption(TEST_PROGRAM, { requestedPoints: 100, balancePoints: 100, payableCents: 599 }).discountCents,
+    0,
+  );
+});
+
+test("member codes are prefixed, long and stable under normalisation", () => {
   const code = generateMemberCode();
-  assert.match(code, /^RL-[ACDEFGHJKMNPQRTUVWXY34679]{6}$/);
+  assert.match(code, /^RL-[ACDEFGHJKMNPQRTUVWXY34679]{10}$/);
   assert.equal(normalizeMemberCode(code.toLowerCase()), code);
   assert.equal(normalizeMemberCode(code.slice(MEMBER_CODE_PREFIX.length)), code);
   assert.equal(normalizeMemberCode(` ${code.toLowerCase()} `), code);
   assert.equal(normalizeMemberCode("RL-ABC"), "");
-  assert.equal(normalizeMemberCode("RL-OOOOOO"), "");
+  assert.equal(normalizeMemberCode("RL-OOOOOOOOOO"), "");
   assert.equal(normalizeMemberCode(null), "");
 });
 
-test("generated codes use the whole alphabet without bias leaks", () => {
-  const codes = new Set(Array.from({ length: 200 }, () => generateMemberCode()));
-  assert.ok(codes.size > 190, `expected mostly unique codes, got ${codes.size}`);
+test("generated codes do not repeat", () => {
+  const codes = new Set(Array.from({ length: 2_000 }, () => generateMemberCode()));
+  assert.equal(codes.size, 2_000);
 });
 
 test("the redemption step is the block size the UI offers", () => {
   assert.equal(REDEEM_STEP_POINTS, 100);
+});
+
+test("the discount is worded the same everywhere", () => {
+  assert.equal(formatCents(500), "$5.00");
+  assert.equal(clubDiscountText(500), "Club points −$5.00");
+  assert.equal(clubDiscountText(1_250), "Club points −$12.50");
+});
+
+test("tier cards fall back to a neutral label until names are approved", () => {
+  assert.equal(tierCardLabel(CLUB_PROGRAM.tiers[1], 1), "Tier 2");
+  assert.equal(tierCardLabel(TEST_PROGRAM_CONFIG.tiers[1], 1), "Test B");
 });

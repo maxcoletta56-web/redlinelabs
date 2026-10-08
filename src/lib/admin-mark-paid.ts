@@ -1,7 +1,11 @@
-import { markOrderPaidWithPaymentEmail, type MarkPaidEmailHooks } from "./orders.ts";
+import {
+  OrderCancelledError,
+  markOrderPaidWithPaymentEmail,
+  type MarkPaidEmailHooks,
+} from "./orders.ts";
 
 export type AdminMarkPaidSettlement = {
-  notice: "paid" | "missing" | "failed";
+  notice: "paid" | "missing" | "failed" | "blocked";
   location: string;
 };
 
@@ -19,6 +23,9 @@ export async function settleAdminOrderPaid(
   try {
     found = (await markOrderPaidWithPaymentEmail(reference, hooks)) !== null;
   } catch (error) {
+    if (error instanceof OrderCancelledError) {
+      return { notice: "blocked", location: "/admin/orders?notice=blocked" };
+    }
     failed = true;
     console.error("[admin] mark order paid failed", {
       reference,

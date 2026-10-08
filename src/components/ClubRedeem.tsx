@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { REDEEM_STEP_POINTS, formatCents, formatPoints, pointsValueCents } from "@/lib/club";
+import {
+  REDEEM_STEP_POINTS,
+  activeClubProgram,
+  formatCents,
+  formatPoints,
+  pointsValueCents,
+} from "@/lib/club";
+import { RESEARCH_DISCLAIMER } from "@/lib/company";
 import { useClub } from "@/lib/club-state";
 import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 
@@ -23,12 +30,13 @@ export function ClubRedeem({
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const payId = paymentMethod === "bank_transfer";
+  const program = activeClubProgram();
 
   useEffect(() => {
     if (!payId) setPoints(0);
   }, [payId, setPoints]);
 
-  if (!payId) return null;
+  if (!payId || !program) return null;
 
   if (member) {
     return (
@@ -37,7 +45,8 @@ export function ClubRedeem({
           Redline Club
         </p>
         <p className="mt-2 text-sm text-[#cfc8b8]">
-          {member.tier} · {formatPoints(member.points)} points available
+          {member.tier ? `${member.tier} · ` : ""}
+          {formatPoints(member.points)} points available
         </p>
         {maxPoints >= REDEEM_STEP_POINTS ? (
           <label className="mt-3 block">
@@ -56,7 +65,7 @@ export function ClubRedeem({
                 <option key={value} value={value}>
                   {value === 0
                     ? "None"
-                    : `${formatPoints(value)} points · −${formatCents(pointsValueCents(value))}`}
+                    : `${formatPoints(value)} points · −${formatCents(pointsValueCents(program, value))}`}
                 </option>
               ))}
             </select>
@@ -74,6 +83,7 @@ export function ClubRedeem({
         >
           Use a different membership
         </button>
+        <p className="mt-2 text-[11px] leading-5 text-[#8f8c84]">{RESEARCH_DISCLAIMER}</p>
       </div>
     );
   }
@@ -132,9 +142,10 @@ export function ClubRedeem({
         Not a member?{" "}
         <Link href="/club" className="text-[#d4af37]">
           Join the Redline Club
-        </Link>{" "}
-        and start with {REDEEM_STEP_POINTS} points.
+        </Link>
+        .
       </p>
+      <p className="mt-2 text-[11px] leading-5 text-[#8f8c84]">{RESEARCH_DISCLAIMER}</p>
     </form>
   );
 }

@@ -3,62 +3,168 @@
  * `server-only` — so the API routes, the pages and the unit tests can all
  * import it. Balances are money: every number a customer could influence is
  * recomputed here from server-held values, never trusted from the client.
+ *
+ * Tier names, spend thresholds, earning rates and the points-to-dollars
+ * conversion have NOT been approved. They are therefore `null` in
+ * `CLUB_PROGRAM` below, and while any of them is missing or invalid the
+ * programme is inactive: nothing is earned and nothing can be redeemed. See
+ * docs/redline-club.md for the decisions that are still needed.
  */
 
-/** 100 points = $5.00. */
-export const POINT_VALUE_CENTS = 5;
-
-/** Points are redeemed in whole blocks so the discount is always a round dollar. */
+/** Points are redeemed in whole blocks of this size. */
 export const REDEEM_STEP_POINTS = 100;
 
-/** PayID still needs something to transfer, so an order never falls below $1. */
+/** An order never falls below AUD $1 payable, so PayID still has something to transfer. */
 export const MIN_PAYABLE_CENTS = 100;
 
-export const JOIN_BONUS_POINTS = 100;
+export type ClubTierConfig = {
+  /** Display name. `null` until approved; the UI shows "Tier N" meanwhile. */
+  name: string | null;
+  /** Lifetime paid spend, in cents, at which this tier starts. `null` until approved. */
+  fromCents: number | null;
+  /**
+   * Points earned per dollar paid, times 100, so the maths stays in integers
+   * (100 = 1 point per dollar). `null` until approved.
+   */
+  earnBasis: number | null;
+};
 
-export const FIRST_ORDER_BONUS_POINTS = 100;
+export type ClubProgramConfig = {
+  /**
+   * Flip to `true` only in the same change that fills in every value below
+   * with figures somebody has signed off. Without it the programme is inactive
+   * even if every number happens to be present.
+   */
+  approved: boolean;
+  /** Orders paid before this instant never earn points (including on reconcile). */
+  earningStartsAt: string | null;
+  /** Dollar value, in cents, of one `REDEEM_STEP_POINTS` block. `null` until approved. */
+  centsPerRedeemBlock: number | null;
+  /** Exactly four tiers, ordered from entry tier to top tier. */
+  tiers: readonly ClubTierConfig[];
+};
 
-export type ClubTierId = "member" | "silver" | "gold" | "vip";
+export const CLUB_TIER_COUNT = 4;
+
+/** The only place the programme is tuned. Deliberately unapproved. */
+export const CLUB_PROGRAM: ClubProgramConfig = {
+  approved: false,
+  earningStartsAt: null,
+  centsPerRedeemBlock: null,
+  tiers: [
+    { name: null, fromCents: null, earnBasis: null },
+    { name: null, fromCents: null, earnBasis: null },
+    { name: null, fromCents: null, earnBasis: null },
+    { name: null, fromCents: null, earnBasis: null },
+  ],
+};
 
 export type ClubTier = {
-  id: ClubTierId;
+  id: string;
   name: string;
-  /** Lifetime paid spend, in cents, at which this tier starts. */
   fromCents: number;
-  /**
-   * Points earned per dollar paid, times 100, so the maths stays in integers:
-   * 100 = 1 point per dollar, 125 = 1.25, 200 = 2.
-   */
   earnBasis: number;
 };
 
-/** Ordered from entry tier to top tier. The only place the programme is tuned. */
-export const CLUB_TIERS: readonly ClubTier[] = [
-  { id: "member", name: "Member", fromCents: 0, earnBasis: 100 },
-  { id: "silver", name: "Silver", fromCents: 50_000, earnBasis: 125 },
-  { id: "gold", name: "Gold", fromCents: 100_000, earnBasis: 150 },
-  { id: "vip", name: "VIP", fromCents: 150_000, earnBasis: 200 },
-] as const;
+export type ActiveClubProgram = {
+  tiers: readonly ClubTier[];
+  centsPerRedeemBlock: number;
+  earningStartsAt: Date;
+};
 
-export const BASE_TIER = CLUB_TIERS[0];
+export type ClubProgramValidation =
+  | { ok: true; program: ActiveClubProgram }
+  | { ok: false; problems: string[] };
 
-/** Share of spend returned as points, e.g. 5 for the 5% base tier. */
-export function percentBack(tier: ClubTier) {
-  return (tier.earnBasis * POINT_VALUE_CENTS) / 100;
+function isWholeNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value);
 }
 
-export function tierForSpend(lifetimeSpendCents: number): ClubTier {
+/**
+ * Checks a configuration and, only if it is complete and approved, returns the
+ * fully typed programme. Every problem is listed so a deploy log says exactly
+ * which decision is missing.
+ */
+export function validateClubProgram(config: ClubProgramConfig): ClubProgramValidation {
+  const problems: string[] = [];
+  if (!config.approved) problems.push("programme is not marked approved");
+
+  if (!isWholeNumber(config.centsPerRedeemBlock) || config.centsPerRedeemBlock <= 0) {
+    problems.push("centsPerRedeemBlock must be a positive whole number of cents");
+  }
+
+  const startsAt = config.earningStartsAt ? new Date(config.earningStartsAt) : null;
+  if (!startsAt || Number.isNaN(startsAt.getTime())) {
+    problems.push("earningStartsAt must be a valid ISO date");
+  }
+
+  if (config.tiers.length !== CLUB_TIER_COUNT) {
+    problems.push(`exactly ${CLUB_TIER_COUNT} tiers are required`);
+  }
+  const names = new Set<string>();
+  let previousFrom = -1;
+  config.tiers.forEach((tier, index) => {
+    const label = `tier ${index + 1}`;
+    const name = tier.name?.trim() ?? "";
+    if (!name) problems.push(`${label} needs a name`);
+    else if (names.has(name.toLowerCase())) problems.push(`${label} repeats a tier name`);
+    names.add(name.toLowerCase());
+    if (!isWholeNumber(tier.fromCents) || tier.fromCents < 0) {
+      problems.push(`${label} needs a whole-cent spend threshold`);
+    } else {
+      if (index === 0 && tier.fromCents !== 0) problems.push("tier 1 must start at 0 cents");
+      if (tier.fromCents <= previousFrom) problems.push(`${label} threshold must be higher`);
+      previousFrom = tier.fromCents;
+    }
+    if (!isWholeNumber(tier.earnBasis) || tier.earnBasis <= 0) {
+      problems.push(`${label} needs a positive earn rate`);
+    }
+  });
+
+  if (problems.length > 0 || !startsAt) return { ok: false, problems };
+  return {
+    ok: true,
+    program: {
+      centsPerRedeemBlock: config.centsPerRedeemBlock as number,
+      earningStartsAt: startsAt,
+      tiers: config.tiers.map((tier, index) => ({
+        id: `tier-${index + 1}`,
+        name: (tier.name as string).trim(),
+        fromCents: tier.fromCents as number,
+        earnBasis: tier.earnBasis as number,
+      })),
+    },
+  };
+}
+
+/** `null` while any decision is outstanding: earning and redemption are then off. */
+export function activeClubProgram(
+  config: ClubProgramConfig = CLUB_PROGRAM,
+): ActiveClubProgram | null {
+  const result = validateClubProgram(config);
+  return result.ok ? result.program : null;
+}
+
+/** Precomputed once; safe for client bundles because the config is static. */
+export const CLUB_PROGRAM_ACTIVE = activeClubProgram() !== null;
+
+/** What the tier cards show for a tier, with or without approved figures. */
+export function tierCardLabel(tier: ClubTierConfig, index: number) {
+  return tier.name?.trim() || `Tier ${index + 1}`;
+}
+
+export function tierForSpend(program: ActiveClubProgram, lifetimeSpendCents: number): ClubTier {
   const spend = Math.max(0, Math.floor(lifetimeSpendCents || 0));
-  let current = BASE_TIER;
-  for (const tier of CLUB_TIERS) {
+  let current = program.tiers[0];
+  for (const tier of program.tiers) {
     if (spend >= tier.fromCents) current = tier;
   }
   return current;
 }
 
-export function nextTier(tier: ClubTier): ClubTier | null {
-  const index = CLUB_TIERS.findIndex((entry) => entry.id === tier.id);
-  return CLUB_TIERS[index + 1] ?? null;
+export function nextTier(program: ActiveClubProgram, tier: ClubTier): ClubTier | null {
+  const index = program.tiers.findIndex((entry) => entry.id === tier.id);
+  return program.tiers[index + 1] ?? null;
 }
 
 export type TierProgress = {
@@ -70,10 +176,10 @@ export type TierProgress = {
   percent: number;
 };
 
-export function tierProgress(lifetimeSpendCents: number): TierProgress {
+export function tierProgress(program: ActiveClubProgram, lifetimeSpendCents: number): TierProgress {
   const spend = Math.max(0, Math.floor(lifetimeSpendCents || 0));
-  const tier = tierForSpend(spend);
-  const next = nextTier(tier);
+  const tier = tierForSpend(program, spend);
+  const next = nextTier(program, tier);
   if (!next) return { tier, next: null, remainingCents: 0, percent: 100 };
   const band = next.fromCents - tier.fromCents;
   const travelled = spend - tier.fromCents;
@@ -85,31 +191,35 @@ export function tierProgress(lifetimeSpendCents: number): TierProgress {
   };
 }
 
-export function pointsValueCents(points: number) {
-  return Math.max(0, Math.floor(points || 0)) * POINT_VALUE_CENTS;
+/** Dollar value of whole redemption blocks inside `points`. */
+export function pointsValueCents(program: ActiveClubProgram, points: number) {
+  const blocks = Math.floor(Math.max(0, Math.floor(points || 0)) / REDEEM_STEP_POINTS);
+  return blocks * program.centsPerRedeemBlock;
 }
 
 /**
  * Points earned on an order, at the tier the member held *before* the order.
  * Earning follows the amount actually paid, so promo codes and redeemed
- * points reduce it. Fractions are dropped in the customer's disfavour once,
- * never compounded.
+ * points reduce it. Fractions are dropped once, never compounded.
  */
-export function pointsForOrder(paidCents: number, tier: ClubTier = BASE_TIER) {
+export function pointsForOrder(tier: ClubTier, paidCents: number) {
   const paid = Math.max(0, Math.floor(paidCents || 0));
   if (paid <= 0) return 0;
   return Math.floor((paid * tier.earnBasis) / 10_000);
 }
 
 /** Largest number of points that may be spent on an order of this size. */
-export function maxRedeemablePoints(balancePoints: number, payableCents: number) {
+export function maxRedeemablePoints(
+  program: ActiveClubProgram,
+  balancePoints: number,
+  payableCents: number,
+) {
   const balance = Math.max(0, Math.floor(balancePoints || 0));
   const payable = Math.max(0, Math.floor(payableCents || 0));
-  if (balance < REDEEM_STEP_POINTS) return 0;
   const headroomCents = payable - MIN_PAYABLE_CENTS;
-  if (headroomCents < REDEEM_STEP_POINTS * POINT_VALUE_CENTS) return 0;
+  if (headroomCents < program.centsPerRedeemBlock) return 0;
   const byBalance = Math.floor(balance / REDEEM_STEP_POINTS);
-  const byOrder = Math.floor(headroomCents / (REDEEM_STEP_POINTS * POINT_VALUE_CENTS));
+  const byOrder = Math.floor(headroomCents / program.centsPerRedeemBlock);
   return Math.min(byBalance, byOrder) * REDEEM_STEP_POINTS;
 }
 
@@ -118,19 +228,18 @@ export function maxRedeemablePoints(balancePoints: number, payableCents: number)
  * balance, to whole blocks, and to what the order can absorb. Returns zeros
  * when nothing can be redeemed, so callers never need to special-case it.
  */
-export function resolveRedemption({
-  requestedPoints,
-  balancePoints,
-  payableCents,
-}: {
-  requestedPoints: number;
-  balancePoints: number;
-  payableCents: number;
-}) {
+export function resolveRedemption(
+  program: ActiveClubProgram,
+  {
+    requestedPoints,
+    balancePoints,
+    payableCents,
+  }: { requestedPoints: number; balancePoints: number; payableCents: number },
+) {
   const requested = Math.max(0, Math.floor(requestedPoints || 0));
-  const cap = maxRedeemablePoints(balancePoints, payableCents);
+  const cap = maxRedeemablePoints(program, balancePoints, payableCents);
   const points = Math.min(cap, Math.floor(requested / REDEEM_STEP_POINTS) * REDEEM_STEP_POINTS);
-  return { points, discountCents: pointsValueCents(points) };
+  return { points, discountCents: pointsValueCents(program, points) };
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -146,7 +255,11 @@ export function isClubEmail(email: string | null | undefined) {
 /** No 0/O, 1/I/L, 2/Z, 5/S, 8/B — codes get read aloud and retyped. */
 const CODE_ALPHABET = "ACDEFGHJKMNPQRTUVWXY34679";
 
-export const MEMBER_CODE_LENGTH = 6;
+/** 25^10 is about 2^46: far beyond what rate-limited online guessing can cover. */
+export const MEMBER_CODE_LENGTH = 10;
+
+/** Codes issued before hashing was introduced had six characters. */
+const LEGACY_MEMBER_CODE_LENGTH = 6;
 
 export const MEMBER_CODE_PREFIX = "RL-";
 
@@ -155,8 +268,8 @@ function randomValues(length: number) {
 }
 
 /**
- * `RL-XXXXXX`. Rejection sampling keeps every character equally likely, so the
- * code keeps its full ~23 bits of entropy.
+ * `RL-XXXXXXXXXX`. Rejection sampling keeps every character equally likely, so
+ * the code keeps its full entropy.
  */
 export function generateMemberCode(random: (length: number) => Uint8Array = randomValues) {
   const limit = 256 - (256 % CODE_ALPHABET.length);
@@ -175,7 +288,7 @@ export function generateMemberCode(random: (length: number) => Uint8Array = rand
 export function normalizeMemberCode(input: string | null | undefined) {
   const cleaned = (input ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
   const body = cleaned.startsWith("RL") ? cleaned.slice(2) : cleaned;
-  if (body.length !== MEMBER_CODE_LENGTH) return "";
+  if (body.length !== MEMBER_CODE_LENGTH && body.length !== LEGACY_MEMBER_CODE_LENGTH) return "";
   if (![...body].every((character) => CODE_ALPHABET.includes(character))) return "";
   return `${MEMBER_CODE_PREFIX}${body}`;
 }
@@ -189,10 +302,14 @@ export function formatCents(cents: number) {
   return amount.toLocaleString("en-AU", {
     style: "currency",
     currency: "AUD",
-    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    minimumFractionDigits: 2,
   });
 }
 
-export function formatPointsValue(points: number) {
-  return formatCents(pointsValueCents(points));
+/** Label for the discount line on every surface that shows one. */
+export const CLUB_DISCOUNT_LABEL = "Club points";
+
+/** `Club points −$5.00`, the single wording used at checkout, on orders, in admin and in email. */
+export function clubDiscountText(discountCents: number) {
+  return `${CLUB_DISCOUNT_LABEL} −${formatCents(discountCents)}`;
 }

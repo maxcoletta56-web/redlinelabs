@@ -18,9 +18,8 @@ export type ClubCheckoutMember = {
   email: string;
   code: string;
   firstName: string;
-  tier: string;
+  tier: string | null;
   points: number;
-  pointsValueCents: number;
 };
 
 type ClubContextValue = {
@@ -64,15 +63,18 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
           );
           return false;
         }
+        if (record.enabled === false) {
+          setError("Club points are not available for redemption yet");
+          return false;
+        }
         const summary = (record.member ?? {}) as Record<string, unknown>;
         const cap = Number(record.maxPoints) || 0;
         setMember({
           email: input.email,
           code: input.code,
           firstName: String(summary.firstName ?? ""),
-          tier: String(summary.tier ?? "Member"),
+          tier: typeof summary.tier === "string" ? summary.tier : null,
           points: Number(summary.points) || 0,
-          pointsValueCents: Number(summary.pointsValueCents) || 0,
         });
         setMaxPoints(cap);
         setPointsState(cap);
