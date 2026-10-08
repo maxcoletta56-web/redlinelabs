@@ -25,6 +25,7 @@ export async function startCartCheckoutSession(input: {
   lastName: string;
   shipping?: ShippingAddressInput | null;
   promoCode?: string | null;
+  club?: { email: string; code: string; points: number } | null;
   ageConfirmed: boolean;
   researchUse: boolean;
 }): Promise<CheckoutStart> {
@@ -37,6 +38,7 @@ export async function startCartCheckoutSession(input: {
     items: input.items,
     promoCode: input.promoCode,
     shipping: input.shipping,
+    club: input.club,
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" };
@@ -53,6 +55,7 @@ export async function startCartCheckoutSession(input: {
         lastName: parsed.data.lastName,
         shipping: input.shipping,
         promoCode: parsed.data.promoCode,
+        club: parsed.data.club,
         ageConfirmed: true,
         researchUse: true,
       });

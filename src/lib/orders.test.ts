@@ -68,6 +68,8 @@ test("insert binds every order field as a parameter", async () => {
     "ada@example.com",
     JSON.stringify(order.items),
     null,
+    null,
+    0,
   ]);
 });
 

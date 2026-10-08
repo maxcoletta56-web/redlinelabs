@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
+import { formatPoints, pointsValueCents } from "@/lib/club";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { formatShippingAddress } from "@/lib/order-shipping";
@@ -114,7 +115,20 @@ export default async function OrderPage({ params }: Props) {
           <div className="mb-3 flex justify-between text-sm">
             <span>Promo code {order.promoCode}</span>
             <span className="text-[#d4af37]">
-              −{formatPrice((order.subtotalCents - order.totalCents) / 100)}
+              −{formatPrice(
+                (order.subtotalCents -
+                  order.totalCents -
+                  pointsValueCents(order.clubPointsRedeemed)) /
+                  100,
+              )}
+            </span>
+          </div>
+        )}
+        {order.clubPointsRedeemed > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>Redline Club points ({formatPoints(order.clubPointsRedeemed)})</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(pointsValueCents(order.clubPointsRedeemed) / 100)}
             </span>
           </div>
         )}

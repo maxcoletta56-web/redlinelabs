@@ -1,6 +1,14 @@
 import "server-only";
 
 import { isAuState } from "@/lib/account-data";
+import { pointsValueCents, resolveRedemption } from "@/lib/club";
+import {
+  authenticateMember,
+  holdRedemption,
+  releaseRedemption,
+  tagRedemption,
+  type RedemptionHold,
+} from "@/lib/club-db";
 import { resolveBankTransfer } from "@/lib/bank-transfer";
 import { getSql, type Sql } from "@/lib/db";
 import { sendOrderCreatedEmails, type OrderCreatedNotice } from "@/lib/mailer";
@@ -35,9 +43,22 @@ const DATABASE_TIMEOUT_MS = 12_000;
 
 const AU_POSTCODE = /^\d{4}$/;
 
+export type ClubRedemptionInput = {
+  email: string;
+  code: string;
+  points: number;
+};
+
 export type CreateBankTransferOrderOptions = {
   /** Injected by tests. Production uses DATABASE_URL via getSql(). */
   sql?: Sql | null;
+  /** Injected by tests. Production reads the club tables through club-db. */
+  club?: {
+    authenticate: typeof authenticateMember;
+    hold: typeof holdRedemption;
+    tag: typeof tagRedemption;
+    release: typeof releaseRedemption;
+  };
   /** Injected by tests. Production schedules mail and never awaits the send. */
   deliver?: (notice: OrderCreatedNotice) => Promise<void>;
 };
@@ -100,6 +121,7 @@ export async function createBankTransferOrder(
     lastName?: string;
     shipping?: BankTransferShippingInput | null;
     promoCode?: string | null;
+    club?: ClubRedemptionInput | null;
     ageConfirmed: boolean;
     researchUse: boolean;
   },
@@ -123,10 +145,13 @@ export async function createBankTransferOrder(
   const lines = resolveCartLines(input.items);
   const promo = lookupPromo(input.promoCode);
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const totalCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
-  if (totalCents <= 0) {
+  const payableCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
+  if (payableCents <= 0) {
     throw new Error("Order total must be greater than zero");
   }
+
+  const hold = await holdClubPoints(input.club, payableCents, options);
+  const totalCents = payableCents - (hold ? pointsValueCents(hold.points) : 0);
 
   const items: OrderItemSnapshot[] = lines.map((line) => ({
     slug: line.slug,
@@ -142,26 +167,47 @@ export async function createBankTransferOrder(
   const email = trimmed(input.email, 200).toLowerCase();
   const promoCode = promo?.code ?? null;
 
-  const reference = await withTimeout(
-    insertOrder(
-      {
-        currency: "aud",
-        subtotalCents,
-        totalCents,
-        promoCode,
-        firstName,
-        lastName,
-        email,
-        items,
-        shipping,
-      },
-      sql,
-    ),
-    DATABASE_TIMEOUT_MS,
-    "The order database",
-  );
+  let reference: string;
+  try {
+    reference = await withTimeout(
+      insertOrder(
+        {
+          currency: "aud",
+          subtotalCents,
+          totalCents,
+          promoCode,
+          firstName,
+          lastName,
+          email,
+          items,
+          shipping,
+          clubEmail: hold?.member.email ?? null,
+          clubPointsRedeemed: hold?.points ?? 0,
+        },
+        sql,
+      ),
+      DATABASE_TIMEOUT_MS,
+      "The order database",
+    );
+  } catch (error) {
+    // The points were taken off the balance before the insert; give them back.
+    if (hold) await releaseClubPoints(hold, options);
+    throw error;
+  }
+
+  if (hold) {
+    try {
+      await (options?.club?.tag ?? tagRedemption)(hold, reference, sql);
+    } catch (error) {
+      console.error("[club] could not tag the redemption with its order", {
+        reference,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
+  }
 
   const notice: OrderCreatedNotice = {
+    clubPointsRedeemed: hold?.points ?? 0,
     reference,
     firstName,
     lastName,
@@ -187,4 +233,55 @@ export async function createBankTransferOrder(
   }
 
   return { reference, redirectUrl: `/order/${reference}`, totalCents };
+}
+
+/**
+ * Verifies the member server-side, re-caps the requested points against the
+ * live balance and this order's size, then takes them off the balance before
+ * the order is written. A club failure never blocks the order: the customer
+ * simply pays the undiscounted total.
+ */
+async function holdClubPoints(
+  club: ClubRedemptionInput | null | undefined,
+  payableCents: number,
+  options?: CreateBankTransferOrderOptions,
+): Promise<RedemptionHold | null> {
+  if (!club) return null;
+  try {
+    const sql = databaseFor(options);
+    const member = await (options?.club?.authenticate ?? authenticateMember)(
+      club.email,
+      club.code,
+      sql,
+    );
+    if (!member) return null;
+    const { points } = resolveRedemption({
+      requestedPoints: club.points,
+      balancePoints: member.pointsBalance,
+      payableCents,
+    });
+    if (points <= 0) return null;
+    return await (options?.club?.hold ?? holdRedemption)(
+      { email: member.email, points },
+      sql,
+    );
+  } catch (error) {
+    console.error("[club] could not apply points at checkout", {
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return null;
+  }
+}
+
+async function releaseClubPoints(
+  hold: RedemptionHold,
+  options?: CreateBankTransferOrderOptions,
+) {
+  try {
+    await (options?.club?.release ?? releaseRedemption)(hold, databaseFor(options));
+  } catch (error) {
+    console.error("[club] could not return held points", {
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+  }
 }

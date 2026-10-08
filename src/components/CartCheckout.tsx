@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { startCartCheckoutSession } from "@/app/actions/checkout";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
+import { useClub } from "@/lib/club-state";
 import type { CartLineInput } from "@/lib/order";
 import { paymentsProvider } from "@/lib/payments-provider";
 import { withTimeout } from "@/lib/with-timeout";
@@ -38,6 +39,7 @@ export function CartCheckout({
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const provider = paymentsProvider();
+  const { member, points } = useClub();
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +51,8 @@ export function CartCheckout({
         lastName,
         shipping,
         promoCode,
+        // Points are a request; the server re-verifies the member and re-caps them.
+        club: provider === "bank_transfer" && member && points > 0 ? { email: member.email, code: member.code, points } : null,
         ageConfirmed,
         researchUse,
       }),
@@ -75,7 +79,20 @@ export function CartCheckout({
     return () => {
       cancelled = true;
     };
-  }, [attempt, items, email, firstName, lastName, shipping, promoCode, ageConfirmed, researchUse]);
+  }, [
+    attempt,
+    items,
+    email,
+    firstName,
+    lastName,
+    shipping,
+    promoCode,
+    ageConfirmed,
+    researchUse,
+    member,
+    points,
+    provider,
+  ]);
 
   if (error) {
     return (

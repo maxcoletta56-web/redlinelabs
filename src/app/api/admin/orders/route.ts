@@ -17,6 +17,8 @@ export async function GET(request: Request) {
         reference: order.reference,
         status: order.status,
         totalCents: order.totalCents,
+        clubEmail: order.clubEmail,
+        clubPointsRedeemed: order.clubPointsRedeemed,
         currency: order.currency,
         email: order.email,
         createdAt: order.createdAt,

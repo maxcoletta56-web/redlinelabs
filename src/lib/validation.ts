@@ -14,6 +14,12 @@ export type CheckoutShipping = {
   country?: string;
 };
 
+export type CheckoutClub = {
+  email: string;
+  code: string;
+  points: number;
+};
+
 export type CheckoutBody = {
   email: string;
   firstName?: string;
@@ -23,6 +29,7 @@ export type CheckoutBody = {
   items: CartLineInput[];
   promoCode?: string | null;
   shipping: CheckoutShipping | null;
+  club?: CheckoutClub | null;
 };
 
 export type ParseResult<T> =
@@ -94,8 +101,26 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
       items,
       promoCode,
       shipping: parseShipping(row.shipping),
+      club: parseClub(row.club),
     },
   };
+}
+
+/**
+ * Club fields are a *request*, never an instruction: the server re-reads the
+ * balance and re-caps the points before any discount is applied. Anything
+ * malformed is dropped so a bad club payload can never fail an order.
+ */
+function parseClub(value: unknown): CheckoutClub | null {
+  const row = asRecord(value);
+  if (!row) return null;
+  const email = readString(row.email).toLowerCase();
+  const code = readString(row.code);
+  const points = Math.trunc(Number(row.points));
+  if (!email || email.length > 200 || !email.includes("@")) return null;
+  if (!code || code.length > 32) return null;
+  if (!Number.isFinite(points) || points <= 0 || points > 1_000_000) return null;
+  return { email, code, points };
 }
 
 function parseShipping(value: unknown): CheckoutShipping | null {

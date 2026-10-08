@@ -19,6 +19,7 @@ import {
   sortAdminOrders,
   summarizeOrderItems,
 } from "@/lib/admin-orders";
+import { formatPoints, pointsValueCents } from "@/lib/club";
 import { readAdminSessionToken } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { formatShippingAddress } from "@/lib/order-shipping";
@@ -271,6 +272,12 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
       </Cell>
       <Cell label="Total">
         <p className="font-semibold text-[#d4af37]">{formatAudCents(order.totalCents)}</p>
+        {order.clubPointsRedeemed > 0 && (
+          <p className="mt-1 text-xs text-[#8f8c84]">
+            Club points: {formatPoints(order.clubPointsRedeemed)} (−
+            {formatAudCents(pointsValueCents(order.clubPointsRedeemed))})
+          </p>
+        )}
       </Cell>
       <Cell label="Promo">
         <p>{promoLabel(order.promoCode)}</p>

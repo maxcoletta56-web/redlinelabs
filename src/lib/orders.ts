@@ -37,6 +37,8 @@ export type StoredOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  clubEmail: string | null;
+  clubPointsRedeemed: number;
   createdAt: string | null;
   paidAt: string | null;
 };
@@ -51,6 +53,8 @@ export type NewOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  clubEmail?: string | null;
+  clubPointsRedeemed?: number;
 };
 
 export class OrdersUnavailableError extends Error {
@@ -73,6 +77,8 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   email TEXT NOT NULL,
   items JSONB NOT NULL,
   shipping JSONB,
+  club_email TEXT,
+  club_points_redeemed INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ
 )`;
@@ -92,13 +98,15 @@ const ORDER_COLUMNS = [
   "email",
   "items",
   "shipping",
+  "club_email",
+  "club_points_redeemed",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed) " +
+  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
@@ -195,6 +203,8 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     email: readText(record.email),
     items: readItems(record.items),
     shipping: readShipping(record.shipping),
+    clubEmail: readText(record.club_email) || null,
+    clubPointsRedeemed: readInt(record.club_points_redeemed),
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
   };
@@ -226,6 +236,8 @@ export async function insertOrder(
       order.email,
       JSON.stringify(order.items),
       order.shipping ? JSON.stringify(order.shipping) : null,
+      order.clubEmail ?? null,
+      Math.max(0, Math.floor(order.clubPointsRedeemed ?? 0)),
     ]);
     if (rowsOf(result).length > 0) return reference;
   }
@@ -281,6 +293,7 @@ export type PaymentReceivedNotice = {
 /** Test and caller overrides. Production uses the database and the mailer. */
 export type MarkPaidEmailHooks = {
   findOrder?: (reference: string) => Promise<StoredOrder | null>;
+  awardClubPoints?: (order: StoredOrder) => Promise<unknown>;
   markOrderPaid?: (reference: string) => Promise<StoredOrder | null>;
   scheduleEmail?: (reference: string, task: () => Promise<void>) => void;
   sendPaymentReceivedEmail?: (notice: PaymentReceivedNotice) => Promise<void>;
@@ -308,6 +321,19 @@ function loadPaymentEmailDeps(): Promise<PaymentEmailDeps> {
       throw error;
     });
   return paymentEmailDeps;
+}
+
+/**
+ * Points land when the money does, on the amount actually paid, at the tier
+ * the member held before this order. Idempotent inside `awardOrderPoints`.
+ */
+async function awardClubPointsForOrder(order: StoredOrder) {
+  const { awardOrderPoints } = await import("./club-db.ts");
+  return awardOrderPoints({
+    email: order.email,
+    orderReference: order.reference,
+    paidCents: order.totalCents,
+  });
 }
 
 function paymentReceivedNotice(order: StoredOrder): PaymentReceivedNotice {
@@ -346,6 +372,17 @@ export async function markOrderPaidWithPaymentEmail(
   if (!order) return null;
 
   if (existing?.status !== "paid") {
+    // Rewards must never turn a received payment into a failed update.
+    try {
+      const award = hooks.awardClubPoints ?? awardClubPointsForOrder;
+      await award(order);
+    } catch (error) {
+      console.error("[club] award on paid failed", {
+        reference: order.reference,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
+
     try {
       const deps: PaymentEmailDeps =
         hooks.scheduleEmail && hooks.sendPaymentReceivedEmail

@@ -7,6 +7,7 @@ import {
   type BankTransferShippingInput,
 } from "./bank-transfer-checkout.ts";
 import type { OrderCreatedNotice } from "./mailer.ts";
+import type { ClubMember, RedemptionHold } from "./club-db.ts";
 
 const goodAddress: BankTransferShippingInput = {
   name: "  Ada Lovelace  ",
@@ -141,6 +142,123 @@ test("createBankTransferOrder stores a trimmed address and still succeeds if mai
       failedMail.calls.some((call) => call.query.startsWith("INSERT")),
       true,
     );
+  } finally {
+    restore();
+  }
+});
+
+
+function clubMember(overrides: Partial<ClubMember> = {}): ClubMember {
+  return {
+    email: "ada@example.com",
+    firstName: "Ada",
+    memberCode: "RL-ACDEFG",
+    pointsBalance: 1_000,
+    lifetimeSpendCents: 0,
+    firstOrderBonusAt: null,
+    createdAt: "2026-10-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+function clubHooks(member: ClubMember | null) {
+  const held: RedemptionHold[] = [];
+  const tagged: string[] = [];
+  const released: RedemptionHold[] = [];
+  return {
+    held,
+    tagged,
+    released,
+    hooks: {
+      authenticate: async () => member,
+      hold: async (input: { email: string; points: number }) => {
+        const hold: RedemptionHold = {
+          ledgerId: 1,
+          points: input.points,
+          member: member ?? clubMember(),
+        };
+        held.push(hold);
+        return hold;
+      },
+      tag: async (_hold: RedemptionHold, reference: string) => {
+        tagged.push(reference);
+      },
+      release: async (hold: RedemptionHold) => {
+        released.push(hold);
+      },
+    },
+  };
+}
+
+test("club points come off the total and are capped to the real balance", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = clubHooks(clubMember({ pointsBalance: 300 }));
+  try {
+    const order = await createBankTransferOrder(
+      {
+        ...orderInput,
+        shipping: goodAddress,
+        // Asks for 10,000 points on a 300-point balance.
+        club: { email: "ada@example.com", code: "RL-ACDEFG", points: 10_000 },
+      },
+      { sql, deliver: async () => {}, club: club.hooks },
+    );
+
+    // $89 catalogue line, 300 points = $15 off.
+    assert.equal(order.totalCents, 7_400);
+    assert.equal(club.held[0]?.points, 300);
+    assert.equal(club.tagged[0], order.reference);
+    assert.equal(club.released.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test("a membership that does not check out pays the full total", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = clubHooks(null);
+  try {
+    const order = await createBankTransferOrder(
+      {
+        ...orderInput,
+        shipping: goodAddress,
+        club: { email: "stranger@example.com", code: "RL-ACDEFG", points: 200 },
+      },
+      { sql, deliver: async () => {}, club: club.hooks },
+    );
+
+    assert.equal(order.totalCents, 8_900);
+    assert.equal(club.held.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test("held points go back when the order cannot be written", async () => {
+  const restore = payIdEnv();
+  const failing: Sql = {
+    query: async (query) => {
+      if (query.startsWith("INSERT INTO orders")) throw new Error("database is down");
+      return [];
+    },
+  };
+  const club = clubHooks(clubMember());
+  try {
+    await assert.rejects(
+      () =>
+        createBankTransferOrder(
+          {
+            ...orderInput,
+            shipping: goodAddress,
+            club: { email: "ada@example.com", code: "RL-ACDEFG", points: 200 },
+          },
+          { sql: failing, deliver: async () => {}, club: club.hooks },
+        ),
+      /database is down/,
+    );
+    assert.equal(club.released[0]?.points, 200);
   } finally {
     restore();
   }
