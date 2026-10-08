@@ -1,4 +1,5 @@
 import { resolveBankTransfer, transferDescription } from "./bank-transfer.ts";
+import { pointsValueCents } from "./club.ts";
 import { COMPANY_EMAIL, RESEARCH_DISCLAIMER } from "./company.ts";
 import { formatShippingAddress, type ShippingAddressView } from "./order-shipping.ts";
 
@@ -31,6 +32,7 @@ export type OrderConfirmationInput = {
   subtotalCents: number;
   totalCents: number;
   promoCode: string | null;
+  clubPointsRedeemed?: number;
   payId: string;
   accountName: string;
   orderUrl: string;
@@ -217,14 +219,33 @@ function paymentInstructionsHtml(input: OrderConfirmationInput) {
     <table role="presentation" cellpadding="0" cellspacing="0">${rows}</table>`;
 }
 
-function totalsText(input: Pick<OrderConfirmationInput, "subtotalCents" | "totalCents" | "promoCode">) {
+type TotalsInput = Pick<
+  OrderConfirmationInput,
+  "subtotalCents" | "totalCents" | "promoCode" | "clubPointsRedeemed"
+>;
+
+/** Splits the saving so the promo line is not inflated by redeemed points. */
+function discounts(input: TotalsInput) {
+  const clubCents = pointsValueCents(input.clubPointsRedeemed ?? 0);
+  return {
+    clubPoints: Math.max(0, Math.floor(input.clubPointsRedeemed ?? 0)),
+    clubCents,
+    promoCents: Math.max(0, input.subtotalCents - input.totalCents - clubCents),
+  };
+}
+
+function totalsText(input: TotalsInput) {
+  const { clubPoints, clubCents, promoCents } = discounts(input);
   const lines = [`Total: ${formatAudFromCents(input.totalCents)} AUD`];
-  if (input.promoCode) {
-    const discount = input.subtotalCents - input.totalCents;
-    lines.unshift(
-      `Subtotal: ${formatAudFromCents(input.subtotalCents)}`,
-      `Promo code ${input.promoCode}: −${formatAudFromCents(discount)}`,
-    );
+  if (input.promoCode || clubCents > 0) {
+    const detail = [`Subtotal: ${formatAudFromCents(input.subtotalCents)}`];
+    if (input.promoCode) {
+      detail.push(`Promo code ${input.promoCode}: −${formatAudFromCents(promoCents)}`);
+    }
+    if (clubCents > 0) {
+      detail.push(`Redline Club points (${clubPoints}): −${formatAudFromCents(clubCents)}`);
+    }
+    lines.unshift(...detail);
   }
   return lines.join("\n");
 }
@@ -242,12 +263,19 @@ function shippingHtml(shipping: ShippingAddressView | null | undefined) {
     <p style="margin:0 0 16px;">${body}</p>`;
 }
 
-function totalsHtml(input: Pick<OrderConfirmationInput, "subtotalCents" | "totalCents" | "promoCode">) {
+function totalsHtml(input: TotalsInput) {
+  const { clubPoints, clubCents, promoCents } = discounts(input);
   const rows = [];
-  if (input.promoCode) {
-    const discount = input.subtotalCents - input.totalCents;
+  if (input.promoCode || clubCents > 0) {
     rows.push(totalRow("Subtotal", formatAudFromCents(input.subtotalCents)));
-    rows.push(totalRow(`Promo code ${input.promoCode}`, `−${formatAudFromCents(discount)}`));
+    if (input.promoCode) {
+      rows.push(totalRow(`Promo code ${input.promoCode}`, `−${formatAudFromCents(promoCents)}`));
+    }
+    if (clubCents > 0) {
+      rows.push(
+        totalRow(`Redline Club points (${clubPoints})`, `−${formatAudFromCents(clubCents)}`),
+      );
+    }
   }
   rows.push(totalRow("Total", `${formatAudFromCents(input.totalCents)} AUD`));
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">${rows.join("")}</table>`;
@@ -480,6 +508,7 @@ export type OrderCreatedNotice = {
   subtotalCents: number;
   totalCents: number;
   promoCode: string | null;
+  clubPointsRedeemed?: number;
   shipping?: ShippingAddressView | null;
 };
 

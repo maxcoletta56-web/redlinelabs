@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { retryPaypalOrder } from "@/app/actions/checkout";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
+import { formatPoints, pointsValueCents } from "@/lib/club";
 import { paypalConfigured } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
@@ -144,7 +145,20 @@ export default async function OrderPage({ params, searchParams }: Props) {
           <div className="mb-3 flex justify-between text-sm">
             <span>Promo code {order.promoCode}</span>
             <span className="text-[#d4af37]">
-              −{formatPrice((order.subtotalCents - order.totalCents) / 100)}
+              −{formatPrice(
+                (order.subtotalCents -
+                  order.totalCents -
+                  pointsValueCents(order.clubPointsRedeemed)) /
+                  100,
+              )}
+            </span>
+          </div>
+        )}
+        {order.clubPointsRedeemed > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>Redline Club points ({formatPoints(order.clubPointsRedeemed)})</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(pointsValueCents(order.clubPointsRedeemed) / 100)}
             </span>
           </div>
         )}

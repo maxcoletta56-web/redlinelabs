@@ -88,6 +88,7 @@ export async function POST(request: Request) {
         lastName: parsed.data.lastName,
         shipping: parsed.data.shipping,
         promoCode: parsed.data.promoCode,
+        club: parsed.data.club,
         ageConfirmed: true,
         researchUse: true,
       });

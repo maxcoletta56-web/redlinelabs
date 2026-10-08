@@ -38,6 +38,8 @@ export type StoredOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  clubEmail: string | null;
+  clubPointsRedeemed: number;
   paymentMethod: CheckoutPaymentMethod;
   paypalOrderId: string | null;
   createdAt: string | null;
@@ -54,6 +56,8 @@ export type NewOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  clubEmail?: string | null;
+  clubPointsRedeemed?: number;
   paymentMethod?: CheckoutPaymentMethod;
   paypalOrderId?: string | null;
 };
@@ -78,6 +82,8 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   email TEXT NOT NULL,
   items JSONB NOT NULL,
   shipping JSONB,
+  club_email TEXT,
+  club_points_redeemed INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ,
   payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
@@ -99,6 +105,8 @@ const ORDER_COLUMNS = [
   "email",
   "items",
   "shipping",
+  "club_email",
+  "club_points_redeemed",
   "payment_method",
   "paypal_order_id",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
@@ -106,8 +114,8 @@ const ORDER_COLUMNS = [
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, payment_method, paypal_order_id) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, payment_method, paypal_order_id) " +
+  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const ATTACH_PAYPAL_ORDER =
@@ -212,6 +220,8 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     email: readText(record.email),
     items: readItems(record.items),
     shipping: readShipping(record.shipping),
+    clubEmail: readText(record.club_email) || null,
+    clubPointsRedeemed: readInt(record.club_points_redeemed),
     paymentMethod: readPaymentMethod(record.payment_method),
     paypalOrderId: readText(record.paypal_order_id) || null,
     createdAt: readTimestamp(record.created_at),
@@ -245,6 +255,8 @@ export async function insertOrder(
       order.email,
       JSON.stringify(order.items),
       order.shipping ? JSON.stringify(order.shipping) : null,
+      order.clubEmail ?? null,
+      Math.max(0, Math.floor(order.clubPointsRedeemed ?? 0)),
       order.paymentMethod === "paypal" ? "paypal" : "bank_transfer",
       order.paypalOrderId ?? null,
     ]);
@@ -317,6 +329,7 @@ export type PaymentReceivedNotice = {
 /** Test and caller overrides. Production uses the database and the mailer. */
 export type MarkPaidEmailHooks = {
   findOrder?: (reference: string) => Promise<StoredOrder | null>;
+  awardClubPoints?: (order: StoredOrder) => Promise<unknown>;
   markOrderPaid?: (reference: string) => Promise<StoredOrder | null>;
   scheduleEmail?: (reference: string, task: () => Promise<void>) => void;
   sendPaymentReceivedEmail?: (notice: PaymentReceivedNotice) => Promise<void>;
@@ -344,6 +357,19 @@ function loadPaymentEmailDeps(): Promise<PaymentEmailDeps> {
       throw error;
     });
   return paymentEmailDeps;
+}
+
+/**
+ * Points land when the money does, on the amount actually paid, at the tier
+ * the member held before this order. Idempotent inside `awardOrderPoints`.
+ */
+async function awardClubPointsForOrder(order: StoredOrder) {
+  const { awardOrderPoints } = await import("./club-db.ts");
+  return awardOrderPoints({
+    email: order.email,
+    orderReference: order.reference,
+    paidCents: order.totalCents,
+  });
 }
 
 function paymentReceivedNotice(order: StoredOrder): PaymentReceivedNotice {
@@ -382,6 +408,17 @@ export async function markOrderPaidWithPaymentEmail(
   if (!order) return null;
 
   if (existing?.status !== "paid") {
+    // Rewards must never turn a received payment into a failed update.
+    try {
+      const award = hooks.awardClubPoints ?? awardClubPointsForOrder;
+      await award(order);
+    } catch (error) {
+      console.error("[club] award on paid failed", {
+        reference: order.reference,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
+
     try {
       const deps: PaymentEmailDeps =
         hooks.scheduleEmail && hooks.sendPaymentReceivedEmail

@@ -36,6 +36,7 @@ export async function startCartCheckoutSession(input: {
   lastName: string;
   shipping?: ShippingAddressInput | null;
   promoCode?: string | null;
+  club?: { email: string; code: string; points: number } | null;
   paymentMethod?: string | null;
   ageConfirmed: boolean;
   researchUse: boolean;
@@ -49,6 +50,7 @@ export async function startCartCheckoutSession(input: {
     items: input.items,
     promoCode: input.promoCode,
     shipping: input.shipping,
+    club: input.club,
     paymentMethod: input.paymentMethod,
   });
   if (!parsed.success) {
@@ -77,6 +79,7 @@ export async function startCartCheckoutSession(input: {
         lastName: parsed.data.lastName,
         shipping: input.shipping,
         promoCode: parsed.data.promoCode,
+        club: parsed.data.club,
         ageConfirmed: true,
         researchUse: true,
       });

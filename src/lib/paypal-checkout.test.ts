@@ -48,6 +48,8 @@ function stored(status: StoredOrder["status"], totalCents = 7120): StoredOrder {
     email: "ada@example.com",
     items: [],
     shipping: null,
+    clubEmail: null,
+    clubPointsRedeemed: 0,
     paymentMethod: "paypal",
     paypalOrderId: paypalId,
     createdAt: "2026-10-07T00:00:00.000Z",
@@ -59,9 +61,13 @@ function emailHooks(row: StoredOrder) {
   let current = row;
   const sent: PaymentReceivedNotice[] = [];
   const jobs: Promise<void>[] = [];
+  const awards: string[] = [];
   let marked = 0;
   const hooks = {
     findOrder: async () => current,
+    awardClubPoints: async (order: StoredOrder) => {
+      awards.push(order.reference);
+    },
     markOrderPaid: async () => {
       marked += 1;
       if (current.status !== "paid") {
@@ -76,7 +82,7 @@ function emailHooks(row: StoredOrder) {
       sent.push(notice);
     },
   };
-  return { hooks, sent, jobs, marked: () => marked };
+  return { hooks, sent, jobs, awards, marked: () => marked };
 }
 
 test("PayPal checkout inserts an unpaid order before redirecting", async () => {
@@ -122,8 +128,10 @@ test("PayPal checkout inserts an unpaid order before redirecting", async () => {
   assert.equal(insert?.params?.[3], 7120);
   assert.equal(insert?.params?.[4], "DGC20");
   assert.equal(insert?.params?.[7], "ada@example.com");
-  assert.equal(insert?.params?.[10], "paypal");
-  assert.equal(insert?.params?.[11], null);
+  assert.equal(insert?.params?.[10], null);
+  assert.equal(insert?.params?.[11], 0);
+  assert.equal(insert?.params?.[12], "paypal");
+  assert.equal(insert?.params?.[13], null);
   const storedShipping = JSON.parse(String(insert?.params?.[9])) as { line1: string; postcode: string };
   assert.equal(storedShipping.line1, "1 Laboratory Road");
   assert.equal(storedShipping.postcode, "2000");
@@ -163,6 +171,24 @@ test("a completed PayPal capture marks the order paid once", async () => {
   assert.equal(capture.sent.length, 1);
   assert.equal(capture.sent[0]?.reference, "RL-7F3K2Q");
   assert.equal(capture.sent[0]?.totalCents, 7120);
+  assert.deepEqual(capture.awards, ["RL-7F3K2Q"]);
+});
+
+test("a second PayPal capture does not award club points again", async () => {
+  const capture = emailHooks(stored("paid"));
+  const settled = await settleCapturedPaypalOrder(
+    {
+      reference: "RL-7F3K2Q",
+      paypalOrderId: paypalId,
+      amountCents: 7120,
+      currency: "AUD",
+      captured: true,
+    },
+    capture.hooks,
+  );
+  assert.equal(settled.ok, true);
+  if (settled.ok) assert.equal(settled.alreadyPaid, true);
+  assert.deepEqual(capture.awards, []);
 });
 
 test("a capture whose amount or currency does not match the order is refused", async () => {

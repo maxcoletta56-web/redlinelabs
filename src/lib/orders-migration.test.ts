@@ -23,6 +23,8 @@ const ORDERS_COLUMNS = [
   "email",
   "items",
   "shipping",
+  "club_email",
+  "club_points_redeemed",
   "created_at",
   "paid_at",
   "payment_method",
