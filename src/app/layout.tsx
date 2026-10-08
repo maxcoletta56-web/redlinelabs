@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { AssistLoopWidget } from "@/components/AssistLoopWidget";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -17,9 +17,10 @@ import {
 import { absoluteUrl, DEFAULT_OG_IMAGE } from "@/lib/seo";
 import "./globals.css";
 
-const sans = Inter({
+const sans = localFont({
+  src: "./fonts/InterVariable.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
+  weight: "100 900",
   display: "swap",
 });
 

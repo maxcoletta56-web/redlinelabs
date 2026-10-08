@@ -23,6 +23,7 @@ export type CheckoutBody = {
   items: CartLineInput[];
   promoCode?: string | null;
   shipping: CheckoutShipping | null;
+  paymentMethod?: "bank_transfer" | "paypal" | null;
 };
 
 export type ParseResult<T> =
@@ -83,6 +84,8 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
   const lastName = readString(row.lastName);
   const promoCode = row.promoCode == null ? null : readString(row.promoCode);
   if (promoCode && promoCode.length > 40) return fail("That promo code is not valid");
+  const paymentMethod = readPaymentMethod(row.paymentMethod);
+  if (paymentMethod === "invalid") return fail("Choose a payment method");
   return {
     success: true,
     data: {
@@ -94,8 +97,18 @@ export function parseCheckoutBody(value: unknown): ParseResult<CheckoutBody> {
       items,
       promoCode,
       shipping: parseShipping(row.shipping),
+      paymentMethod,
     },
   };
+}
+
+function readPaymentMethod(value: unknown): "bank_transfer" | "paypal" | null | "invalid" {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string") return "invalid";
+  const method = value.trim().toLowerCase();
+  if (!method) return null;
+  if (method === "bank_transfer" || method === "paypal") return method;
+  return "invalid";
 }
 
 function parseShipping(value: unknown): CheckoutShipping | null {

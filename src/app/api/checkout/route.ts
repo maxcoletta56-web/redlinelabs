@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { bankTransferConfigured, createBankTransferOrder } from "@/lib/bank-transfer-checkout";
 import { createPaypalCheckout, paypalConfigured } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
+import {
+  checkoutSurface,
+  paymentsProvider,
+  paypalCheckoutOffered,
+  resolveRequestedPaymentMethod,
+} from "@/lib/payments-provider";
+import { PaypalOrderSavedError } from "@/lib/paypal-checkout";
 import { resolvePaypal } from "@/lib/paypal";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
@@ -17,29 +23,31 @@ const PAYPAL_SETUP =
 
 export async function GET() {
   const provider = paymentsProvider();
-  if (provider === "bank_transfer") {
-    return NextResponse.json({
-      provider,
-      configured: bankTransferConfigured(),
-      mode: null,
-    });
-  }
+  const paypalReady = paypalConfigured();
+  const bankReady = bankTransferConfigured();
+  const surface = checkoutSurface({
+    envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalConfigured: paypalReady,
+    bankTransferConfigured: bankReady,
+  });
   return NextResponse.json({
     provider,
-    configured: paypalConfigured(),
-    mode: resolvePaypal(process.env)?.mode ?? null,
+    configured: surface.setup === null,
+    showChoice: surface.showChoice,
+    defaultMethod: surface.defaultMethod,
+    setup: surface.setup,
+    paypalOffered: surface.showChoice,
+    paypalConfigured: paypalReady,
+    bankTransferConfigured: bankReady,
+    mode: paypalReady ? (resolvePaypal(process.env)?.mode ?? null) : null,
   });
 }
 
 export async function POST(request: Request) {
-  const provider = paymentsProvider();
-  const configured = provider === "bank_transfer" ? bankTransferConfigured() : paypalConfigured();
-  if (!configured) {
-    return NextResponse.json(
-      { error: provider === "bank_transfer" ? BANK_TRANSFER_SETUP : PAYPAL_SETUP },
-      { status: 503 },
-    );
-  }
+  const paypalOffered = paypalCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalConfigured(),
+  );
 
   let json: unknown;
   try {
@@ -56,8 +64,23 @@ export async function POST(request: Request) {
     );
   }
 
+  const method = resolveRequestedPaymentMethod({
+    requested: parsed.data.paymentMethod,
+    envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalOffered,
+  });
+  if (method === "unavailable") {
+    return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+  }
+  if (method === "bank_transfer" && !bankTransferConfigured()) {
+    return NextResponse.json({ error: BANK_TRANSFER_SETUP }, { status: 503 });
+  }
+  if (method === "paypal" && !paypalConfigured()) {
+    return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+  }
+
   try {
-    if (provider === "bank_transfer") {
+    if (method === "bank_transfer") {
       const order = await createBankTransferOrder({
         items: parsed.data.items,
         email: parsed.data.email,
@@ -69,7 +92,7 @@ export async function POST(request: Request) {
         researchUse: true,
       });
       return NextResponse.json({
-        provider,
+        provider: method,
         reference: order.reference,
         redirectUrl: order.redirectUrl,
         amountCents: order.totalCents,
@@ -91,11 +114,18 @@ export async function POST(request: Request) {
       PROVIDER_TIMEOUT_MS,
       "PayPal",
     );
-    return NextResponse.json({ provider, redirectUrl });
+    return NextResponse.json({ provider: method, redirectUrl });
   } catch (error) {
+    if (error instanceof PaypalOrderSavedError) {
+      return NextResponse.json({
+        provider: method,
+        reference: error.reference,
+        redirectUrl: `/order/${error.reference}?paypal=unavailable`,
+      });
+    }
     const message = error instanceof Error ? error.message : "Checkout failed";
     console.error("[checkout] POST failed", {
-      provider,
+      provider: method,
       slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
       quantities: parsed.data.items.map((item) => item.qty),
       promoCode: parsed.data.promoCode ?? null,

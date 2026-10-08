@@ -1,5 +1,6 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
+import type { CheckoutPaymentMethod } from "./payments-provider.ts";
 
 export const ORDER_STATUSES = ["awaiting_payment", "paid"] as const;
 
@@ -37,6 +38,8 @@ export type StoredOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  paymentMethod: CheckoutPaymentMethod;
+  paypalOrderId: string | null;
   createdAt: string | null;
   paidAt: string | null;
 };
@@ -51,6 +54,8 @@ export type NewOrder = {
   email: string;
   items: OrderItemSnapshot[];
   shipping: OrderShippingSnapshot | null;
+  paymentMethod?: CheckoutPaymentMethod;
+  paypalOrderId?: string | null;
 };
 
 export class OrdersUnavailableError extends Error {
@@ -74,7 +79,9 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   items JSONB NOT NULL,
   shipping JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  paid_at TIMESTAMPTZ
+  paid_at TIMESTAMPTZ,
+  payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
+  paypal_order_id TEXT
 )`;
 
 /** Postgres returns timestamptz in a driver-dependent shape, so pin it to ISO-8601 here. */
@@ -92,14 +99,20 @@ const ORDER_COLUMNS = [
   "email",
   "items",
   "shipping",
+  "payment_method",
+  "paypal_order_id",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, payment_method, paypal_order_id) " +
+  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
+
+const ATTACH_PAYPAL_ORDER =
+  "UPDATE orders SET paypal_order_id = $2 WHERE reference = $1 AND status = 'awaiting_payment' " +
+  "RETURNING reference";
 
 const SELECT_ORDER = `SELECT ${ORDER_COLUMNS} FROM orders WHERE reference = $1`;
 
@@ -159,6 +172,10 @@ function readItems(value: unknown): OrderItemSnapshot[] {
   });
 }
 
+function readPaymentMethod(value: unknown): CheckoutPaymentMethod {
+  return value === "paypal" ? "paypal" : "bank_transfer";
+}
+
 function readShipping(value: unknown): OrderShippingSnapshot | null {
   const parsed = readJson(value);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
@@ -195,6 +212,8 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     email: readText(record.email),
     items: readItems(record.items),
     shipping: readShipping(record.shipping),
+    paymentMethod: readPaymentMethod(record.payment_method),
+    paypalOrderId: readText(record.paypal_order_id) || null,
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
   };
@@ -226,6 +245,8 @@ export async function insertOrder(
       order.email,
       JSON.stringify(order.items),
       order.shipping ? JSON.stringify(order.shipping) : null,
+      order.paymentMethod === "paypal" ? "paypal" : "bank_transfer",
+      order.paypalOrderId ?? null,
     ]);
     if (rowsOf(result).length > 0) return reference;
   }
@@ -256,6 +277,21 @@ export async function listRecentOrders(
   return rowsOf(result)
     .map(readOrderRow)
     .filter((order): order is StoredOrder => order !== null);
+}
+
+/** Replaces the PayPal id on an unpaid order. A paid row is left alone. */
+export async function attachPaypalOrderId(
+  reference: string,
+  paypalOrderId: string,
+  sql: Sql | null | undefined = getSql(),
+): Promise<boolean> {
+  const normalized = normalizeOrderReference(reference);
+  const database = sql === undefined ? getSql() : sql;
+  if (!normalized || !paypalOrderId.trim()) return false;
+  if (!database) throw new OrdersUnavailableError();
+  await ensureOrdersTable(database);
+  const result = await database.query(ATTACH_PAYPAL_ORDER, [normalized, paypalOrderId.trim()]);
+  return rowsOf(result).length > 0;
 }
 
 /** Idempotent: re-posting keeps the original paid_at. */

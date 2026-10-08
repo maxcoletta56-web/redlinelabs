@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
+import {
+  PaymentMethodChoice,
+  useCheckoutAvailability,
+  useSelectedPaymentMethod,
+} from "@/components/PaymentMethodChoice";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
 import { useAccount } from "@/lib/account";
 import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -93,12 +97,16 @@ const PROVIDER_COPY = {
 } as const;
 
 export default function CheckoutPage() {
-  const copy = PROVIDER_COPY[paymentsProvider()];
+  const availability = useCheckoutAvailability();
+  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const copy =
+    PROVIDER_COPY[availability.showChoice ? method : availability.defaultMethod];
+  const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
+  const configured = availability.ready ? availability.configured : null;
   const { items } = useCart();
   const { promo } = usePromo();
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
     firstName?: string;
@@ -107,17 +115,6 @@ export default function CheckoutPage() {
   }>({});
   const [addressId, setAddressId] = useState<string>("");
   const [shippingOverrides, setShippingOverrides] = useState<ShippingDraft | null>(null);
-
-  useEffect(() => {
-    fetch("/api/checkout")
-      .then((res) => res.json())
-      .then((data: { configured?: boolean }) => {
-        setConfigured(Boolean(data.configured));
-      })
-      .catch(() => {
-        setConfigured(false);
-      });
-  }, []);
 
   const firstName = customer.firstName ?? user?.firstName ?? "";
   const lastName = customer.lastName ?? user?.lastName ?? "";
@@ -306,6 +303,9 @@ export default function CheckoutPage() {
                 </p>
               </fieldset>
             )}
+            {availability.showChoice && (
+              <PaymentMethodChoice value={method} onChange={choose} />
+            )}
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <fieldset className="space-y-4">
               <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
@@ -411,7 +411,7 @@ export default function CheckoutPage() {
             )}
             {configured === false && (
               <p className="text-sm leading-6 text-[#d4af37]" role="status">
-                {copy.setup}
+                {PROVIDER_COPY[availability.setup ?? availability.defaultMethod].setup}
               </p>
             )}
             <button type="submit" className="btn" disabled={configured !== true}>
@@ -434,6 +434,7 @@ export default function CheckoutPage() {
                 lastName={lastName}
                 shipping={shipping}
                 promoCode={promo?.code ?? null}
+                paymentMethod={paymentMethod}
                 ageConfirmed
                 researchUse
               />

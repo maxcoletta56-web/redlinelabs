@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import {
+  PaymentMethodChoice,
+  useCheckoutAvailability,
+  useSelectedPaymentMethod,
+} from "@/components/PaymentMethodChoice";
 import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
@@ -14,6 +19,13 @@ export function CartDrawer() {
   const { items, drawerOpen, setDrawerOpen, updateQty, removeItem } =
     useCart();
   const { promo } = usePromo();
+  const availability = useCheckoutAvailability();
+  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const checkoutHref = availability.showChoice
+    ? method === "paypal"
+      ? "/checkout?pay=paypal"
+      : "/checkout?pay=payid"
+    : "/checkout";
   const totals = checkoutTotals({ items, promo });
   const closeRef = useRef<HTMLButtonElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -139,8 +151,13 @@ export function CartDrawer() {
                 </span>
               </div>
             )}
+            {availability.showChoice && (
+              <div className="mb-4">
+                <PaymentMethodChoice value={method} onChange={choose} name="drawerPaymentMethod" stacked />
+              </div>
+            )}
             <Link
-              href="/checkout"
+              href={checkoutHref}
               onClick={() => setDrawerOpen(false)}
               className="btn mb-3 w-full"
             >

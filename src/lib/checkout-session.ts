@@ -1,19 +1,20 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
-import { BRAND_NAME } from "@/lib/company";
-import { lineLabel, resolveCartLines, type CartLineInput, type ResolvedLine } from "@/lib/order";
+import type { CartLineInput, ResolvedLine } from "@/lib/order";
+import { normalizeOrderReference } from "@/lib/order-reference";
 import {
-  buildPaypalOrder,
+  openPaypalCheckout,
+  resumePaypalCheckout,
+  settleCapturedPaypalOrder,
+} from "@/lib/paypal-checkout";
+import {
   confirmPaypalOrder,
-  createPaypalOrder,
   isPaypalOrderId,
   paypalMoney,
   resolvePaypal,
 } from "@/lib/paypal";
-import { lookupPromo, promoDiscountCents } from "@/lib/promo";
-import { absoluteUrl } from "@/lib/seo";
+import { lookupPromo } from "@/lib/promo";
 
 export type ShippingAddressInput = {
   name: string;
@@ -28,6 +29,7 @@ export type ShippingAddressInput = {
 export type PaypalReceipt = {
   transactionId: string;
   orderId: string;
+  orderReference?: string;
   email: string;
   amountCents: number;
   subtotalCents: number;
@@ -44,25 +46,39 @@ export function paypalConfigured() {
   return Boolean(resolvePaypal(process.env));
 }
 
-function paypalAddress(shipping: ShippingAddressInput | null | undefined) {
-  const line1 = shipping?.line1.trim() ?? "";
-  const city = shipping?.city.trim() ?? "";
-  const state = shipping?.state.trim() ?? "";
-  const postalCode = shipping?.postal_code.trim() ?? "";
-  const country = (shipping?.country?.trim() || "AU").toUpperCase();
-  if (!line1 || !city || !state || !/^\d{4}$/.test(postalCode) || country !== "AU") {
-    throw new Error("A complete Australian shipping address is required");
-  }
-  const line2 = shipping?.line2?.trim() ?? "";
+function snapshotShipping(
+  shipping: {
+    name: string;
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    postcode: string;
+    country: string;
+  } | null,
+): ShippingAddressInput | null {
+  if (!shipping) return null;
+  const line2 = shipping.line2.trim();
   return {
-    name: shipping?.name.trim() || "Customer",
-    line1,
+    name: shipping.name,
+    line1: shipping.line1,
     ...(line2 ? { line2 } : {}),
-    city,
-    state,
-    postalCode,
-    countryCode: "AU" as const,
+    city: shipping.city,
+    state: shipping.state,
+    postal_code: shipping.postcode,
+    country: shipping.country,
   };
+}
+
+async function rememberPaypalReceipt(receipt: PaypalReceipt) {
+  const jar = await cookies();
+  jar.set(RECEIPT_COOKIE, Buffer.from(JSON.stringify(receipt), "utf8").toString("base64url"), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 30,
+  });
 }
 
 export async function createPaypalCheckout(input: {
@@ -75,71 +91,58 @@ export async function createPaypalCheckout(input: {
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
-  const config = resolvePaypal(process.env);
-  if (!config) {
-    throw new Error("PayPal is not configured");
-  }
-  if (!input.ageConfirmed || !input.researchUse) {
-    throw new Error("Age and research-use confirmation are required");
-  }
-
-  const lines = resolveCartLines(input.items);
-  const promo = lookupPromo(input.promoCode);
-  const email = input.email?.trim() ?? "";
-  const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const promoOffCents = promoDiscountCents(subtotalCents, promo);
-  const amountCents = subtotalCents - promoOffCents;
-  const transactionId = `rl_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
-  const firstName = input.firstName?.trim() || "Customer";
-  const lastName = input.lastName?.trim() || "Account";
-  const description = lines.map((line) => lineLabel(line)).join(", ");
-
-  const order = await createPaypalOrder(
-    config,
-    buildPaypalOrder({
-      transactionId,
-      amountCents,
-      subtotalCents,
-      discountCents: promoOffCents,
-      lines: lines.map((line) => ({
-        name: lineLabel(line) || description,
-        sku: line.sku,
-        qty: line.qty,
-        unitAmountCents: line.unitAmountCents,
-      })),
-      shipping: paypalAddress(input.shipping),
-      email,
-      firstName,
-      lastName,
-      returnUrl: absoluteUrl(`/checkout/success?session_id=${transactionId}`),
-      cancelUrl: absoluteUrl("/checkout"),
-      brandName: BRAND_NAME,
-    }),
-    transactionId,
-  );
-
-  const receipt: PaypalReceipt = {
-    transactionId,
-    orderId: order.id,
-    email,
-    amountCents,
-    subtotalCents,
-    currency: "aud",
-    lines,
-    shipping: input.shipping ?? null,
-    promoCode: promo?.code ?? "",
-    promoPercentOff: promo?.percentOff ?? 0,
-  };
-  const jar = await cookies();
-  jar.set(RECEIPT_COOKIE, Buffer.from(JSON.stringify(receipt), "utf8").toString("base64url"), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 30,
+  const placed = await openPaypalCheckout({
+    items: input.items,
+    email: input.email ?? "",
+    firstName: input.firstName,
+    lastName: input.lastName,
+    shipping: input.shipping,
+    promoCode: input.promoCode,
+    ageConfirmed: input.ageConfirmed,
+    researchUse: input.researchUse,
   });
+  await rememberPaypalReceipt({
+    transactionId: placed.transactionId,
+    orderId: placed.paypalOrderId,
+    orderReference: placed.reference,
+    email: placed.email,
+    amountCents: placed.totalCents,
+    subtotalCents: placed.subtotalCents,
+    currency: "aud",
+    lines: placed.lines,
+    shipping: snapshotShipping(placed.shipping),
+    promoCode: placed.promoCode ?? "",
+    promoPercentOff: placed.promoPercentOff,
+  });
+  return placed.approvalUrl;
+}
 
-  return order.approvalUrl;
+/** Starts PayPal again for an unpaid PayPal order, or returns the order page. */
+export async function resumePaypalCheckoutSession(reference: string) {
+  const resumed = await resumePaypalCheckout(reference);
+  if (resumed.kind === "order") return `/order/${resumed.reference}`;
+  await rememberPaypalReceipt({
+    transactionId: resumed.transactionId,
+    orderId: resumed.paypalOrderId,
+    orderReference: resumed.order.reference,
+    email: resumed.order.email,
+    amountCents: resumed.order.totalCents,
+    subtotalCents: resumed.order.subtotalCents,
+    currency: "aud",
+    lines: resumed.order.items.map((item) => ({
+      slug: item.slug,
+      name: item.name,
+      option: item.option,
+      variantLabel: item.variantLabel,
+      sku: item.sku,
+      qty: item.qty,
+      unitAmountCents: item.unitAmountCents,
+    })),
+    shipping: snapshotShipping(resumed.order.shipping),
+    promoCode: resumed.order.promoCode ?? "",
+    promoPercentOff: lookupPromo(resumed.order.promoCode)?.percentOff ?? 0,
+  });
+  return resumed.approvalUrl;
 }
 
 function readReceipt(value: string | undefined): PaypalReceipt | null {
@@ -149,7 +152,8 @@ function readReceipt(value: string | undefined): PaypalReceipt | null {
     if (!parsed?.transactionId || !isPaypalOrderId(parsed.orderId) || !Array.isArray(parsed.lines)) {
       return null;
     }
-    return parsed;
+    const orderReference = normalizeOrderReference(parsed.orderReference) ?? undefined;
+    return { ...parsed, orderReference };
   } catch {
     return null;
   }
@@ -171,5 +175,17 @@ export async function loadPaypalReceipt(sessionId?: string | null): Promise<{
     transactionId: receipt.transactionId,
     amount: paypalMoney(receipt.amountCents),
   });
+  if (confirmed.paid && receipt.orderReference) {
+    const settled = await settleCapturedPaypalOrder({
+      reference: receipt.orderReference,
+      paypalOrderId: receipt.orderId,
+      amountCents: receipt.amountCents,
+      currency: receipt.currency,
+      captured: true,
+    });
+    if (!settled.ok) {
+      throw new Error("PayPal could not confirm this payment");
+    }
+  }
   return { receipt, paid: confirmed.paid, status: confirmed.order.status };
 }

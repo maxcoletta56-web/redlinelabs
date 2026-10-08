@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
-import { paymentsProvider } from "@/lib/payments-provider";
+import { useCheckoutAvailability } from "@/components/PaymentMethodChoice";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
@@ -14,6 +14,7 @@ import { centsToDollars } from "@/lib/store-credit";
 export default function CartPage() {
   const { items, updateQty, removeItem } = useCart();
   const { promo } = usePromo();
+  const availability = useCheckoutAvailability();
   const totals = checkoutTotals({ items, promo });
 
   return (
@@ -106,9 +107,11 @@ export default function CartPage() {
               </div>
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              {paymentsProvider() === "bank_transfer"
-                ? "Checkout is paid by Australian bank transfer or PayID."
-                : "Checkout is charged through PayPal card checkout."}{" "}
+              {availability.showChoice
+                ? "Checkout can be paid by PayID / bank transfer, or with PayPal or card."
+                : availability.defaultMethod === "paypal"
+                  ? "Checkout is charged through PayPal card checkout."
+                  : "Checkout is paid by Australian bank transfer or PayID."}{" "}
               Apply a coupon for 20% off the
               total order amount. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">

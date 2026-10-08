@@ -5,7 +5,7 @@ import { startCartCheckoutSession } from "@/app/actions/checkout";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import type { CartLineInput } from "@/lib/order";
-import { paymentsProvider } from "@/lib/payments-provider";
+import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** Longer than the server-side provider timeout so the server message wins. */
@@ -23,6 +23,7 @@ export function CartCheckout({
   lastName,
   shipping,
   promoCode,
+  paymentMethod = "bank_transfer",
   ageConfirmed,
   researchUse,
 }: {
@@ -32,12 +33,12 @@ export function CartCheckout({
   lastName: string;
   shipping?: ShippingAddressInput | null;
   promoCode?: string | null;
+  paymentMethod?: CheckoutPaymentMethod;
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const provider = paymentsProvider();
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +50,7 @@ export function CartCheckout({
         lastName,
         shipping,
         promoCode,
+        paymentMethod,
         ageConfirmed,
         researchUse,
       }),
@@ -75,7 +77,18 @@ export function CartCheckout({
     return () => {
       cancelled = true;
     };
-  }, [attempt, items, email, firstName, lastName, shipping, promoCode, ageConfirmed, researchUse]);
+  }, [
+    attempt,
+    items,
+    email,
+    firstName,
+    lastName,
+    shipping,
+    promoCode,
+    paymentMethod,
+    ageConfirmed,
+    researchUse,
+  ]);
 
   if (error) {
     return (
@@ -104,7 +117,7 @@ export function CartCheckout({
 
   return (
     <p className="text-sm leading-6 text-[#8f8c84]" role="status">
-      {PENDING_COPY[provider]}
+      {PENDING_COPY[paymentMethod]}
     </p>
   );
 }

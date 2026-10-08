@@ -19,6 +19,7 @@ export async function GET(request: Request) {
         totalCents: order.totalCents,
         currency: order.currency,
         email: order.email,
+        paymentMethod: order.paymentMethod,
         createdAt: order.createdAt,
         paidAt: order.paidAt,
       })),
