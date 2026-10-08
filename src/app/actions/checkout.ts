@@ -1,8 +1,19 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { createBankTransferOrder } from "@/lib/bank-transfer-checkout";
-import { createPaypalCheckout, type ShippingAddressInput } from "@/lib/checkout-session";
-import { paymentsProvider } from "@/lib/payments-provider";
+import {
+  createPaypalCheckout,
+  paypalConfigured,
+  resumePaypalCheckoutSession,
+  type ShippingAddressInput,
+} from "@/lib/checkout-session";
+import { normalizeOrderReference } from "@/lib/order-reference";
+import {
+  paypalCheckoutOffered,
+  resolveRequestedPaymentMethod,
+} from "@/lib/payments-provider";
+import { PaypalOrderSavedError } from "@/lib/paypal-checkout";
 import { checkoutBodySchema } from "@/lib/validation";
 import { withTimeout } from "@/lib/with-timeout";
 
@@ -26,6 +37,7 @@ export async function startCartCheckoutSession(input: {
   shipping?: ShippingAddressInput | null;
   promoCode?: string | null;
   club?: { email: string; code: string; points: number } | null;
+  paymentMethod?: string | null;
   ageConfirmed: boolean;
   researchUse: boolean;
 }): Promise<CheckoutStart> {
@@ -39,15 +51,27 @@ export async function startCartCheckoutSession(input: {
     promoCode: input.promoCode,
     shipping: input.shipping,
     club: input.club,
+    paymentMethod: input.paymentMethod,
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid checkout payload" };
   }
 
-  const provider = paymentsProvider();
+  const paypalOffered = paypalCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalConfigured(),
+  );
+  const method = resolveRequestedPaymentMethod({
+    requested: parsed.data.paymentMethod,
+    envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalOffered,
+  });
+  if (method === "unavailable") {
+    return { ok: false, error: "PayPal checkout is not available. Nothing has been charged." };
+  }
 
   try {
-    if (provider === "bank_transfer") {
+    if (method === "bank_transfer") {
       const order = await createBankTransferOrder({
         items: parsed.data.items,
         email: parsed.data.email,
@@ -78,8 +102,11 @@ export async function startCartCheckoutSession(input: {
     );
     return { ok: true, redirectUrl };
   } catch (error) {
+    if (error instanceof PaypalOrderSavedError) {
+      return { ok: true, redirectUrl: `/order/${error.reference}?paypal=unavailable` };
+    }
     console.error("[checkout] submit failed", {
-      provider,
+      provider: method,
       slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
       quantities: parsed.data.items.map((item) => item.qty),
       promoCode: parsed.data.promoCode ?? null,
@@ -90,9 +117,30 @@ export async function startCartCheckoutSession(input: {
     return {
       ok: false,
       error:
-        provider === "bank_transfer"
+        method === "bank_transfer"
           ? "We could not create your order. Nothing has been charged."
           : "PayPal did not respond. Nothing has been charged.",
     };
   }
+}
+
+/** Buyer retry from the order page or an unfinished PayPal return. */
+export async function retryPaypalOrder(formData: FormData) {
+  const reference = normalizeOrderReference(
+    typeof formData.get("reference") === "string" ? String(formData.get("reference")) : "",
+  );
+  if (!reference) redirect("/checkout");
+  const offered = paypalCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalConfigured(),
+  );
+  if (!offered) redirect(`/order/${reference}?paypal=unavailable`);
+  const destination = await resumePaypalCheckoutSession(reference).catch((error: unknown) => {
+    console.error("[checkout] PayPal retry failed", {
+      reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return `/order/${reference}?paypal=unavailable`;
+  });
+  redirect(destination);
 }

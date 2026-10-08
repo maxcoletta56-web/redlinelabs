@@ -21,6 +21,7 @@ export async function GET(request: Request) {
         clubPointsRedeemed: order.clubPointsRedeemed,
         currency: order.currency,
         email: order.email,
+        paymentMethod: order.paymentMethod,
         createdAt: order.createdAt,
         paidAt: order.paidAt,
       })),

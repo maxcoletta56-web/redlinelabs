@@ -70,6 +70,8 @@ test("insert binds every order field as a parameter", async () => {
     null,
     null,
     0,
+    "bank_transfer",
+    null,
   ]);
 });
 

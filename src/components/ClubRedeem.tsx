@@ -1,23 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { REDEEM_STEP_POINTS, formatCents, formatPoints, pointsValueCents } from "@/lib/club";
 import { useClub } from "@/lib/club-state";
-import { paymentsProvider } from "@/lib/payments-provider";
+import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 
 /**
  * Lets a member spend points on this order. Everything shown here is a
  * preview: the server re-checks the member, the balance and the cap before a
- * cent comes off the total.
+ * cent comes off the total. Redemption is only offered when this order is
+ * PayID; choosing PayPal hides the row and drops the selected points.
  */
-export function ClubRedeem({ payableCents }: { payableCents: number }) {
+export function ClubRedeem({
+  payableCents,
+  paymentMethod,
+}: {
+  payableCents: number;
+  paymentMethod: CheckoutPaymentMethod;
+}) {
   const { member, points, maxPoints, pending, error, verify, setPoints, clear } = useClub();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const payId = paymentMethod === "bank_transfer";
 
-  // Points come off bank-transfer orders only; the PayPal card rail charges the full total.
-  if (paymentsProvider() !== "bank_transfer") return null;
+  useEffect(() => {
+    if (!payId) setPoints(0);
+  }, [payId, setPoints]);
+
+  if (!payId) return null;
 
   if (member) {
     return (

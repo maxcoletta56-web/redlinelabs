@@ -3,6 +3,7 @@ import test from "node:test";
 import type { Sql } from "./db.ts";
 import {
   createBankTransferOrder,
+  createCheckoutOrder,
   normalizeShipping,
   type BankTransferShippingInput,
 } from "./bank-transfer-checkout.ts";
@@ -262,4 +263,32 @@ test("held points go back when the order cannot be written", async () => {
   } finally {
     restore();
   }
+});
+
+test("a club redemption sent with PayPal is ignored and the charge stays the full total", async () => {
+  const { calls, sql } = recorder();
+  const club = clubHooks(clubMember({ pointsBalance: 1_000 }));
+  const order = await createCheckoutOrder(
+    {
+      ...orderInput,
+      shipping: goodAddress,
+      club: { email: "ada@example.com", code: "RL-ACDEFG", points: 200 },
+    },
+    {
+      sql,
+      deliver: async () => {},
+      club: club.hooks,
+      paymentMethod: "paypal",
+      skipBankConfiguration: true,
+    },
+  );
+
+  assert.equal(order.paymentMethod, "paypal");
+  assert.equal(order.totalCents, 8_900);
+  assert.equal(club.held.length, 0);
+  assert.equal(club.tagged.length, 0);
+  const insert = calls.find((call) => call.query.startsWith("INSERT"));
+  assert.equal(insert?.params?.[10], null);
+  assert.equal(insert?.params?.[11], 0);
+  assert.equal(insert?.params?.[12], "paypal");
 });

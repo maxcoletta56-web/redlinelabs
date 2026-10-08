@@ -27,6 +27,8 @@ const ORDERS_COLUMNS = [
   "club_points_redeemed",
   "created_at",
   "paid_at",
+  "payment_method",
+  "paypal_order_id",
 ];
 
 type FakeState = { columns: string[]; legacyTables: string[] };

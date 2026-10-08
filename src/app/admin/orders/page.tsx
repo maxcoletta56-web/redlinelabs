@@ -24,6 +24,7 @@ import { readAdminSessionToken } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { formatShippingAddress } from "@/lib/order-shipping";
 import { listRecentOrders, ordersConfigured, type StoredOrder } from "@/lib/orders";
+import { paymentMethodLabel } from "@/lib/payments-provider";
 import { pageMetadata } from "@/lib/seo";
 
 /** Payment state changes out of band, so this desk is never served from a cache. */
@@ -147,7 +148,7 @@ function AdminDesk({
           <p className="kicker mb-3">Admin</p>
           <h1 className="text-[2.15rem] font-semibold tracking-[-0.03em] text-white">Orders</h1>
           <p className="mt-3 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
-            Bank transfer and PayID orders. Mark one paid after the money lands.
+            PayID, bank transfer, and PayPal orders. Mark a transfer paid after the money lands.
           </p>
         </header>
         <form action={logoutAdmin}>
@@ -185,7 +186,7 @@ function AdminDesk({
 
       {problem ? null : (
         <div className="surface overflow-x-auto">
-          <table className="block w-full text-left md:table md:min-w-[920px]">
+          <table className="block w-full text-left md:table md:min-w-[1040px]">
             <caption className="sr-only">Recent orders</caption>
             <thead className="hidden md:table-header-group">
               <tr className="border-b border-[rgba(212,175,55,0.16)] text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
@@ -195,13 +196,14 @@ function AdminDesk({
                 <th className="px-4 py-3 font-semibold">Items</th>
                 <th className="px-4 py-3 font-semibold">Total</th>
                 <th className="px-4 py-3 font-semibold">Promo</th>
+                <th className="px-4 py-3 font-semibold">Payment</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
               </tr>
             </thead>
             <tbody className="block md:table-row-group">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-sm text-[#8f8c84]">
+                  <td colSpan={8} className="px-4 py-8 text-sm text-[#8f8c84]">
                     No orders yet.
                   </td>
                 </tr>
@@ -281,6 +283,9 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
       </Cell>
       <Cell label="Promo">
         <p>{promoLabel(order.promoCode)}</p>
+      </Cell>
+      <Cell label="Payment">
+        <p>{paymentMethodLabel(order.paymentMethod)}</p>
       </Cell>
       <Cell label="Status">
         <StatusBadge status={order.status} />

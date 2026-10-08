@@ -6,7 +6,7 @@ import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { useClub } from "@/lib/club-state";
 import type { CartLineInput } from "@/lib/order";
-import { paymentsProvider } from "@/lib/payments-provider";
+import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** Longer than the server-side provider timeout so the server message wins. */
@@ -24,6 +24,7 @@ export function CartCheckout({
   lastName,
   shipping,
   promoCode,
+  paymentMethod = "bank_transfer",
   ageConfirmed,
   researchUse,
 }: {
@@ -33,12 +34,12 @@ export function CartCheckout({
   lastName: string;
   shipping?: ShippingAddressInput | null;
   promoCode?: string | null;
+  paymentMethod?: CheckoutPaymentMethod;
   ageConfirmed: boolean;
   researchUse: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const provider = paymentsProvider();
   const { member, points } = useClub();
 
   useEffect(() => {
@@ -51,8 +52,12 @@ export function CartCheckout({
         lastName,
         shipping,
         promoCode,
-        // Points are a request; the server re-verifies the member and re-caps them.
-        club: provider === "bank_transfer" && member && points > 0 ? { email: member.email, code: member.code, points } : null,
+        // Points are a request on PayID only. PayPal is always the full total.
+        club:
+          paymentMethod === "bank_transfer" && member && points > 0
+            ? { email: member.email, code: member.code, points }
+            : null,
+        paymentMethod,
         ageConfirmed,
         researchUse,
       }),
@@ -87,11 +92,11 @@ export function CartCheckout({
     lastName,
     shipping,
     promoCode,
+    paymentMethod,
     ageConfirmed,
     researchUse,
     member,
     points,
-    provider,
   ]);
 
   if (error) {
@@ -121,7 +126,7 @@ export function CartCheckout({
 
   return (
     <p className="text-sm leading-6 text-[#8f8c84]" role="status">
-      {PENDING_COPY[provider]}
+      {PENDING_COPY[paymentMethod]}
     </p>
   );
 }

@@ -3,19 +3,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
+import { retryPaypalOrder } from "@/app/actions/checkout";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
 import { formatPoints, pointsValueCents } from "@/lib/club";
+import { paypalConfigured } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { formatShippingAddress } from "@/lib/order-shipping";
 import { findOrder, type StoredOrder } from "@/lib/orders";
+import { paymentMethodLabel, paypalCheckoutOffered } from "@/lib/payments-provider";
 import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
 
 /** Payment clears out of band, so the status must never be served from a cache. */
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ reference: string }> };
+type Props = {
+  params: Promise<{ reference: string }>;
+  searchParams: Promise<{ paypal?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { reference } = await params;
@@ -52,8 +58,18 @@ function StatusBadge({ order }: { order: StoredOrder }) {
   );
 }
 
-export default async function OrderPage({ params }: Props) {
-  const { reference } = await params;
+function paypalReturnNotice(flag: string | undefined) {
+  if (flag === "cancelled") {
+    return "PayPal checkout was cancelled. Nothing was charged. You can retry PayPal or pay by PayID below.";
+  }
+  if (flag === "unavailable") {
+    return "PayPal did not respond. Nothing was charged. You can retry PayPal or pay by PayID below.";
+  }
+  return null;
+}
+
+export default async function OrderPage({ params, searchParams }: Props) {
+  const [{ reference }, query] = await Promise.all([params, searchParams]);
   const normalized = normalizeOrderReference(reference);
   if (!normalized) notFound();
 
@@ -71,6 +87,13 @@ export default async function OrderPage({ params }: Props) {
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
+  const paypalOrder = order.paymentMethod === "paypal";
+  const paypalOffered = paypalCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalConfigured(),
+  );
+  const paypalFlag = Array.isArray(query.paypal) ? query.paypal[0] : query.paypal;
+  const returnNotice = paypalReturnNotice(paypalFlag);
 
   return (
     <div className="wrap max-w-[760px] py-16">
@@ -86,10 +109,17 @@ export default async function OrderPage({ params }: Props) {
       <h1 className="mt-3 mb-2 text-[2.15rem] font-semibold tracking-[-0.03em]">
         Order {order.reference}
       </h1>
+      {returnNotice && (
+        <p className="mb-6 text-sm leading-6 text-[#d4af37]" role="status">
+          {returnNotice}
+        </p>
+      )}
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+          : paypalOrder
+            ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
+            : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
@@ -152,6 +182,10 @@ export default async function OrderPage({ params }: Props) {
             </div>
           )}
           <div className="flex gap-2">
+            <dt>Payment</dt>
+            <dd className="text-[#cfc8b8]">{paymentMethodLabel(order.paymentMethod)}</dd>
+          </div>
+          <div className="flex gap-2">
             <dt>Ship to</dt>
             <dd className="whitespace-pre-line text-[#cfc8b8]">
               {formatShippingAddress(order.shipping)}
@@ -159,6 +193,15 @@ export default async function OrderPage({ params }: Props) {
           </div>
         </dl>
       </section>
+
+      {!paid && paypalOrder && paypalOffered && (
+        <form action={retryPaypalOrder} className="mb-8">
+          <input type="hidden" name="reference" value={order.reference} />
+          <button type="submit" className="btn">
+            Pay with PayPal or card
+          </button>
+        </form>
+      )}
 
       {!paid && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">

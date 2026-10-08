@@ -12,13 +12,14 @@ import {
 import { resolveBankTransfer } from "@/lib/bank-transfer";
 import { getSql, type Sql } from "@/lib/db";
 import { sendOrderCreatedEmails, type OrderCreatedNotice } from "@/lib/mailer";
-import { lineLabel, resolveCartLines, type CartLineInput } from "@/lib/order";
+import { lineLabel, resolveCartLines, type CartLineInput, type ResolvedLine } from "@/lib/order";
 import {
   insertOrder,
   ordersConfigured,
   type OrderItemSnapshot,
   type OrderShippingSnapshot,
 } from "@/lib/orders";
+import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 import { lookupPromo, promoDiscountCents } from "@/lib/promo";
 import { withTimeout } from "@/lib/with-timeout";
 
@@ -36,6 +37,19 @@ export type BankTransferOrder = {
   reference: string;
   redirectUrl: string;
   totalCents: number;
+};
+
+export type CheckoutOrder = BankTransferOrder & {
+  subtotalCents: number;
+  promoCode: string | null;
+  promoPercentOff: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  items: OrderItemSnapshot[];
+  lines: ResolvedLine[];
+  shipping: OrderShippingSnapshot;
+  paymentMethod: CheckoutPaymentMethod;
 };
 
 /** Long enough for a cold Neon compute to wake, short enough to surface a hang. */
@@ -61,6 +75,25 @@ export type CreateBankTransferOrderOptions = {
   };
   /** Injected by tests. Production schedules mail and never awaits the send. */
   deliver?: (notice: OrderCreatedNotice) => Promise<void>;
+  paymentMethod?: CheckoutPaymentMethod;
+  paypalOrderId?: string | null;
+  /**
+   * PayPal records the order before a card is captured, and does not need
+   * PayID details to do that. Bank transfer still requires them.
+   */
+  skipBankConfiguration?: boolean;
+};
+
+export type CheckoutOrderInput = {
+  items: CartLineInput[];
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  shipping?: BankTransferShippingInput | null;
+  promoCode?: string | null;
+  club?: ClubRedemptionInput | null;
+  ageConfirmed: boolean;
+  researchUse: boolean;
 };
 
 export function bankTransferConfigured() {
@@ -114,20 +147,27 @@ async function deliverOrderNotice(reference: string, notice: OrderCreatedNotice)
 }
 
 export async function createBankTransferOrder(
-  input: {
-    items: CartLineInput[];
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    shipping?: BankTransferShippingInput | null;
-    promoCode?: string | null;
-    club?: ClubRedemptionInput | null;
-    ageConfirmed: boolean;
-    researchUse: boolean;
-  },
+  input: CheckoutOrderInput,
   options?: CreateBankTransferOrderOptions,
-): Promise<BankTransferOrder> {
-  if (!resolveBankTransfer(process.env)) {
+): Promise<CheckoutOrder> {
+  return createCheckoutOrder(input, {
+    ...options,
+    paymentMethod: "bank_transfer",
+    skipBankConfiguration: false,
+  });
+}
+
+/**
+ * Shared insert for PayID and PayPal. Status stays `awaiting_payment` (the
+ * unpaid/pending state the rest of the store already uses). Totals, promo,
+ * and shipping are calculated once here.
+ */
+export async function createCheckoutOrder(
+  input: CheckoutOrderInput,
+  options?: CreateBankTransferOrderOptions,
+): Promise<CheckoutOrder> {
+  const paymentMethod = options?.paymentMethod === "paypal" ? "paypal" : "bank_transfer";
+  if (!options?.skipBankConfiguration && !resolveBankTransfer(process.env)) {
     throw new Error("Bank transfer is not configured");
   }
   const sql = databaseFor(options);
@@ -150,7 +190,12 @@ export async function createBankTransferOrder(
     throw new Error("Order total must be greater than zero");
   }
 
-  const hold = await holdClubPoints(input.club, payableCents, options);
+  // Redemption is per order, and only on PayID. A club payload sent with PayPal
+  // is ignored so the card is charged the full total.
+  const hold =
+    paymentMethod === "bank_transfer"
+      ? await holdClubPoints(input.club, payableCents, options)
+      : null;
   const totalCents = payableCents - (hold ? pointsValueCents(hold.points) : 0);
 
   const items: OrderItemSnapshot[] = lines.map((line) => ({
@@ -183,6 +228,8 @@ export async function createBankTransferOrder(
           shipping,
           clubEmail: hold?.member.email ?? null,
           clubPointsRedeemed: hold?.points ?? 0,
+          paymentMethod,
+          paypalOrderId: options?.paypalOrderId ?? null,
         },
         sql,
       ),
@@ -232,7 +279,21 @@ export async function createBankTransferOrder(
     });
   }
 
-  return { reference, redirectUrl: `/order/${reference}`, totalCents };
+  return {
+    reference,
+    redirectUrl: `/order/${reference}`,
+    totalCents,
+    subtotalCents,
+    promoCode,
+    promoPercentOff: promo?.percentOff ?? 0,
+    email,
+    firstName,
+    lastName,
+    items,
+    lines,
+    shipping,
+    paymentMethod,
+  };
 }
 
 /**
