@@ -71,6 +71,44 @@ test("checkout offers PayID by default and PayPal beside it when both can run", 
   assert.equal(CHECKOUT_METHOD_LABELS.paypal, "Pay with PayPal or card");
 });
 
+test("card checkout sits beside PayID when Whop is configured", () => {
+  const both = checkoutPaymentChoices({
+    envValue: "bank_transfer",
+    paypalConfigured: false,
+    bankTransferConfigured: true,
+    whopConfigured: true,
+  });
+  assert.equal(both.showChoice, true);
+  assert.deepEqual(both.methods, ["bank_transfer", "whop"]);
+  assert.equal(both.defaultMethod, "bank_transfer");
+  assert.equal(CHECKOUT_METHOD_LABELS.whop, "Pay by card");
+
+  const killed = checkoutPaymentChoices({
+    envValue: "bank_transfer_only",
+    paypalConfigured: false,
+    bankTransferConfigured: true,
+    whopConfigured: true,
+  });
+  assert.deepEqual(killed.methods, ["bank_transfer"]);
+
+  assert.equal(
+    resolveRequestedPaymentMethod({
+      requested: "whop",
+      whopOffered: true,
+      paypalOffered: false,
+    }),
+    "whop",
+  );
+  assert.equal(
+    resolveRequestedPaymentMethod({
+      requested: "card",
+      whopOffered: false,
+      paypalOffered: false,
+    }),
+    "unavailable",
+  );
+});
+
 test("a legacy paypal env without PayID stays on the PayPal page", () => {
   const missing = checkoutSurface({
     envValue: "paypal",

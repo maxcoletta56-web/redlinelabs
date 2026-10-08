@@ -27,6 +27,9 @@ const ORDERS_COLUMNS = [
   "paid_at",
   "payment_method",
   "paypal_order_id",
+  "whop_checkout_id",
+  "whop_payment_id",
+  "whop_handled_payment_ids",
 ];
 
 type FakeState = { columns: string[]; legacyTables: string[] };

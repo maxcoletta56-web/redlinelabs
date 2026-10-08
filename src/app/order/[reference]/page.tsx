@@ -46,13 +46,20 @@ function formatDate(iso: string | null) {
 }
 
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
+  const label =
+    order.status === "paid"
+      ? "Payment received"
+      : order.status === "failed"
+        ? "Card payment failed"
+        : order.status === "pending"
+          ? "Card payment pending"
+          : "Awaiting payment";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : "Awaiting payment"}
+      {label}
     </p>
   );
 }
@@ -87,6 +94,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
   const paypalOrder = order.paymentMethod === "paypal";
+  const cardOrder = order.paymentMethod === "whop";
   const paypalOffered = paypalCheckoutOffered(
     process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured(),
@@ -116,9 +124,13 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : paypalOrder
-            ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
-            : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+          : cardOrder
+            ? order.status === "failed"
+              ? "The card payment did not finish. You can try the card again, or send a PayID transfer for the same amount. The order ships once payment clears."
+              : "This card payment is pending. It is marked paid when Whop confirms it, and a confirmation email is sent then. You can also send a PayID transfer for the same amount."
+            : paypalOrder
+              ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
+              : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">
@@ -179,6 +191,14 @@ export default async function OrderPage({ params, searchParams }: Props) {
           </div>
         </dl>
       </section>
+
+      {!paid && cardOrder && (
+        <p className="mb-8">
+          <Link href={`/checkout/return?order=${order.reference}&status=error`} className="btn">
+            Pay by card
+          </Link>
+        </p>
+      )}
 
       {!paid && paypalOrder && paypalOffered && (
         <form action={retryPaypalOrder} className="mb-8">

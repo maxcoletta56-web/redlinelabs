@@ -90,6 +90,14 @@ export default function CartPage() {
               </span>
             </div>
             <PromoCodeForm id="cart-checkout-code" />
+            {totals.volumeDiscountCents > 0 && (
+              <div className="mb-4 flex justify-between text-sm">
+                <span>10% off orders $200 or more</span>
+                <span className="text-[#d4af37]">
+                  −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+                </span>
+              </div>
+            )}
             {totals.discountCents > 0 && (
               <div className="mb-4 flex justify-between text-sm">
                 <span>{promo?.percentOff}% off total</span>
@@ -108,12 +116,14 @@ export default function CartPage() {
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
               {availability.showChoice
-                ? "Checkout can be paid by PayID / bank transfer, or with PayPal or card."
+                ? "Checkout can be paid by PayID / bank transfer, by card, or with PayPal."
                 : availability.defaultMethod === "paypal"
                   ? "Checkout is charged through PayPal card checkout."
-                  : "Checkout is paid by Australian bank transfer or PayID."}{" "}
-              Apply a coupon for 20% off the
-              total order amount. Dispatch notes are on the{" "}
+                  : availability.defaultMethod === "whop"
+                    ? "Checkout is charged by card on this site."
+                    : "Checkout is paid by Australian bank transfer or PayID."}{" "}
+              Orders of $200 or more take 10% off. Apply a coupon for a further percent off the
+              remaining total. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
               </Link>

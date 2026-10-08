@@ -49,6 +49,9 @@ function stored(status: StoredOrder["status"], totalCents = 7120): StoredOrder {
     items: [],
     shipping: null,
     paymentMethod: "paypal",
+    whopCheckoutId: null,
+    whopPaymentId: null,
+    whopHandledPaymentIds: [],
     paypalOrderId: paypalId,
     createdAt: "2026-10-07T00:00:00.000Z",
     paidAt: status === "paid" ? "2026-10-07T01:00:00.000Z" : null,
@@ -116,15 +119,15 @@ test("PayPal checkout inserts an unpaid order before redirecting", async () => {
 
   const insert = calls.find((call) => call.query.startsWith("INSERT"));
   assert.equal(insertedBeforeRemote, true);
-  assert.match(insert?.query ?? "", /'awaiting_payment'/);
-  assert.equal(insert?.params?.[1], "aud");
-  assert.equal(insert?.params?.[2], 8900);
-  assert.equal(insert?.params?.[3], 7120);
-  assert.equal(insert?.params?.[4], "DGC20");
-  assert.equal(insert?.params?.[7], "ada@example.com");
-  assert.equal(insert?.params?.[10], "paypal");
-  assert.equal(insert?.params?.[11], null);
-  const storedShipping = JSON.parse(String(insert?.params?.[9])) as { line1: string; postcode: string };
+  assert.equal(insert?.params?.[1], "awaiting_payment");
+  assert.equal(insert?.params?.[2], "aud");
+  assert.equal(insert?.params?.[3], 8900);
+  assert.equal(insert?.params?.[4], 7120);
+  assert.equal(insert?.params?.[5], "DGC20");
+  assert.equal(insert?.params?.[8], "ada@example.com");
+  assert.equal(insert?.params?.[11], "paypal");
+  assert.equal(insert?.params?.[12], null);
+  const storedShipping = JSON.parse(String(insert?.params?.[10])) as { line1: string; postcode: string };
   assert.equal(storedShipping.line1, "1 Laboratory Road");
   assert.equal(storedShipping.postcode, "2000");
   assert.equal(mailed, true);

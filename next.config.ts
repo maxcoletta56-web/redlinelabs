@@ -7,12 +7,12 @@ const csp = [
   "form-action 'self' mailto: https://www.paypal.com https://www.sandbox.paypal.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' https://assistloop.ai https://va.vercel-scripts.com https://js.whop.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://i0.wp.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://assistloop.ai https://vitals.vercel-insights.com https://va.vercel-scripts.com",
-  "frame-src 'none'",
+  "connect-src 'self' https://assistloop.ai https://vitals.vercel-insights.com https://va.vercel-scripts.com https://api.whop.com https://sandbox-api.whop.com https://whop.com https://*.whop.com",
+  "frame-src https://whop.com https://*.whop.com https://js.whop.com",
 ].join("; ");
 
 const securityHeaders = [
