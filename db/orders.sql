@@ -16,5 +16,6 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ,
   payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
-  paypal_order_id TEXT
+  paypal_order_id TEXT,
+  whop_payment_id TEXT
 );

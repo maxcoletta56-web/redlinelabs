@@ -2,7 +2,7 @@ import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 import type { CheckoutPaymentMethod } from "./payments-provider.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid", "cancelled"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "paid", "failed", "cancelled"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -44,6 +44,8 @@ export type StoredOrder = {
   clubDiscountCents: number;
   paymentMethod: CheckoutPaymentMethod;
   paypalOrderId: string | null;
+  /** Whop payment id (`pay_…`). The webhook idempotency key. */
+  whopPaymentId: string | null;
   createdAt: string | null;
   paidAt: string | null;
 };
@@ -65,6 +67,9 @@ export type NewOrder = {
   clubDiscountCents?: number;
   paymentMethod?: CheckoutPaymentMethod;
   paypalOrderId?: string | null;
+  /** Null keeps the historical unpaid default, `awaiting_payment`. */
+  status?: OrderStatus;
+  whopPaymentId?: string | null;
 };
 
 export class OrderCancelledError extends Error {
@@ -100,7 +105,8 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ,
   payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
-  paypal_order_id TEXT
+  paypal_order_id TEXT,
+  whop_payment_id TEXT
 )`;
 
 /** Postgres returns timestamptz in a driver-dependent shape, so pin it to ISO-8601 here. */
@@ -123,14 +129,31 @@ const ORDER_COLUMNS = [
   "club_discount_cents",
   "payment_method",
   "paypal_order_id",
+  "whop_payment_id",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, club_discount_cents, payment_method, paypal_order_id) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, club_discount_cents, payment_method, paypal_order_id, whop_payment_id) " +
+  "VALUES ($1, COALESCE($16, 'awaiting_payment'), $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15, $17) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
+
+/** First delivery of a Whop payment id moves a card order to paid. A repeat of that id does not. */
+const MARK_WHOP_PAID =
+  `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()), whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND status IN ('pending', 'awaiting_payment', 'failed') ` +
+  `AND (whop_payment_id IS NULL OR whop_payment_id = $2) RETURNING ${ORDER_COLUMNS}`;
+
+const MARK_WHOP_FAILED =
+  `UPDATE orders SET status = 'failed', whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND status IN ('pending', 'awaiting_payment') ` +
+  `AND (whop_payment_id IS NULL OR whop_payment_id = $2) RETURNING ${ORDER_COLUMNS}`;
+
+/** Records the payment id for an in-progress 3DS challenge without deciding the order. */
+const NOTE_WHOP_ACTION =
+  `UPDATE orders SET whop_payment_id = $2 WHERE reference = $1 ` +
+  `AND status IN ('pending', 'awaiting_payment') AND whop_payment_id IS NULL RETURNING ${ORDER_COLUMNS}`;
 
 const ATTACH_PAYPAL_ORDER =
   "UPDATE orders SET paypal_order_id = $2 WHERE reference = $1 AND status = 'awaiting_payment' " +
@@ -149,7 +172,7 @@ const MARK_ORDER_PAID =
   `AND NOT (status = 'cancelled' AND club_points_redeemed > 0) RETURNING ${ORDER_COLUMNS}`;
 
 const CANCEL_ORDER =
-  `UPDATE orders SET status = 'cancelled' WHERE reference = $1 AND status = 'awaiting_payment' ` +
+  `UPDATE orders SET status = 'cancelled' WHERE reference = $1 AND status IN ('awaiting_payment', 'pending', 'failed') ` +
   `RETURNING ${ORDER_COLUMNS}`;
 
 export function ensureOrdersTable(sql: Sql) {
@@ -203,7 +226,8 @@ function readItems(value: unknown): OrderItemSnapshot[] {
 }
 
 function readPaymentMethod(value: unknown): CheckoutPaymentMethod {
-  return value === "paypal" ? "paypal" : "bank_transfer";
+  if (value === "paypal" || value === "whop") return value;
+  return "bank_transfer";
 }
 
 function readShipping(value: unknown): OrderShippingSnapshot | null {
@@ -247,6 +271,7 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     clubDiscountCents: readInt(record.club_discount_cents),
     paymentMethod: readPaymentMethod(record.payment_method),
     paypalOrderId: readText(record.paypal_order_id) || null,
+    whopPaymentId: readText(record.whop_payment_id) || null,
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
   };
@@ -284,8 +309,10 @@ export async function insertOrder(
       order.clubEmail ?? null,
       Math.max(0, Math.floor(order.clubPointsRedeemed ?? 0)),
       Math.max(0, Math.floor(order.clubDiscountCents ?? 0)),
-      order.paymentMethod === "paypal" ? "paypal" : "bank_transfer",
+      order.paymentMethod === "paypal" ? "paypal" : order.paymentMethod === "whop" ? "whop" : "bank_transfer",
       order.paypalOrderId ?? null,
+      order.status && order.status !== "awaiting_payment" ? order.status : null,
+      order.whopPaymentId ?? null,
     ]);
     if (rowsOf(result).length > 0) return reference;
   }
@@ -316,6 +343,53 @@ export async function listRecentOrders(
   return rowsOf(result)
     .map(readOrderRow)
     .filter((order): order is StoredOrder => order !== null);
+}
+
+export type WhopSettlement =
+  | { outcome: "paid" | "failed" | "action_required"; order: StoredOrder; transitioned: boolean }
+  | { outcome: "missing" | "ignored" };
+
+/**
+ * Applies one Whop payment id to an order. The same id is a no-op the second
+ * time, including the confirmation email the caller sends only when
+ * `transitioned` is true. A different id cannot overwrite a paid order.
+ */
+export async function applyWhopPayment(
+  reference: string,
+  paymentId: string,
+  outcome: "paid" | "failed" | "action_required",
+  sql: Sql | null = getSql(),
+): Promise<WhopSettlement> {
+  const normalized = normalizeOrderReference(reference);
+  const id = paymentId.trim();
+  if (!normalized || !id) return { outcome: "missing" };
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const statement =
+    outcome === "paid" ? MARK_WHOP_PAID : outcome === "failed" ? MARK_WHOP_FAILED : NOTE_WHOP_ACTION;
+  const result = await sql.query(statement, [normalized, id]);
+  const updated = readOrderRow(rowsOf(result)[0]);
+  if (updated) {
+    return {
+      outcome: outcome === "action_required" ? "action_required" : outcome,
+      order: updated,
+      transitioned: true,
+    };
+  }
+  const existing = await findOrder(normalized, sql);
+  if (!existing) return { outcome: "missing" };
+  if (existing.whopPaymentId === id) {
+    if (outcome === "paid" && existing.status === "paid") {
+      return { outcome: "paid", order: existing, transitioned: false };
+    }
+    if (outcome === "failed" && existing.status === "failed") {
+      return { outcome: "failed", order: existing, transitioned: false };
+    }
+    if (outcome === "action_required" && (existing.status === "pending" || existing.status === "awaiting_payment")) {
+      return { outcome: "action_required", order: existing, transitioned: false };
+    }
+  }
+  return { outcome: "ignored" };
 }
 
 /** Replaces the PayPal id on an unpaid order. A paid row is left alone. */

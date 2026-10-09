@@ -291,7 +291,7 @@ function OrderRow({ order, confirming }: { order: StoredOrder; confirming: boole
       </Cell>
       <Cell label="Status">
         <StatusBadge status={order.status} />
-        {order.status === "awaiting_payment" ? (
+        {order.status === "awaiting_payment" || order.status === "pending" || order.status === "failed" ? (
           <div className="mt-3">
             <MarkPaid reference={order.reference} confirming={confirming} />
             <CancelOrder reference={order.reference} pointsHeld={order.clubPointsRedeemed > 0} />

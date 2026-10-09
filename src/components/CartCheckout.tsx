@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { startCartCheckoutSession } from "@/app/actions/checkout";
+import { WhopCheckoutElement } from "@/components/WhopCheckoutElement";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import { useClub } from "@/lib/club-state";
@@ -15,7 +16,16 @@ const SUBMIT_TIMEOUT_MS = 25_000;
 const PENDING_COPY = {
   bank_transfer: "Creating your order and payment instructions.",
   paypal: "Redirecting to PayPal card checkout to take payment.",
+  whop: "Opening secure card checkout.",
 } as const;
+
+type WhopEmbed = {
+  sessionId: string;
+  planId: string | null;
+  returnUrl: string;
+  environment: "sandbox" | "production";
+  reference: string;
+};
 
 export function CartCheckout({
   items,
@@ -39,6 +49,7 @@ export function CartCheckout({
   researchUse: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [embed, setEmbed] = useState<WhopEmbed | null>(null);
   const [attempt, setAttempt] = useState(0);
   const { member, points } = useClub();
 
@@ -67,6 +78,10 @@ export function CartCheckout({
       .then((result) => {
         if (cancelled) return;
         if (result.ok) {
+          if (result.whop) {
+            setEmbed(result.whop);
+            return;
+          }
           window.location.assign(result.redirectUrl);
           return;
         }
@@ -98,6 +113,18 @@ export function CartCheckout({
     member,
     points,
   ]);
+
+  if (embed) {
+    return (
+      <WhopCheckoutElement
+        sessionId={embed.sessionId}
+        planId={embed.planId}
+        returnUrl={embed.returnUrl}
+        environment={embed.environment}
+        email={email}
+      />
+    );
+  }
 
   if (error) {
     return (

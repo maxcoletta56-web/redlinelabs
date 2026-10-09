@@ -30,7 +30,7 @@ export type CheckoutBody = {
   promoCode?: string | null;
   shipping: CheckoutShipping | null;
   club?: CheckoutClub | null;
-  paymentMethod?: "bank_transfer" | "paypal" | null;
+  paymentMethod?: "bank_transfer" | "paypal" | "whop" | null;
 };
 
 export type ParseResult<T> =
@@ -127,12 +127,12 @@ function parseClub(value: unknown): CheckoutClub | null {
   return { email, code, points };
 }
 
-function readPaymentMethod(value: unknown): "bank_transfer" | "paypal" | null | "invalid" {
+function readPaymentMethod(value: unknown): "bank_transfer" | "paypal" | "whop" | null | "invalid" {
   if (value == null || value === "") return null;
   if (typeof value !== "string") return "invalid";
   const method = value.trim().toLowerCase();
   if (!method) return null;
-  if (method === "bank_transfer" || method === "paypal") return method;
+  if (method === "bank_transfer" || method === "paypal" || method === "whop") return method;
   return "invalid";
 }
 

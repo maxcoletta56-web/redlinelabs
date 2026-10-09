@@ -415,6 +415,46 @@ export function buildPaymentReceivedEmail(input: PaymentReceivedInput): Rendered
   };
 }
 
+export function buildPaymentActionEmail(input: {
+  reference: string;
+  firstName: string;
+  email: string;
+  orderUrl: string;
+  recoveryUrl: string;
+}): RenderedEmail {
+  const name = customerName(input);
+  const text = [
+    `Verify payment for order ${input.reference}`,
+    "",
+    `Hello ${name},`,
+    "",
+    "Your bank needs you to finish verifying this card payment. Open the secure Whop page to complete 3D Secure. Nothing else is charged until you confirm.",
+    "",
+    input.recoveryUrl,
+    "",
+    `Order page: ${input.orderUrl}`,
+    "",
+    RESEARCH_DISCLAIMER,
+    "",
+    `Questions about this order: ${COMPANY_EMAIL}`,
+  ].join("\n");
+  const html = htmlShell(
+    `Verify payment`,
+    `<p style="margin:0 0 12px;">Hello ${escapeHtml(name)},</p>
+    <p style="margin:0 0 16px;">Your bank needs you to finish verifying this card payment. Open the secure Whop page to complete 3D Secure. Nothing else is charged until you confirm.</p>
+    <p style="margin:0 0 16px;"><a href="${escapeHtml(input.recoveryUrl)}" style="color:#d4af37;">Finish verification</a></p>
+    <p style="margin:0 0 16px;"><a href="${escapeHtml(input.orderUrl)}" style="color:#d4af37;">View order ${escapeHtml(input.reference)}</a></p>
+    <p style="margin:0 0 12px;color:#8f8c84;">${escapeHtml(RESEARCH_DISCLAIMER)}</p>
+    <p style="margin:0;color:#8f8c84;">Questions about this order: <a href="mailto:${escapeHtml(COMPANY_EMAIL)}" style="color:#d4af37;">${escapeHtml(COMPANY_EMAIL)}</a></p>`,
+  );
+  return {
+    to: singleLine(input.email),
+    subject: singleLine(`Verify payment for order ${input.reference}`),
+    text,
+    html,
+  };
+}
+
 /**
  * Sends one message through Resend's HTTP API.
  * A missing API key is a no-op: it logs once and never throws.
@@ -552,6 +592,28 @@ export async function sendOrderCreatedEmails(
     await Promise.all(jobs);
   } catch (error) {
     reportFailure(notice.reference, error, hooks, "[mailer] order email failed");
+  }
+}
+
+export async function sendPaymentActionEmail(
+  notice: {
+    reference: string;
+    firstName: string;
+    email: string;
+    recoveryUrl: string;
+  },
+  env?: MailEnv,
+  hooks: MailHooks = {},
+): Promise<void> {
+  const resolved = currentMailEnv(env);
+  try {
+    const message = buildPaymentActionEmail({
+      ...notice,
+      orderUrl: orderPageUrl(notice.reference, resolved),
+    });
+    await deliver(message, notice.reference, resolved, hooks);
+  } catch (error) {
+    reportFailure(notice.reference, error, hooks, "[mailer] payment action email failed");
   }
 }
 

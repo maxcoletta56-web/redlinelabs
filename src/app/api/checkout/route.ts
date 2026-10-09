@@ -6,7 +6,9 @@ import {
   paymentsProvider,
   paypalCheckoutOffered,
   resolveRequestedPaymentMethod,
+  whopCheckoutOffered,
 } from "@/lib/payments-provider";
+import { whopConfigured } from "@/lib/whop";
 import { PaypalOrderSavedError } from "@/lib/paypal-checkout";
 import { resolvePaypal } from "@/lib/paypal";
 import { checkoutBodySchema } from "@/lib/validation";
@@ -25,9 +27,11 @@ export async function GET() {
   const provider = paymentsProvider();
   const paypalReady = paypalConfigured();
   const bankReady = bankTransferConfigured();
+  const whopReady = whopConfigured();
   const surface = checkoutSurface({
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured: paypalReady,
+    whopConfigured: whopReady,
     bankTransferConfigured: bankReady,
   });
   return NextResponse.json({
@@ -35,6 +39,7 @@ export async function GET() {
     configured: surface.setup === null,
     showChoice: surface.showChoice,
     defaultMethod: surface.defaultMethod,
+    methods: surface.methods,
     setup: surface.setup,
     paypalOffered: surface.showChoice,
     paypalConfigured: paypalReady,
@@ -47,6 +52,10 @@ export async function POST(request: Request) {
   const paypalOffered = paypalCheckoutOffered(
     process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured(),
+  );
+  const whopOffered = whopCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    whopConfigured(),
   );
 
   let json: unknown;
@@ -68,15 +77,25 @@ export async function POST(request: Request) {
     requested: parsed.data.paymentMethod,
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalOffered,
+    whopOffered,
   });
   if (method === "unavailable") {
-    return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+    return NextResponse.json(
+      { error: "That payment method is not available. Nothing has been charged." },
+      { status: 503 },
+    );
   }
   if (method === "bank_transfer" && !bankTransferConfigured()) {
     return NextResponse.json({ error: BANK_TRANSFER_SETUP }, { status: 503 });
   }
   if (method === "paypal" && !paypalConfigured()) {
     return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+  }
+  if (method === "whop" && !whopConfigured()) {
+    return NextResponse.json(
+      { error: "Card checkout is not configured. Add WHOP_API_KEY." },
+      { status: 503 },
+    );
   }
 
   try {
@@ -99,6 +118,43 @@ export async function POST(request: Request) {
         amountCents: order.totalCents,
         currency: "aud",
       });
+    }
+
+    if (method === "whop") {
+      const { createWhopCardCheckout, WhopOrderSavedError } = await import("@/lib/whop-checkout");
+      try {
+        const session = await withTimeout(
+          createWhopCardCheckout({
+            items: parsed.data.items,
+            email: parsed.data.email,
+            firstName: parsed.data.firstName,
+            lastName: parsed.data.lastName,
+            shipping: parsed.data.shipping,
+            promoCode: parsed.data.promoCode,
+            ageConfirmed: true,
+            researchUse: true,
+          }),
+          PROVIDER_TIMEOUT_MS,
+          "Whop",
+        );
+        return NextResponse.json({
+          provider: method,
+          reference: session.reference,
+          sessionId: session.sessionId,
+          environment: session.environment,
+          amountCents: session.totalCents,
+          currency: "aud",
+        });
+      } catch (error) {
+        if (error instanceof WhopOrderSavedError) {
+          return NextResponse.json({
+            provider: method,
+            reference: error.reference,
+            redirectUrl: `/order/${error.reference}?whop=unavailable`,
+          });
+        }
+        throw error;
+      }
     }
 
     const redirectUrl = await withTimeout(
