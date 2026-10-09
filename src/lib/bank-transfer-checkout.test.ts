@@ -8,7 +8,13 @@ import {
   type BankTransferShippingInput,
 } from "./bank-transfer-checkout.ts";
 import type { OrderCreatedNotice } from "./mailer.ts";
-import type { ClubMember, RedemptionHold } from "./club-db.ts";
+import {
+  authenticateMember,
+  joinClub,
+  releaseRedemption,
+  reserveRedemption,
+} from "./club-db.ts";
+import { createFakeClubSql, TEST_PROGRAM, TEST_SECRET } from "./club-test-fixtures.ts";
 
 const goodAddress: BankTransferShippingInput = {
   name: "  Ada Lovelace  ",
@@ -149,89 +155,196 @@ test("createBankTransferOrder stores a trimmed address and still succeeds if mai
 });
 
 
-function clubMember(overrides: Partial<ClubMember> = {}): ClubMember {
-  return {
-    email: "ada@example.com",
-    firstName: "Ada",
-    memberCode: "RL-ACDEFG",
-    pointsBalance: 1_000,
-    lifetimeSpendCents: 0,
-    firstOrderBonusAt: null,
-    createdAt: "2026-10-01T00:00:00Z",
-    ...overrides,
-  };
-}
+const ADA = "ada@example.com";
 
-function clubHooks(member: ClubMember | null) {
-  const held: RedemptionHold[] = [];
-  const tagged: string[] = [];
-  const released: RedemptionHold[] = [];
+/** Real club statements against the in-memory tables, with a real member code. */
+async function clubFixture(balance: number, program: typeof TEST_PROGRAM | null = TEST_PROGRAM) {
+  const db = createFakeClubSql();
+  const joined = await joinClub({ email: ADA }, db.sql, undefined, TEST_SECRET);
+  const member = db.members.get(ADA);
+  if (member) member.balance = balance;
+  const code = joined.memberCode ?? "";
+  const released: string[] = [];
   return {
-    held,
-    tagged,
+    db,
+    code,
     released,
     hooks: {
-      authenticate: async () => member,
-      hold: async (input: { email: string; points: number }) => {
-        const hold: RedemptionHold = {
-          ledgerId: 1,
-          points: input.points,
-          member: member ?? clubMember(),
-        };
-        held.push(hold);
-        return hold;
-      },
-      tag: async (_hold: RedemptionHold, reference: string) => {
-        tagged.push(reference);
-      },
-      release: async (hold: RedemptionHold) => {
-        released.push(hold);
+      program,
+      allowAttempt: () => ({ ok: true }),
+      authenticate: (email: string, candidate: string) =>
+        authenticateMember(email, candidate, db.sql, TEST_SECRET),
+      reserve: (input: Parameters<typeof reserveRedemption>[0]) => reserveRedemption(input, db.sql),
+      release: async (reference: string, note?: string) => {
+        released.push(reference);
+        return releaseRedemption(reference, note, db.sql);
       },
     },
   };
 }
 
-test("club points come off the total and are capped to the real balance", async () => {
+test("club points come off the total, capped to the real balance, and are held under the order reference", async () => {
   const restore = payIdEnv();
-  const { sql } = recorder();
-  const club = clubHooks(clubMember({ pointsBalance: 300 }));
+  const { calls, sql } = recorder();
+  const club = await clubFixture(300);
   try {
     const order = await createBankTransferOrder(
       {
         ...orderInput,
         shipping: goodAddress,
         // Asks for 10,000 points on a 300-point balance.
-        club: { email: "ada@example.com", code: "RL-ACDEFG", points: 10_000 },
+        club: { email: ADA, code: club.code, points: 10_000 },
       },
       { sql, deliver: async () => {}, club: club.hooks },
     );
 
-    // $89 catalogue line, 300 points = $15 off.
+    // $89 catalogue line, 300 points = $15 off at the synthetic $5 per 100.
     assert.equal(order.totalCents, 7_400);
-    assert.equal(club.held[0]?.points, 300);
-    assert.equal(club.tagged[0], order.reference);
+    assert.equal(club.db.balance(ADA), 0);
+    assert.equal(club.db.ledger.find((l) => l.reason === "redeem")?.orderReference, order.reference);
     assert.equal(club.released.length, 0);
+
+    const insert = calls.find((call) => call.query.startsWith("INSERT"));
+    assert.equal(insert?.params?.[0], order.reference);
+    assert.equal(insert?.params?.[10], ADA);
+    assert.equal(insert?.params?.[11], 300);
+    assert.equal(insert?.params?.[12], 1_500);
   } finally {
     restore();
   }
 });
 
-test("a membership that does not check out pays the full total", async () => {
+test("redemption is whole blocks of 100 points", async () => {
   const restore = payIdEnv();
   const { sql } = recorder();
-  const club = clubHooks(null);
+  const club = await clubFixture(1_000);
   try {
     const order = await createBankTransferOrder(
-      {
-        ...orderInput,
-        shipping: goodAddress,
-        club: { email: "stranger@example.com", code: "RL-ACDEFG", points: 200 },
-      },
+      { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 250 } },
       { sql, deliver: async () => {}, club: club.hooks },
     );
+    assert.equal(order.totalCents, 7_900);
+    assert.equal(club.db.balance(ADA), 800);
+  } finally {
+    restore();
+  }
+});
 
+test("the order always keeps at least AUD $1 payable", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = await clubFixture(1_000_000);
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 1_000_000 } },
+      { sql, deliver: async () => {}, club: club.hooks },
+    );
+    assert.ok(order.totalCents >= 100, `payable was ${order.totalCents}`);
+    // $89 order: $88 headroom at $5 a block is 17 blocks = $85, leaving $4.
+    assert.equal(order.totalCents, 400);
+    assert.equal(club.db.balance(ADA), 1_000_000 - 1_700);
+  } finally {
+    restore();
+  }
+});
+
+test("a wrong member code pays the full total and spends nothing", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = await clubFixture(1_000);
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress, club: { email: ADA, code: "RL-AAAAAAAAAA", points: 200 } },
+      { sql, deliver: async () => {}, club: club.hooks },
+    );
     assert.equal(order.totalCents, 8_900);
-    assert.equal(club.held.length, 0);
+    assert.equal(club.db.balance(ADA), 1_000);
+    assert.equal(club.db.ledger.filter((l) => l.reason === "redeem").length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test("an email that is not a member pays the full total", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = await clubFixture(1_000);
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress, club: { email: "stranger@example.com", code: club.code, points: 200 } },
+      { sql, deliver: async () => {}, club: club.hooks },
+    );
+    assert.equal(order.totalCents, 8_900);
+  } finally {
+    restore();
+  }
+});
+
+test("a balance too small for a block redeems nothing", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = await clubFixture(99);
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 100 } },
+      { sql, deliver: async () => {}, club: club.hooks },
+    );
+    assert.equal(order.totalCents, 8_900);
+    assert.equal(club.db.balance(ADA), 99);
+  } finally {
+    restore();
+  }
+});
+
+test("while the programme is unapproved a redemption request is ignored", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = await clubFixture(1_000, null);
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 500 } },
+      { sql, deliver: async () => {}, club: club.hooks },
+    );
+    assert.equal(order.totalCents, 8_900);
+    assert.equal(club.db.balance(ADA), 1_000);
+  } finally {
+    restore();
+  }
+});
+
+test("checkout without any club input is unchanged", async () => {
+  const restore = payIdEnv();
+  const { calls, sql } = recorder();
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress },
+      { sql, deliver: async () => {} },
+    );
+    assert.equal(order.totalCents, 8_900);
+    const insert = calls.find((call) => call.query.startsWith("INSERT"));
+    assert.equal(insert?.params?.[10], null);
+    assert.equal(insert?.params?.[11], 0);
+    assert.equal(insert?.params?.[12], 0);
+  } finally {
+    restore();
+  }
+});
+
+test("two checkouts racing on one balance cannot both spend it", async () => {
+  const restore = payIdEnv();
+  const club = await clubFixture(300);
+  try {
+    const place = () =>
+      createBankTransferOrder(
+        { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 300 } },
+        { sql: recorder().sql, deliver: async () => {}, club: club.hooks },
+      );
+    const orders = await Promise.all([place(), place(), place()]);
+    const discounted = orders.filter((o) => o.totalCents === 7_400);
+    assert.equal(discounted.length, 1);
+    assert.equal(orders.filter((o) => o.totalCents === 8_900).length, 2);
+    assert.equal(club.db.balance(ADA), 0);
+    assert.equal(club.db.ledgerSum(ADA), club.db.balance(ADA) - 300);
   } finally {
     restore();
   }
@@ -245,21 +358,58 @@ test("held points go back when the order cannot be written", async () => {
       return [];
     },
   };
-  const club = clubHooks(clubMember());
+  const club = await clubFixture(500);
   try {
     await assert.rejects(
       () =>
         createBankTransferOrder(
-          {
-            ...orderInput,
-            shipping: goodAddress,
-            club: { email: "ada@example.com", code: "RL-ACDEFG", points: 200 },
-          },
+          { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 200 } },
           { sql: failing, deliver: async () => {}, club: club.hooks },
         ),
       /database is down/,
     );
-    assert.equal(club.released[0]?.points, 200);
+    assert.equal(club.released.length, 1);
+    assert.equal(club.db.balance(ADA), 500);
+  } finally {
+    restore();
+  }
+});
+
+test("a club outage never blocks the order", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = await clubFixture(500);
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 200 } },
+      {
+        sql,
+        deliver: async () => {},
+        club: {
+          ...club.hooks,
+          reserve: async () => {
+            throw new Error("club database is down");
+          },
+        },
+      },
+    );
+    assert.equal(order.totalCents, 8_900);
+  } finally {
+    restore();
+  }
+});
+
+test("a rate-limited credential check pays the full total", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  const club = await clubFixture(500);
+  try {
+    const order = await createBankTransferOrder(
+      { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 200 } },
+      { sql, deliver: async () => {}, club: { ...club.hooks, allowAttempt: () => ({ ok: false }) } },
+    );
+    assert.equal(order.totalCents, 8_900);
+    assert.equal(club.db.balance(ADA), 500);
   } finally {
     restore();
   }
@@ -267,28 +417,18 @@ test("held points go back when the order cannot be written", async () => {
 
 test("a club redemption sent with PayPal is ignored and the charge stays the full total", async () => {
   const { calls, sql } = recorder();
-  const club = clubHooks(clubMember({ pointsBalance: 1_000 }));
+  const club = await clubFixture(1_000);
   const order = await createCheckoutOrder(
-    {
-      ...orderInput,
-      shipping: goodAddress,
-      club: { email: "ada@example.com", code: "RL-ACDEFG", points: 200 },
-    },
-    {
-      sql,
-      deliver: async () => {},
-      club: club.hooks,
-      paymentMethod: "paypal",
-      skipBankConfiguration: true,
-    },
+    { ...orderInput, shipping: goodAddress, club: { email: ADA, code: club.code, points: 200 } },
+    { sql, deliver: async () => {}, club: club.hooks, paymentMethod: "paypal", skipBankConfiguration: true },
   );
 
   assert.equal(order.paymentMethod, "paypal");
   assert.equal(order.totalCents, 8_900);
-  assert.equal(club.held.length, 0);
-  assert.equal(club.tagged.length, 0);
+  assert.equal(club.db.balance(ADA), 1_000);
   const insert = calls.find((call) => call.query.startsWith("INSERT"));
   assert.equal(insert?.params?.[10], null);
   assert.equal(insert?.params?.[11], 0);
-  assert.equal(insert?.params?.[12], "paypal");
+  assert.equal(insert?.params?.[12], 0);
+  assert.equal(insert?.params?.[13], "paypal");
 });

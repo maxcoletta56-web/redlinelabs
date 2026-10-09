@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import { formatCents, formatPoints } from "@/lib/club";
+import { RESEARCH_DISCLAIMER } from "@/lib/company";
 
 type MemberSummary = {
   firstName: string;
-  tier: string;
+  tier: string | null;
   points: number;
-  pointsValueCents: number;
+  pointsValueCents: number | null;
   lifetimeSpendCents: number;
   nextTier: string | null;
-  nextTierRemainingCents: number;
-  tierProgressPercent: number;
+  nextTierRemainingCents: number | null;
+  tierProgressPercent: number | null;
 };
 
 type LedgerEntry = {
@@ -23,11 +24,12 @@ type LedgerEntry = {
 };
 
 const REASON_LABELS: Record<string, string> = {
+  order: "Points earned",
+  redeem: "Applied to an order",
+  redeem_release: "Returned from a cancelled order",
+  adjust: "Adjustment",
   join: "Welcome points",
   first_order: "First order bonus",
-  order: "Order earn",
-  redeem: "Redeemed at checkout",
-  adjust: "Adjustment",
 };
 
 function formatDate(iso: string | null) {
@@ -105,7 +107,7 @@ export function ClubBalanceLookup() {
             id="balance-code"
             required
             className="field w-full font-mono tracking-[0.12em]"
-            placeholder="RL-XXXXXX"
+            placeholder="RL-XXXXXXXXXX"
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
@@ -125,19 +127,21 @@ export function ClubBalanceLookup() {
 
       {member && (
         <section className="surface p-6" aria-live="polite">
-          <p className="kicker mb-2">{member.tier} member</p>
+          <p className="kicker mb-2">{member.tier ? `${member.tier} member` : "Redline Club member"}</p>
           <p className="text-[2rem] font-semibold tracking-[-0.03em] text-white">
             {formatPoints(member.points)} points
           </p>
           <p className="mt-1 text-sm text-[#8f8c84]">
-            Worth {formatCents(member.pointsValueCents)} off your next order.
+            {member.pointsValueCents === null
+              ? "Points value will be shown once programme rates are published."
+              : `Worth ${formatCents(member.pointsValueCents)} off your next order.`}
           </p>
           <dl className="mt-6 space-y-2 text-sm text-[#8f8c84]">
             <div className="flex justify-between gap-4">
               <dt>Lifetime spend</dt>
               <dd className="text-[#cfc8b8]">{formatCents(member.lifetimeSpendCents)}</dd>
             </div>
-            {member.nextTier && (
+            {member.nextTier && member.nextTierRemainingCents !== null && (
               <div className="flex justify-between gap-4">
                 <dt>To {member.nextTier}</dt>
                 <dd className="text-[#cfc8b8]">
@@ -146,7 +150,7 @@ export function ClubBalanceLookup() {
               </div>
             )}
           </dl>
-          {member.nextTier && (
+          {member.nextTier && member.tierProgressPercent !== null && (
             <div
               className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[rgba(212,175,55,0.16)]"
               role="progressbar"
@@ -191,6 +195,7 @@ export function ClubBalanceLookup() {
           )}
         </section>
       )}
+      <p className="text-[11px] leading-5 text-[#8f8c84]">{RESEARCH_DISCLAIMER}</p>
     </div>
   );
 }

@@ -19,7 +19,7 @@ import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
-import { formatPoints, pointsValueCents } from "@/lib/club";
+import { CLUB_DISCOUNT_LABEL, activeClubProgram, pointsValueCents } from "@/lib/club";
 import { useClub } from "@/lib/club-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
@@ -111,6 +111,8 @@ export default function CheckoutPage() {
   const { points: selectedClubPoints } = useClub();
   // Points only come off the order when this checkout is PayID.
   const clubPoints = paymentMethod === "bank_transfer" ? selectedClubPoints : 0;
+  const clubProgram = activeClubProgram();
+  const clubDiscountCents = clubProgram ? pointsValueCents(clubProgram, clubPoints) : 0;
   const { user, hydrated } = useAccount();
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -488,18 +490,16 @@ export default function CheckoutPage() {
             credit. {copy.creditNote}
           </p>
         )}
-        {clubPoints > 0 && (
+        {clubDiscountCents > 0 && (
           <div className="mt-3 flex justify-between text-sm">
-            <span>Club points ({formatPoints(clubPoints)})</span>
-            <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(pointsValueCents(clubPoints)))}
-            </span>
+            <span>{CLUB_DISCOUNT_LABEL}</span>
+            <span className="text-[#d4af37]">−{formatPrice(centsToDollars(clubDiscountCents))}</span>
           </div>
         )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
           <span>Due now</span>
           <span className="text-[#d4af37]">
-            {formatPrice(Math.max(0, payable - centsToDollars(pointsValueCents(clubPoints))))}
+            {formatPrice(Math.max(0, payable - centsToDollars(clubDiscountCents)))}
           </span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">

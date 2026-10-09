@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authorizeAdmin } from "@/lib/admin-auth";
 import { normalizeOrderReference } from "@/lib/order-reference";
-import { OrderCancelledError, markOrderPaidWithPaymentEmail, ordersConfigured } from "@/lib/orders";
+import { cancelOrderAndReleasePoints, ordersConfigured } from "@/lib/orders";
 
+/** Cancels an unpaid order and returns any Club points reserved for it. */
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ reference: string }> },
@@ -22,25 +23,22 @@ export async function POST(
   }
 
   try {
-    const order = await markOrderPaidWithPaymentEmail(normalized);
-    if (!order) {
+    const result = await cancelOrderAndReleasePoints(normalized);
+    if (result.outcome === "missing") {
       return NextResponse.json({ error: "Order was not found" }, { status: 404 });
     }
+    if (result.outcome === "paid") {
+      return NextResponse.json({ error: "A paid order cannot be cancelled" }, { status: 409 });
+    }
     return NextResponse.json({
-      reference: order.reference,
-      status: order.status,
-      totalCents: order.totalCents,
-      currency: order.currency,
-      paidAt: order.paidAt,
+      reference: result.order.reference,
+      status: result.order.status,
+      clubPointsReleased: !result.releaseFailed,
     });
   } catch (error) {
-    if (error instanceof OrderCancelledError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
-    console.error("[admin] mark order paid failed", {
+    console.error("[admin] cancel order failed", {
       reference: normalized,
       errorName: error instanceof Error ? error.name : "unknown",
-      errorMessage: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json({ error: "Could not update that order" }, { status: 500 });
   }

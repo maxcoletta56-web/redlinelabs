@@ -1,164 +1,264 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  AWARD_ORDER_POINTS,
+  CREATE_CLUB_LEDGER,
+  CREATE_CLUB_MEMBERS,
+  CREATE_CLUB_LEDGER_INDEX,
+  ClubUnavailableError,
+  RESERVE_POINTS,
+  RELEASE_POINTS,
+  adjustPoints,
   authenticateMember,
   awardOrderPoints,
-  holdRedemption,
+  clubCodeSecret,
+  findMember,
+  hashMemberCode,
   joinClub,
-  readMemberRow,
+  reconcileClub,
+  releaseRedemption,
+  reserveRedemption,
 } from "./club-db.ts";
-import type { Sql } from "./db.ts";
+import { createFakeClubSql, TEST_PROGRAM, TEST_SECRET } from "./club-test-fixtures.ts";
 
-type Row = Record<string, unknown>;
+const ADA = "ada@example.com";
 
-function memberRow(overrides: Row = {}): Row {
-  return {
-    email: "ada@example.com",
-    first_name: "Ada",
-    member_code: "RL-ACDEFG",
-    points_balance: 100,
-    lifetime_spend_cents: 0,
-    first_order_bonus_at: null,
-    created_at: "2026-10-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-/** Routes each statement to a canned result and records what was asked. */
-function fakeSql(handler: (query: string, params: unknown[]) => unknown) {
-  const calls: { query: string; params: unknown[] }[] = [];
-  const sql: Sql = {
-    query: async (query, params = []) => {
-      calls.push({ query, params });
-      return handler(query, params) ?? [];
-    },
-  };
-  return { sql, calls };
-}
-
-function statement(calls: { query: string }[], fragment: string) {
-  return calls.filter((call) => call.query.includes(fragment));
-}
-
-test("readMemberRow maps a database row and drops a row with no email", () => {
-  const member = readMemberRow(memberRow({ points_balance: "250" }));
-  assert.equal(member?.email, "ada@example.com");
-  assert.equal(member?.pointsBalance, 250);
-  assert.equal(readMemberRow({ email: "" }), null);
-  assert.equal(readMemberRow(null), null);
+test("the code secret must be present and long enough", () => {
+  assert.throws(() => clubCodeSecret({}), ClubUnavailableError);
+  assert.throws(() => clubCodeSecret({ CLUB_CODE_SECRET: "short" }), ClubUnavailableError);
+  assert.equal(clubCodeSecret({ CLUB_CODE_SECRET: TEST_SECRET }), TEST_SECRET);
 });
 
-test("joining creates the member with welcome points and a ledger entry", async () => {
-  const { sql, calls } = fakeSql((query) =>
-    query.startsWith("INSERT INTO club_members") ? [memberRow()] : [],
+test("codes are hashed with a keyed hash, not stored or hashed plainly", () => {
+  const hash = hashMemberCode("RL-ACDEFGHJKM", TEST_SECRET);
+  assert.match(hash ?? "", /^[0-9a-f]{64}$/);
+  assert.equal(hashMemberCode("rl-acdefghjkm", TEST_SECRET), hash);
+  assert.notEqual(hashMemberCode("RL-ACDEFGHJKM", `${TEST_SECRET}!`), hash);
+  assert.equal(hashMemberCode("not a code", TEST_SECRET), null);
+});
+
+test("the schema guarantees idempotency, hashed codes and non-negative balances", () => {
+  assert.match(CREATE_CLUB_MEMBERS, /member_code_hash/);
+  // The legacy plaintext column is nullable, only kept so the migration can hash and clear it.
+  assert.match(CREATE_CLUB_MEMBERS, /member_code TEXT,/);
+  const migration = readFileSync("db/club.sql", "utf8");
+  assert.match(migration, /points_balance >= 0/);
+  assert.match(migration, /lifetime_spend_cents >= 0/);
+  assert.match(migration, /UNIQUE INDEX[^;]*member_code_hash/);
+  assert.match(CREATE_CLUB_LEDGER, /REFERENCES club_members/);
+  assert.match(CREATE_CLUB_LEDGER_INDEX, /UNIQUE INDEX[\s\S]*\(order_reference, reason\)/);
+  assert.match(RESERVE_POINTS, /FOR UPDATE/);
+  assert.match(RESERVE_POINTS, /ON CONFLICT DO NOTHING/);
+  assert.match(AWARD_ORDER_POINTS, /ON CONFLICT DO NOTHING/);
+  assert.match(RELEASE_POINTS, /ON CONFLICT DO NOTHING/);
+});
+
+test("joining stores only a hash and returns the code once", async () => {
+  const db = createFakeClubSql();
+  const joined = await joinClub({ email: " Ada@Example.com ", firstName: "Ada" }, db.sql, undefined, TEST_SECRET);
+  assert.equal(joined.created, true);
+  assert.match(joined.memberCode ?? "", /^RL-[A-Z0-9]{10}$/);
+
+  const stored = db.members.get(ADA);
+  assert.equal(stored?.hash, hashMemberCode(joined.memberCode ?? "", TEST_SECRET));
+  assert.ok(!JSON.stringify([...db.members.values()]).includes(joined.memberCode ?? "x"));
+  assert.ok(!JSON.stringify(db.statements).includes(joined.memberCode ?? "x"));
+});
+
+test("repeat joining never reveals or replaces the code", async () => {
+  const db = createFakeClubSql();
+  const first = await joinClub({ email: ADA }, db.sql, undefined, TEST_SECRET);
+  const hashBefore = db.members.get(ADA)?.hash;
+
+  const again = await joinClub({ email: "ADA@example.com" }, db.sql, undefined, TEST_SECRET);
+  assert.equal(again.created, false);
+  assert.equal(again.memberCode, null);
+  assert.equal(db.members.get(ADA)?.hash, hashBefore);
+
+  // The original code still works; nothing else does.
+  assert.ok(await authenticateMember(ADA, first.memberCode ?? "", db.sql, TEST_SECRET));
+  assert.equal(db.members.size, 1);
+});
+
+test("concurrent joins for one email create exactly one membership", async () => {
+  const db = createFakeClubSql();
+  const results = await Promise.all(
+    Array.from({ length: 5 }, () => joinClub({ email: ADA }, db.sql, undefined, TEST_SECRET)),
   );
-  const result = await joinClub({ email: " Ada@Example.com ", firstName: " Ada " }, sql, () => "RL-ACDEFG");
-
-  assert.equal(result.created, true);
-  assert.equal(result.member.email, "ada@example.com");
-  const insert = statement(calls, "INSERT INTO club_members")[0];
-  assert.deepEqual(insert.params, ["ada@example.com", "Ada", "RL-ACDEFG", 100]);
-  const ledger = statement(calls, "INSERT INTO club_points_ledger")[0];
-  assert.deepEqual(ledger.params, ["ada@example.com", 100, "join", null, "Welcome points"]);
+  assert.equal(results.filter((r) => r.created).length, 1);
+  assert.equal(results.filter((r) => r.memberCode !== null).length, 1);
 });
 
-test("joining twice returns the existing member and adds no second bonus", async () => {
-  const { sql, calls } = fakeSql((query) =>
-    query.startsWith("SELECT") && query.includes("club_members") ? [memberRow()] : [],
+test("a code hash collision picks a fresh code instead of failing", async () => {
+  const db = createFakeClubSql();
+  const first = await joinClub({ email: ADA }, db.sql, undefined, TEST_SECRET);
+  const codes = [first.memberCode ?? "", "RL-ACDEFGHJKM"];
+  const second = await joinClub({ email: "bob@example.com" }, db.sql, () => codes.shift() ?? "", TEST_SECRET);
+  assert.equal(second.created, true);
+  assert.equal(second.memberCode, "RL-ACDEFGHJKM");
+});
+
+test("invalid credentials all give the same null", async () => {
+  const db = createFakeClubSql();
+  const { memberCode } = await joinClub({ email: ADA }, db.sql, undefined, TEST_SECRET);
+  assert.ok(await authenticateMember(ADA, memberCode ?? "", db.sql, TEST_SECRET));
+  assert.equal(await authenticateMember(ADA, "RL-AAAAAAAAAA", db.sql, TEST_SECRET), null);
+  assert.equal(await authenticateMember("nobody@example.com", memberCode ?? "", db.sql, TEST_SECRET), null);
+  assert.equal(await authenticateMember(ADA, "", db.sql, TEST_SECRET), null);
+  assert.equal(await authenticateMember("not an email", memberCode ?? "", db.sql, TEST_SECRET), null);
+});
+
+test("email alone earns points; a non-member earns nothing", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA);
+  const award = await awardOrderPoints({ email: "ADA@example.com", orderReference: "RL-AAAAAA", paidCents: 10_000 }, db.sql, TEST_PROGRAM);
+  assert.equal(award.status, "awarded");
+  assert.equal(db.balance(ADA), 100);
+  const stranger = await awardOrderPoints({ email: "x@example.com", orderReference: "RL-BBBBBB", paidCents: 10_000 }, db.sql, TEST_PROGRAM);
+  assert.equal(stranger.status, "not_member");
+});
+
+test("awarding the same order twice, even at once, moves the balance once", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA);
+  const input = { email: ADA, orderReference: "RL-AAAAAA", paidCents: 10_000 };
+  const results = await Promise.all([1, 2, 3, 4].map(() => awardOrderPoints(input, db.sql, TEST_PROGRAM)));
+  assert.equal(results.filter((r) => r.status === "awarded").length, 1);
+  assert.equal(results.filter((r) => r.status === "duplicate").length, 3);
+  assert.equal(db.balance(ADA), 100);
+  assert.equal(db.members.get(ADA)?.spend, 10_000);
+  assert.equal(db.ledgerSum(ADA), 100);
+});
+
+test("an award uses the tier held before the order and the amount paid", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 0, 10_000);
+  const award = await awardOrderPoints({ email: ADA, orderReference: "RL-AAAAAA", paidCents: 10_000 }, db.sql, TEST_PROGRAM);
+  assert.equal(award.status === "awarded" && award.points, 150);
+});
+
+test("nothing is awarded or spent while the programme is unapproved", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA);
+  const award = await awardOrderPoints({ email: ADA, orderReference: "RL-AAAAAA", paidCents: 10_000 }, db.sql, null);
+  assert.deepEqual(award, { status: "disabled" });
+  assert.equal(db.ledger.length, 0);
+});
+
+test("a reservation takes points once per order and refuses an overdraft", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 250);
+  const first = await reserveRedemption({ email: ADA, points: 200, orderReference: "RL-AAAAAA" }, db.sql);
+  assert.equal(first.status, "reserved");
+  assert.equal(db.balance(ADA), 50);
+
+  const repeat = await reserveRedemption({ email: ADA, points: 200, orderReference: "RL-AAAAAA" }, db.sql);
+  assert.deepEqual(repeat, { status: "duplicate", points: 200 });
+  assert.equal(db.balance(ADA), 50);
+
+  const tooMuch = await reserveRedemption({ email: ADA, points: 100, orderReference: "RL-BBBBBB" }, db.sql);
+  assert.deepEqual(tooMuch, { status: "insufficient" });
+  assert.equal(db.balance(ADA), 50);
+});
+
+test("insufficient balance and empty requests reserve nothing", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 99);
+  for (const points of [100, 0, -100]) {
+    const result = await reserveRedemption({ email: ADA, points, orderReference: "RL-AAAAAA" }, db.sql);
+    assert.equal(result.status, "insufficient");
+  }
+  assert.equal(db.ledger.length, 0);
+});
+
+test("concurrent redemptions can never spend the same points twice", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 200);
+  const refs = ["RL-A00001", "RL-A00002", "RL-A00003", "RL-A00004", "RL-A00005"];
+  const results = await Promise.all(
+    refs.map((orderReference) => reserveRedemption({ email: ADA, points: 100, orderReference }, db.sql)),
   );
-  const result = await joinClub({ email: "ada@example.com" }, sql, () => "RL-ACDEFG");
-
-  assert.equal(result.created, false);
-  assert.equal(statement(calls, "INSERT INTO club_points_ledger").length, 0);
+  assert.equal(results.filter((r) => r.status === "reserved").length, 2);
+  assert.equal(results.filter((r) => r.status === "insufficient").length, 3);
+  assert.equal(db.balance(ADA), 0);
+  assert.equal(db.ledgerSum(ADA), db.balance(ADA) - 200);
 });
 
-test("joining rejects an invalid email before touching the database", async () => {
-  const { sql, calls } = fakeSql(() => []);
-  await assert.rejects(() => joinClub({ email: "not-an-email" }, sql), /valid email/);
-  assert.equal(calls.length, 0);
-});
-
-test("authentication needs the right code, in any case or format", async () => {
-  const { sql } = fakeSql((query) => (query.startsWith("SELECT") ? [memberRow()] : []));
-  assert.ok(await authenticateMember("ada@example.com", "rl-acdefg", sql));
-  assert.ok(await authenticateMember("ada@example.com", "ACDEFG", sql));
-  assert.equal(await authenticateMember("ada@example.com", "RL-ACDEFH", sql), null);
-  assert.equal(await authenticateMember("ada@example.com", "", sql), null);
-});
-
-test("holding points spends them conditionally and logs the debit", async () => {
-  const { sql, calls } = fakeSql((query) => {
-    if (query.startsWith("UPDATE club_members SET points_balance = points_balance - ")) {
-      return [memberRow({ points_balance: 100 })];
-    }
-    if (query.startsWith("INSERT INTO club_points_ledger")) return [{ id: 7 }];
-    return [];
-  });
-  const hold = await holdRedemption({ email: "ada@example.com", points: 300 }, sql);
-
-  assert.equal(hold?.points, 300);
-  assert.equal(hold?.ledgerId, 7);
-  const spend = statement(calls, "points_balance - $2")[0];
-  assert.match(spend.query, /points_balance >= \$2/);
-  assert.deepEqual(spend.params, ["ada@example.com", 300]);
-});
-
-test("holding returns nothing when the balance no longer covers the request", async () => {
-  const { sql, calls } = fakeSql(() => []);
-  assert.equal(await holdRedemption({ email: "ada@example.com", points: 300 }, sql), null);
-  assert.equal(statement(calls, "INSERT INTO club_points_ledger").length, 0);
-});
-
-test("a paid order earns at the tier held before the order, plus the first-order bonus", async () => {
-  const { sql, calls } = fakeSql((query, params) => {
-    if (query.startsWith("SELECT") && query.includes("club_members")) {
-      return [memberRow({ lifetime_spend_cents: 60_000, points_balance: 0 })];
-    }
-    if (query.startsWith("INSERT INTO club_points_ledger")) return [{ id: 1 }];
-    if (query.includes("first_order_bonus_at = now()")) {
-      return [memberRow({ first_order_bonus_at: "2026-10-02T00:00:00Z" })];
-    }
-    if (query.includes("points_balance + $2")) return [memberRow({ points_balance: Number(params[1]) })];
-    return [];
-  });
-
-  const award = await awardOrderPoints(
-    { email: "ada@example.com", orderReference: "RL-AAA111", paidCents: 20_000 },
-    sql,
+test("concurrent requests for one order reserve it once", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 1_000);
+  const results = await Promise.all(
+    [1, 2, 3].map(() => reserveRedemption({ email: ADA, points: 300, orderReference: "RL-AAAAAA" }, db.sql)),
   );
-
-  // Silver: 1.25 points per dollar on $200 paid.
-  assert.equal(award?.orderPoints, 250);
-  assert.equal(award?.bonusPoints, 100);
-  const earn = statement(calls, "INSERT INTO club_points_ledger")[0];
-  assert.deepEqual(earn.params, ["ada@example.com", 250, "order", "RL-AAA111", "Silver earn rate"]);
-  const spend = statement(calls, "points_balance + $2")[0];
-  assert.deepEqual(spend.params, ["ada@example.com", 250, 20_000]);
+  assert.deepEqual(results.map((r) => r.status).sort(), ["duplicate", "duplicate", "reserved"]);
+  assert.equal(db.balance(ADA), 700);
 });
 
-test("marking the same order paid twice awards nothing the second time", async () => {
-  // The unique index makes the ledger insert return no row on a repeat.
-  const { sql, calls } = fakeSql((query) =>
-    query.startsWith("SELECT") && query.includes("club_members") ? [memberRow()] : [],
+test("releasing a reservation returns the points exactly once", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 300);
+  await reserveRedemption({ email: ADA, points: 300, orderReference: "RL-AAAAAA" }, db.sql);
+  const results = await Promise.all(
+    [1, 2, 3].map(() => releaseRedemption("RL-AAAAAA", "Order cancelled", db.sql)),
   );
-  const award = await awardOrderPoints(
-    { email: "ada@example.com", orderReference: "RL-AAA111", paidCents: 20_000 },
-    sql,
-  );
-
-  assert.equal(award, null);
-  assert.equal(statement(calls, "points_balance + $2").length, 0);
-  assert.equal(statement(calls, "first_order_bonus_at = now()").length, 0);
+  assert.equal(results.filter(Boolean).length, 1);
+  assert.equal(db.balance(ADA), 300);
+  assert.equal(await releaseRedemption("RL-AAAAAA", "again", db.sql), null);
+  assert.equal(await releaseRedemption("RL-NEVER1", "none", db.sql), null);
+  assert.equal(db.balance(ADA), 300);
 });
 
-test("an order from a non-member is ignored", async () => {
-  const { sql, calls } = fakeSql(() => []);
-  assert.equal(
-    await awardOrderPoints(
-      { email: "stranger@example.com", orderReference: "RL-AAA111", paidCents: 20_000 },
-      sql,
-    ),
-    null,
+test("admin adjustments cannot take a balance below zero", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 100);
+  assert.equal(await adjustPoints({ email: ADA, points: -200 }, db.sql), null);
+  assert.equal((await adjustPoints({ email: ADA, points: -100 }, db.sql))?.pointsBalance, 0);
+  assert.equal(await adjustPoints({ email: ADA, points: 0 }, db.sql), null);
+  assert.equal((await findMember(ADA, db.sql))?.pointsBalance, 0);
+});
+
+test("reconcile retries missed awards and releases, and is safe to repeat", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 100);
+  db.orders.push(
+    { reference: "RL-P00001", email: ADA, status: "paid", totalCents: 10_000, clubPointsRedeemed: 0, paidAt: "2026-10-02T00:00:00Z" },
+    { reference: "RL-P00002", email: "stranger@example.com", status: "paid", totalCents: 10_000, clubPointsRedeemed: 0, paidAt: "2026-10-02T00:00:00Z" },
+    { reference: "RL-C00001", email: ADA, status: "cancelled", totalCents: 5_000, clubPointsRedeemed: 100, paidAt: null },
   );
-  assert.equal(statement(calls, "INSERT INTO club_points_ledger").length, 0);
+  await reserveRedemption({ email: ADA, points: 100, orderReference: "RL-C00001" }, db.sql);
+  assert.equal(db.balance(ADA), 0);
+
+  const first = await reconcileClub({}, db.sql, TEST_PROGRAM);
+  assert.deepEqual(first.awardedOrders, ["RL-P00001"]);
+  assert.deepEqual(first.releasedOrders, ["RL-C00001"]);
+  assert.equal(db.balance(ADA), 200);
+
+  const second = await reconcileClub({}, db.sql, TEST_PROGRAM);
+  assert.deepEqual(second.awardedOrders, []);
+  assert.deepEqual(second.releasedOrders, []);
+  assert.equal(db.balance(ADA), 200);
+});
+
+test("reconcile releases reservations whose order was never written, after a grace period", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 100);
+  await reserveRedemption({ email: ADA, points: 100, orderReference: "RL-O00001" }, db.sql);
+  assert.deepEqual((await reconcileClub({}, db.sql, TEST_PROGRAM)).releasedOrders, []);
+  db.age("RL-O00001");
+  assert.deepEqual((await reconcileClub({}, db.sql, TEST_PROGRAM)).releasedOrders, ["RL-O00001"]);
+  assert.equal(db.balance(ADA), 100);
+});
+
+test("reconcile with an unapproved programme still releases but awards nothing", async () => {
+  const db = createFakeClubSql();
+  db.seedMember(ADA, 100);
+  db.orders.push({ reference: "RL-P00001", email: ADA, status: "paid", totalCents: 10_000, clubPointsRedeemed: 0, paidAt: "2026-10-02T00:00:00Z" });
+  const summary = await reconcileClub({}, db.sql, null);
+  assert.equal(summary.enabled, false);
+  assert.deepEqual(summary.awardedOrders, []);
+});
+
+test("a missing database reports as unavailable", async () => {
+  await assert.rejects(() => findMember(ADA, null), ClubUnavailableError);
 });
