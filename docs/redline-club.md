@@ -4,13 +4,16 @@ Redline Club is an optional points programme. It has no logins, sessions, point
 expiry or referral bonuses in v1. Every Club surface carries the research-use
 disclaimer (`ResearchDisclaimer`) and uses no health or wellness language.
 
-**Status: built, but earning and redemption are OFF.** The tier names, spend
-thresholds, earning rates and points-to-dollars conversion have not been
-supplied or approved, and nothing in the repository states them. They are
-therefore not invented: `CLUB_PROGRAM` in `src/lib/club.ts` is deliberately
-unapproved and empty. Joining works; points are neither earned nor spent until
-the decisions below are made. No screenshot was supplied and none is claimed to
-be matched; the pages reuse the existing dark/gold styling.
+**Status: built, but earning and redemption are OFF.** Tier names and
+lifetime-spend thresholds are confirmed (AUD): Member from $0, Silver from $500,
+Gold from $1,000, VIP from $2,000 (0 / 50,000 / 100,000 / 200,000 cents). These
+override the reference screenshots' $0 / $1,000 / $2,500 / $5,000 thresholds and
+are in `CLUB_PROGRAM` in `src/lib/club.ts`. Earning rates, the points-to-dollars
+conversion, `earningStartsAt` and the `approved` flag have not been supplied, so
+they are not invented: they stay `null` / `false` and the programme is inactive.
+Joining works; points are neither earned nor spent until the decisions below are
+made. No screenshot was supplied and none is claimed to be matched; the pages
+reuse the existing dark/gold styling.
 
 ## Outstanding decisions (needed before anything is earned)
 
@@ -20,8 +23,8 @@ same change. `validateClubProgram` refuses a partial or inconsistent set and
 
 | Decision | Field | Notes |
 | --- | --- | --- |
-| Four tier names | `tiers[n].name` | Unique, non-empty |
-| Lifetime-spend threshold per tier | `tiers[n].fromCents` | Tier 1 must be `0`, then strictly ascending, whole cents |
+| Four tier names | `tiers[n].name` | **Done**: Member, Silver, Gold, VIP |
+| Lifetime-spend threshold per tier | `tiers[n].fromCents` | **Done**: 0 / 50,000 / 100,000 / 200,000 cents |
 | Earn rate per tier | `tiers[n].earnBasis` | Points per dollar x 100, so `100` = 1 point per $1 paid |
 | Dollar value of 100 points | `centsPerRedeemBlock` | e.g. `500` would make 100 points = $5.00 |
 | First date points can be earned | `earningStartsAt` | ISO date. Orders paid earlier never earn, including on reconcile |
@@ -137,8 +140,8 @@ logic against an in-memory emulation of each statement.
 
 ## Deployment checklist
 
-- [ ] Business signs off tier names, thresholds, earn rates, conversion and
-      `earningStartsAt`; they are entered in `CLUB_PROGRAM` with `approved: true`.
+- [ ] Business signs off earn rates, conversion and `earningStartsAt` (tier
+      names and thresholds are done); they are entered in `CLUB_PROGRAM` with `approved: true`.
 - [ ] `CLUB_CODE_SECRET` set in every environment (do not rotate casually).
 - [ ] `ADMIN_API_SECRET` set (reconcile, adjust and cancel are bearer routes).
 - [ ] Migration reviewed against production data; a database backup exists.

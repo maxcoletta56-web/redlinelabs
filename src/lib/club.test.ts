@@ -25,24 +25,61 @@ import { TEST_PROGRAM, TEST_PROGRAM_CONFIG } from "./club-test-fixtures.ts";
 
 const [A, B, C, D] = TEST_PROGRAM.tiers;
 
-test("the shipped programme is unapproved, so earning and redemption are off", () => {
+test("the shipped programme has confirmed tiers but is still unapproved and inactive", () => {
   assert.equal(CLUB_PROGRAM.approved, false);
   assert.equal(CLUB_PROGRAM_ACTIVE, false);
   assert.equal(activeClubProgram(), null);
-  assert.equal(CLUB_PROGRAM.tiers.length, 4);
-  for (const tier of CLUB_PROGRAM.tiers) {
-    assert.equal(tier.name, null);
-    assert.equal(tier.fromCents, null);
-    assert.equal(tier.earnBasis, null);
-  }
+  assert.deepEqual(
+    CLUB_PROGRAM.tiers.map((tier) => [tier.name, tier.fromCents]),
+    [
+      ["Member", 0],
+      ["Silver", 50_000],
+      ["Gold", 100_000],
+      ["VIP", 200_000],
+    ],
+  );
+  // Nothing unconfirmed is filled in.
+  for (const tier of CLUB_PROGRAM.tiers) assert.equal(tier.earnBasis, null);
   assert.equal(CLUB_PROGRAM.centsPerRedeemBlock, null);
+  assert.equal(CLUB_PROGRAM.earningStartsAt, null);
 });
 
-test("an approved flag alone does not activate placeholder values", () => {
+test("confirmed tiers alone do not activate the programme, even if marked approved", () => {
   const result = validateClubProgram({ ...CLUB_PROGRAM, approved: true });
   assert.equal(result.ok, false);
-  if (!result.ok) assert.ok(result.problems.length >= 4);
+  if (!result.ok) {
+    assert.ok(result.problems.some((p) => /earn rate/.test(p)));
+    assert.ok(result.problems.some((p) => /centsPerRedeemBlock/.test(p)));
+    assert.ok(result.problems.some((p) => /earningStartsAt/.test(p)));
+    assert.ok(!result.problems.some((p) => /name|threshold|start at 0/.test(p)));
+  }
 });
+
+test("the confirmed thresholds select the right tier at and just below each boundary", () => {
+  const withRates = activeClubProgram({
+    ...CLUB_PROGRAM,
+    approved: true,
+    earningStartsAt: "2026-01-01T00:00:00Z",
+    centsPerRedeemBlock: 500,
+    tiers: CLUB_PROGRAM.tiers.map((tier) => ({ ...tier, earnBasis: 100 })),
+  });
+  assert.ok(withRates);
+  if (!withRates) return;
+  const cases: [number, string][] = [
+    [0, "Member"],
+    [49_999, "Member"],
+    [50_000, "Silver"],
+    [99_999, "Silver"],
+    [100_000, "Gold"],
+    [199_999, "Gold"],
+    [200_000, "VIP"],
+    [10_000_000, "VIP"],
+  ];
+  for (const [spend, name] of cases) assert.equal(tierForSpend(withRates, spend).name, name, `${spend}`);
+  assert.equal(tierProgress(withRates, 49_999).remainingCents, 1);
+  assert.equal(tierProgress(withRates, 199_999).remainingCents, 1);
+});
+
 
 test("a complete, approved configuration validates", () => {
   const result = validateClubProgram(TEST_PROGRAM_CONFIG);
@@ -194,7 +231,8 @@ test("the discount is worded the same everywhere", () => {
   assert.equal(clubDiscountText(1_250), "Club points −$12.50");
 });
 
-test("tier cards fall back to a neutral label until names are approved", () => {
-  assert.equal(tierCardLabel(CLUB_PROGRAM.tiers[1], 1), "Tier 2");
+test("tier cards fall back to a neutral label only when no name is set", () => {
+  assert.equal(tierCardLabel(CLUB_PROGRAM.tiers[1], 1), "Silver");
+  assert.equal(tierCardLabel({ name: null, fromCents: null, earnBasis: null }, 1), "Tier 2");
   assert.equal(tierCardLabel(TEST_PROGRAM_CONFIG.tiers[1], 1), "Test B");
 });

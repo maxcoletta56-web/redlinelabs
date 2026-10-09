@@ -98,7 +98,7 @@ export default function ClubPage() {
           className="mb-8 border border-[rgba(212,175,55,0.34)] px-4 py-3 text-sm leading-6 text-[#cfc8b8]"
           role="note"
         >
-          Tier names, spend thresholds, earn rates and the points value are still being finalised,
+          Earn rates and the points value are still being finalised,
           so points are not being earned or redeemed yet. You can join now to get your member code.
         </p>
       )}

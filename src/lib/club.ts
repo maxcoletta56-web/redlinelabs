@@ -4,9 +4,9 @@
  * import it. Balances are money: every number a customer could influence is
  * recomputed here from server-held values, never trusted from the client.
  *
- * Tier names, spend thresholds, earning rates and the points-to-dollars
- * conversion have NOT been approved. They are therefore `null` in
- * `CLUB_PROGRAM` below, and while any of them is missing or invalid the
+ * Tier names and spend thresholds are confirmed. Earning rates and the
+ * points-to-dollars conversion have NOT been approved. They are therefore
+ * `null` in `CLUB_PROGRAM` below, and while any of them is missing or invalid the
  * programme is inactive: nothing is earned and nothing can be redeemed. See
  * docs/redline-club.md for the decisions that are still needed.
  */
@@ -46,16 +46,20 @@ export type ClubProgramConfig = {
 
 export const CLUB_TIER_COUNT = 4;
 
-/** The only place the programme is tuned. Deliberately unapproved. */
+/**
+ * The only place the programme is tuned. Tier names and lifetime-spend
+ * thresholds are confirmed (AUD). Earn rates, the points conversion,
+ * `earningStartsAt` and `approved` are NOT, so the programme stays inactive.
+ */
 export const CLUB_PROGRAM: ClubProgramConfig = {
   approved: false,
   earningStartsAt: null,
   centsPerRedeemBlock: null,
   tiers: [
-    { name: null, fromCents: null, earnBasis: null },
-    { name: null, fromCents: null, earnBasis: null },
-    { name: null, fromCents: null, earnBasis: null },
-    { name: null, fromCents: null, earnBasis: null },
+    { name: "Member", fromCents: 0, earnBasis: null },
+    { name: "Silver", fromCents: 50_000, earnBasis: null },
+    { name: "Gold", fromCents: 100_000, earnBasis: null },
+    { name: "VIP", fromCents: 200_000, earnBasis: null },
   ],
 };
 
