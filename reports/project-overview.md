@@ -13,7 +13,7 @@
 Redline Labs is a modern, custom-built e-commerce storefront for research chemicals,
 serving Australia and deployed at **https://redlinelabs.shop**. It is a rebuild of the
 original catalogue as a Next.js application with dark-gold branding, a full product
-catalogue, a persistent cart, and PayPal card checkout.
+catalogue, a persistent cart, PayID / bank transfer as the default checkout, and PayPal or card as a second choice when PayPal credentials are present.
 
 - **Repository:** `github.com/maxcoletta56-web/redlinelabs`
 - **Production site:** `https://redlinelabs.shop`
@@ -34,16 +34,17 @@ catalogue, a persistent cart, and PayPal card checkout.
 | **Styling** | Tailwind CSS **4** via `@tailwindcss/postcss` |
 | **Package manager** | **npm** (`package-lock.json`, lockfile v3) — Node **22** |
 | **Project structure** | `src/app` (App Router routes), `src/components`, `src/lib` (logic + tests), `src/data/products.json` |
-| **Build command** | `npm run build` → `next build` (also runs the TypeScript type-check) |
+| **Build command** | `npm run build` applies `db/comments.sql`, `db/orders.sql`, and `db/club.sql`, then runs `next build`. `vercel.json` `buildCommand` is the same string. |
 | **Dev command** | `npm run dev` → `next dev` (serves on `http://localhost:3000`) |
 | **Lint** | `npm run lint` → `eslint` (flat config, `eslint-config-next` core-web-vitals + TS) |
-| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts` (**31** tests) |
-| **Deployment** | **Vercel** (Git-connected, zero-config Next.js preset) |
-| **Vercel config** | No `vercel.json` — relies on Vercel's automatic Next.js framework detection. `VERCEL_ENV` is consumed by the app to use the live PayPal API in production. |
+| **Tests** | `npm test` → `node --experimental-strip-types --test src/lib/*.test.ts`. GitHub CI does not run this script. |
+| **Deployment** | **Vercel** (Git-connected Next.js). Production branch: `cursor/redlinelabs-shop-1c01`. |
+| **Vercel config** | `vercel.json` sets `buildCommand`. `VERCEL_ENV=production` makes the PayPal resolver require the live API when PayPal credentials are present. It does not select the PayPal rail. |
 | **E-commerce platform** | **Custom** — no Shopify/WooCommerce/Medusa. Cart is client-side (localStorage); catalogue is a static JSON file. |
-| **Payment integration** | **PayPal card checkout** — server creates an Orders v2 order and redirects to PayPal guest card checkout (`landing_page: GUEST_CHECKOUT`). The order is captured when the buyer returns. Live API in production. |
+| **Payment integration** | Default rail is **bank transfer** (PayID, order row in Neon, confirmation at `/order/[reference]`). **PayPal** Orders v2 is offered beside PayID when `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` are set, unless `NEXT_PUBLIC_PAYMENTS_PROVIDER` is `bank_transfer_only`. The buyer chooses on the cart drawer and on `/checkout`. PayPal inserts an unpaid order, redirects to guest card checkout, and captures on return to `/checkout/success`. An unfinished PayPal order can be retried or paid by PayID. `stripe` and `payoneer` still parse as `bank_transfer` for the legacy helper. Browser store credit is not sent to either rail. |
+| **Redline Club** | `/club` and `/club/balance`. Membership rows live in Neon (`club_members`, `club_points_ledger`). Member codes are stored as an HMAC under `CLUB_CODE_SECRET`. Pull request #111 left earning and redemption **off** (`CLUB_PROGRAM.approved` is false) until earn rates, the points value, and `earningStartsAt` are signed off in `src/lib/club.ts`. Joining still works once the secret and `db/club.sql` are applied. When earning is on, points redeem only on PayID. PayPal ignores a club payload. A club failure must not fail checkout or marking an order paid. |
 | **Product data source** | `src/data/products.json` (~**30** products), typed via `src/lib/products.ts` |
-| **Analytics** | **None integrated** (no GA4, Vercel Analytics, Plausible, or PostHog). Privacy policy references cookies/analytics generically. AssistLoop is a chat widget, not analytics. |
+| **Analytics** | `VercelTelemetry` loads `/_vercel/insights/script.js` and `/_vercel/speed-insights/script.js`. No GA4, Plausible, or PostHog package. AssistLoop is a chat widget, not analytics. |
 | **SEO implementation** | Next.js Metadata API (global + per-page `generateMetadata`), JSON-LD (`Organization`, `WebSite`+`SearchAction`, per-product `Product`/`Offer`/`AggregateOffer`), dynamic `sitemap.ts`, `robots.ts`, OpenGraph/Twitter cards. Site social images are `src/app/opengraph-image.png` and `src/app/twitter-image.png`. Product pages also pass the catalogue image. |
 | **Not part of the storefront** | Root `index.mts` calls the `ai` package (`generateText`). No App Router route imports it. |
 
@@ -57,16 +58,19 @@ catalogue, a persistent cart, and PayPal card checkout.
 │   │   ├── page.tsx        # Home
 │   │   ├── shop/           # Catalogue (search / category / sort)
 │   │   ├── product/[slug]/ # Product detail (SSG via generateStaticParams)
-│   │   ├── cart/ checkout/ account/  # Buying journey + account
-│   │   ├── api/checkout/   # Checkout API (PayPal card checkout)
+│   │   ├── cart/ checkout/ account/ club/  # Buying journey, account, loyalty
+│   │   ├── api/checkout/   # Checkout API (PayID by default; PayPal when configured)
 │   │   ├── actions/checkout.ts       # Checkout server action
 │   │   ├── sitemap.ts robots.ts      # SEO crawl surfaces
 │   │   └── <policy pages> # about, faq, contact, privacy, refund, shipping, terms
 │   ├── components/         # UI components (Header, Footer, Cart*, Product*, JsonLd, …)
 │   ├── lib/                # Business logic + unit tests (*.test.ts)
-│   │   ├── products.ts     # Catalogue types/helpers      paypal.ts   # PayPal order + card checkout
+│   │   ├── products.ts     # Catalogue types/helpers
+│   │   ├── payments-provider.ts # PayID default; PayPal when credentials exist
+│   │   ├── bank-transfer-checkout.ts paypal.ts paypal-checkout.ts checkout-session.ts
+│   │   ├── club.ts club-db.ts club-api.ts  # Redline Club points and tiers
 │   │   ├── cart.tsx        # Cart state (localStorage)     promo*.ts   # Promotions
-│   │   ├── checkout-session.ts  # PayPal checkout session   seo.ts     # SEO helpers
+│   │   ├── seo.ts          # Metadata helpers
 │   │   └── account-data.ts store-credit.ts company.ts …
 │   └── data/products.json  # Product catalogue (source of truth)
 ├── next.config.ts          # Image remotePatterns + redirects
@@ -77,17 +81,24 @@ catalogue, a persistent cart, and PayPal card checkout.
 
 ### Environment variables (names only — never log values)
 
-PayPal credentials are read from the environment; nothing is hard-coded. `.env*` is
-git-ignored. See `reports/security-compliance-health.md` for the full table.
+Payment and mail credentials are read from the environment; nothing is hard-coded. `.env*` is
+git-ignored. Names only — never log values. `env.example` lists the placeholders. See
+`reports/security-compliance-health.md` for the full table.
 
-- `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` — server-only PayPal REST app credentials for card checkout.
+- `NEXT_PUBLIC_PAYMENTS_PROVIDER` — optional, inlined at build time. `bank_transfer_only` hides PayPal. An unset value, `bank_transfer`, and `paypal` still offer PayPal when the secrets exist. `stripe` and `payoneer` parse as `bank_transfer` for `paymentsProvider()`.
+- `PAYID_ADDRESS` / `PAYID_ACCOUNT_NAME` / `DATABASE_URL` — required for bank-transfer checkout.
+- `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` — server-only PayPal REST credentials. When both are set and the kill switch is off, checkout offers PayPal beside PayID.
 - `PAYPAL_ENV` — optional `live` or `sandbox`. Production ignores sandbox.
+- `ADMIN_API_SECRET` — bearer and admin-desk secret. Routes stay closed while unset.
+- `CLUB_CODE_SECRET` — server-only HMAC key for member codes, at least 32 characters. Join and balance checks return 503 while it is unset. Do not rotate it casually. The build migration refuses to continue if plaintext member codes still exist and this variable is missing.
+- `RESEND_API_KEY` / `ORDER_EMAIL_FROM` / `ORDER_NOTIFY_EMAIL` — order mail. Checkout still completes when the key is unset.
 - `NEXT_PUBLIC_SITE_URL` — optional; defaults to `https://redlinelabs.shop`.
 - `NEXT_PUBLIC_ASSISTLOOP_AGENT_ID` — optional chat widget.
-- `VERCEL_ENV` — injected by Vercel; `production` uses the live PayPal API.
+- `VERCEL_ENV` — injected by Vercel. `production` makes a configured PayPal rail use the live API.
 
-> The app runs **without any secrets** for browsing/catalogue/cart. Only PayPal card checkout
-> requires credentials, and it **degrades gracefully to a 503** when they are absent.
+> The app runs **without any secrets** for browsing, the catalogue, and the cart. The selected
+> payment rail returns **503** when its own configuration is missing. A missing PayPal secret
+> does not disable bank transfer. `bank_transfer_only` hides PayPal even when the secrets are set.
 
 ---
 
@@ -115,14 +126,15 @@ agent makes a change.
    into the default/production branch (`cursor/redlinelabs-shop-1c01`) are the authorization
    signal to deploy.
 
-3. **Vercel — build & host.** Vercel is Git-connected with the zero-config Next.js preset
-   (no `vercel.json`). On every push it builds automatically:
+3. **Vercel — build & host.** Vercel is Git-connected. `vercel.json` sets the build command
+   to the comments, orders, and club schema scripts plus `next build`. On every push it builds automatically:
    - **Preview deployments** for each branch/PR — a unique URL where changes are validated
-     before merge. In Preview, `VERCEL_ENV` is `preview`, so the app does **not** force live
-     PayPal credentials.
-   - **Production deployment** when changes reach the production branch — `VERCEL_ENV` is
-     `production`, which makes the app use the **live** PayPal API and serve
-     `https://redlinelabs.shop`.
+     before merge. In Preview, `VERCEL_ENV` is `preview`, so a configured PayPal rail does
+     **not** force the live API.
+   - **Production deployment** when changes reach the production branch — the site is
+     `https://redlinelabs.shop`. `VERCEL_ENV=production` makes a configured PayPal rail use
+     the live API. PayID stays the default. PayPal is offered beside it when the PayPal
+     secrets are present and `NEXT_PUBLIC_PAYMENTS_PROVIDER` is not `bank_transfer_only`.
 
 **The golden rule:** production changes only happen by merging to the production branch, and
 Vercel deploys automatically from there. Never bypass GitHub. Never deploy to production
@@ -174,7 +186,7 @@ Follow these steps in order for **every** maintenance task. Do not skip steps.
 | `website-health.md` | Overall build/deploy/render health; umbrella for cross-cutting issues |
 | `seo-aeo-health.md` | Metadata, structured data, sitemap/robots, AEO answerability |
 | `catalogue-merchandising-health.md` | Product data integrity + merchandising surfaces |
-| `ecommerce-cro-health.md` | Cart, promotions, checkout, Payoneer, conversion |
+| `ecommerce-cro-health.md` | Cart, promotions, checkout, bank transfer, PayPal, conversion |
 | `qa-performance-health.md` | Lint/type/test/build gates + Core Web Vitals |
 | `security-compliance-health.md` | Secrets, payment safety, dependencies, headers, compliance |
 
@@ -189,3 +201,7 @@ Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue
 | 2026-09-25 | Overview added in `#38`. |
 | 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
 | 2026-09-26 | Checkout charges through Payoneer hosted payment instead of Stripe. |
+| 2026-10-06 | Re-checked at `78e01b6`. Default rail is bank transfer. PayPal is the card rail only when `NEXT_PUBLIC_PAYMENTS_PROVIDER=paypal`. `vercel.json` sets the build command. `VercelTelemetry` loads the Vercel Analytics and Speed Insights scripts. |
+| 2026-10-08 | Re-checked at `efe984f` (pull request #105). PayPal is offered beside PayID when the PayPal secrets are set. `bank_transfer_only` hides that choice. Inter is self-hosted from `src/app/fonts/InterVariable.woff2`. |
+| 2026-10-08 | Re-checked at `1fb5bc3` (pull request #107). Redline Club is on `/club`. `npm run build` ran `scripts/ensure-club-tables.mjs`. Production `vercel.json` did not. |
+| 2026-10-09 | Re-checked at `71b6636` (pull request #111). Club v1 hashes member codes and keeps earning off until `CLUB_PROGRAM` is approved. Production `vercel.json` still skipped `scripts/ensure-club-tables.mjs`. This health change makes `buildCommand` match `npm run build`. |
