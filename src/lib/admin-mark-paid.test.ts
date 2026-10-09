@@ -28,6 +28,7 @@ function storedOrder(status: StoredOrder["status"]): StoredOrder {
     clubDiscountCents: 0,
     paymentMethod: "bank_transfer",
     paypalOrderId: null,
+    whopPaymentId: null,
     createdAt: "2026-09-27T01:00:00.000Z",
     paidAt: status === "paid" ? "2026-09-27T02:00:00.000Z" : null,
   };

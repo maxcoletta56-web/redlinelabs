@@ -35,6 +35,7 @@ function stored(status: StoredOrder["status"], overrides: Partial<StoredOrder> =
     clubDiscountCents: 0,
     paymentMethod: "bank_transfer",
     paypalOrderId: null,
+    whopPaymentId: null,
     createdAt: "2026-10-02T00:00:00.000Z",
     paidAt: status === "paid" ? "2026-10-02T01:00:00.000Z" : null,
     ...overrides,
@@ -270,6 +271,9 @@ test("cancel only touches an awaiting-payment order", async () => {
     },
   };
   assert.deepEqual(await cancelOrder(reference, sql), { outcome: "missing" });
-  assert.match(queries.find((q) => q.startsWith("UPDATE orders SET status = 'cancelled'")) ?? "", /status = 'awaiting_payment'/);
+  assert.match(
+    queries.find((q) => q.startsWith("UPDATE orders SET status = 'cancelled'")) ?? "",
+    /status IN \('awaiting_payment', 'pending', 'failed'\)/,
+  );
   assert.deepEqual(await cancelOrder("not a reference", sql), { outcome: "missing" });
 });

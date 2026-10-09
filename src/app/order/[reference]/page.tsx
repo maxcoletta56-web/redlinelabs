@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
 import { retryPaypalOrder } from "@/app/actions/checkout";
+import { ConfirmingPayment } from "@/components/ConfirmingPayment";
+import { WhopOrderPayment } from "@/components/WhopOrderPayment";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
 import { CLUB_DISCOUNT_LABEL, formatCents } from "@/lib/club";
 import { paypalConfigured } from "@/lib/checkout-session";
@@ -20,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ reference: string }>;
-  searchParams: Promise<{ paypal?: string | string[] }>;
+  searchParams: Promise<{ paypal?: string | string[]; whop?: string | string[]; status?: string | string[]; payment?: string | string[] }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -47,15 +49,35 @@ function formatDate(iso: string | null) {
 }
 
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
+  const label =
+    order.status === "paid"
+      ? "Payment received"
+      : order.status === "cancelled"
+        ? "Order cancelled"
+        : order.status === "failed"
+          ? "Payment failed"
+          : order.status === "pending"
+            ? "Awaiting card payment"
+            : "Awaiting payment";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : order.status === "cancelled" ? "Order cancelled" : "Awaiting payment"}
+      {label}
     </p>
   );
+}
+
+function firstQuery(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/** Whop appends this after 3D Secure or another off-site step. It is not a receipt. */
+function whopReturnStatus(value: string | undefined) {
+  if (value === "success" || value === "succeeded") return "succeeded";
+  if (value === "error" || value === "failed" || value === "canceled" || value === "cancelled") return "failed";
+  return null;
 }
 
 function paypalReturnNotice(flag: string | undefined) {
@@ -84,7 +106,9 @@ export default async function OrderPage({ params, searchParams }: Props) {
   if (!order) notFound();
 
   const paid = order.status === "paid";
-  const awaiting = order.status === "awaiting_payment";
+  const failed = order.status === "failed";
+  const pending = order.status === "pending";
+  const awaiting = order.status === "awaiting_payment" || pending;
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
@@ -93,7 +117,9 @@ export default async function OrderPage({ params, searchParams }: Props) {
     process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured(),
   );
-  const paypalFlag = Array.isArray(query.paypal) ? query.paypal[0] : query.paypal;
+  const paypalFlag = firstQuery(query.paypal);
+  const whopFlag = firstQuery(query.whop);
+  const cardReturn = order.paymentMethod === "whop" ? whopReturnStatus(firstQuery(query.status)) : null;
   const returnNotice = paypalReturnNotice(paypalFlag);
 
   return (
@@ -115,11 +141,28 @@ export default async function OrderPage({ params, searchParams }: Props) {
           {returnNotice}
         </p>
       )}
+      {cardReturn === "succeeded" && !paid && <ConfirmingPayment />}
+      {cardReturn === "failed" && !paid && (
+        <p className="mb-6 text-sm leading-6 text-[#d4af37]" role="status">
+          The bank step did not finish this payment. Nothing was charged. You can try the card again below.
+        </p>
+      )}
+      {whopFlag === "unavailable" && !paid && (
+        <p className="mb-6 text-sm leading-6 text-[#d4af37]" role="status">
+          Card checkout did not open. Nothing was charged. You can try again below.
+        </p>
+      )}
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : !awaiting
+          : failed
+            ? "The card payment did not complete. Nothing was charged."
+          : order.status === "cancelled"
             ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
+          : cardReturn === "succeeded"
+            ? "Your bank step is done. This page confirms the payment when Whop reports it, and the confirmation email follows."
+          : order.paymentMethod === "whop"
+            ? "Finish the card payment below. If your bank asks you to verify the payment, you will return to this page. The order ships once that payment clears."
           : paypalOrder
             ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
             : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
@@ -201,7 +244,16 @@ export default async function OrderPage({ params, searchParams }: Props) {
         </form>
       )}
 
-      {awaiting && (
+      {(pending || failed) && order.paymentMethod === "whop" && cardReturn !== "succeeded" && (
+        <section className="surface mb-8 p-6" aria-labelledby="card-payment">
+          <h2 id="card-payment" className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase">
+            Pay by card
+          </h2>
+          <WhopOrderPayment reference={order.reference} email={order.email} />
+        </section>
+      )}
+
+      {awaiting && order.paymentMethod !== "whop" && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"

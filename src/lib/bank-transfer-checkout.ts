@@ -16,7 +16,7 @@ import {
   type OrderShippingSnapshot,
 } from "@/lib/orders";
 import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
-import { lookupPromo, promoDiscountCents } from "@/lib/promo";
+import { lookupPromo, promoDiscountCents, volumeDiscountCents } from "@/lib/promo";
 import { withTimeout } from "@/lib/with-timeout";
 
 export type BankTransferShippingInput = {
@@ -75,6 +75,8 @@ export type CreateBankTransferOrderOptions = {
   deliver?: (notice: OrderCreatedNotice) => Promise<void>;
   paymentMethod?: CheckoutPaymentMethod;
   paypalOrderId?: string | null;
+  /** Card checkout waits for the webhook. It does not send transfer instructions. */
+  skipCreatedEmail?: boolean;
   /**
    * PayPal records the order before a card is captured, and does not need
    * PayID details to do that. Bank transfer still requires them.
@@ -156,15 +158,17 @@ export async function createBankTransferOrder(
 }
 
 /**
- * Shared insert for PayID and PayPal. Status stays `awaiting_payment` (the
- * unpaid/pending state the rest of the store already uses). Totals, promo,
+ * Shared insert for PayID, PayPal, and Whop. PayID and PayPal stay
+ * `awaiting_payment`. A Whop card order is stored as `pending` until the
+ * webhook marks it paid or failed. Totals, the $200 volume discount, promo,
  * and shipping are calculated once here.
  */
 export async function createCheckoutOrder(
   input: CheckoutOrderInput,
   options?: CreateBankTransferOrderOptions,
 ): Promise<CheckoutOrder> {
-  const paymentMethod = options?.paymentMethod === "paypal" ? "paypal" : "bank_transfer";
+  const paymentMethod =
+    options?.paymentMethod === "paypal" ? "paypal" : options?.paymentMethod === "whop" ? "whop" : "bank_transfer";
   if (!options?.skipBankConfiguration && !resolveBankTransfer(process.env)) {
     throw new Error("Bank transfer is not configured");
   }
@@ -183,7 +187,8 @@ export async function createCheckoutOrder(
   const lines = resolveCartLines(input.items);
   const promo = lookupPromo(input.promoCode);
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const payableCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
+  const volumeCents = volumeDiscountCents(subtotalCents);
+  const payableCents = subtotalCents - volumeCents - promoDiscountCents(subtotalCents - volumeCents, promo);
   if (payableCents <= 0) {
     throw new Error("Order total must be greater than zero");
   }
@@ -232,6 +237,7 @@ export async function createCheckoutOrder(
           clubDiscountCents: reservation?.discountCents ?? 0,
           paymentMethod,
           paypalOrderId: options?.paypalOrderId ?? null,
+          status: paymentMethod === "whop" ? "pending" : "awaiting_payment",
         },
         sql,
       ),
@@ -257,7 +263,9 @@ export async function createCheckoutOrder(
     shipping,
   };
   try {
-    if (options?.deliver) {
+    if (options?.skipCreatedEmail) {
+      /* The card receipt is sent when the Whop webhook marks the order paid. */
+    } else if (options?.deliver) {
       await options.deliver(notice);
     } else {
       await deliverOrderNotice(reference, notice);

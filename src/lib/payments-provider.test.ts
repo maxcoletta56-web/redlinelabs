@@ -6,8 +6,10 @@ import {
   checkoutPaymentChoices,
   checkoutSurface,
   parsePaymentsProvider,
+  paymentMethodLabel,
   paypalCheckoutOffered,
   resolveRequestedPaymentMethod,
+  whopCheckoutOffered,
 } from "./payments-provider.ts";
 
 test("bank transfer is the default rail", () => {
@@ -115,5 +117,55 @@ test("an omitted payment method follows the legacy rail", () => {
       paypalOffered: true,
     }),
     "bank_transfer",
+  );
+});
+
+test("Whop sits beside PayID when configured and disappears on the kill switch", () => {
+  assert.equal(whopCheckoutOffered(undefined, false), false);
+  assert.equal(whopCheckoutOffered("bank_transfer_only", true), false);
+  assert.equal(whopCheckoutOffered(undefined, true), true);
+
+  const card = checkoutPaymentChoices({
+    paypalConfigured: false,
+    whopConfigured: true,
+    bankTransferConfigured: true,
+  });
+  assert.equal(card.showChoice, true);
+  assert.deepEqual(card.methods, ["bank_transfer", "whop"]);
+  assert.equal(card.defaultMethod, "bank_transfer");
+  assert.equal(CHECKOUT_METHOD_LABELS.whop, "Pay by card");
+  assert.equal(paymentMethodLabel("whop"), "Card");
+
+  const killed = checkoutPaymentChoices({
+    envValue: "bank_transfer_only",
+    paypalConfigured: true,
+    whopConfigured: true,
+    bankTransferConfigured: true,
+  });
+  assert.deepEqual(killed.methods, ["bank_transfer"]);
+  assert.equal(killed.showChoice, false);
+
+  const bothCards = checkoutPaymentChoices({
+    paypalConfigured: true,
+    whopConfigured: true,
+    bankTransferConfigured: true,
+  });
+  assert.deepEqual(bothCards.methods, ["bank_transfer", "whop", "paypal"]);
+
+  const surface = checkoutSurface({
+    paypalConfigured: false,
+    whopConfigured: true,
+    bankTransferConfigured: true,
+  });
+  assert.equal(surface.defaultMethod, "bank_transfer");
+  assert.equal(surface.setup, null);
+
+  assert.equal(
+    resolveRequestedPaymentMethod({ requested: "whop", paypalOffered: false, whopOffered: false }),
+    "unavailable",
+  );
+  assert.equal(
+    resolveRequestedPaymentMethod({ requested: "whop", paypalOffered: false, whopOffered: true }),
+    "whop",
   );
 });

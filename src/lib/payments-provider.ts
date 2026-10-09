@@ -4,13 +4,14 @@ export type PaymentsProvider = (typeof PAYMENTS_PROVIDERS)[number];
 
 export const DEFAULT_PAYMENTS_PROVIDER: PaymentsProvider = "bank_transfer";
 
-/** Buyer-facing rails. PayID stays the default. PayPal is an extra choice. */
-export const CHECKOUT_PAYMENT_METHODS = ["bank_transfer", "paypal"] as const;
+/** Buyer-facing rails. PayID stays the default. Card checkout is Whop; PayPal remains when it is configured. */
+export const CHECKOUT_PAYMENT_METHODS = ["bank_transfer", "whop", "paypal"] as const;
 
 export type CheckoutPaymentMethod = (typeof CHECKOUT_PAYMENT_METHODS)[number];
 
 export const CHECKOUT_METHOD_LABELS: Record<CheckoutPaymentMethod, string> = {
   bank_transfer: "Pay by PayID / bank transfer",
+  whop: "Pay by card",
   paypal: "Pay with PayPal or card",
 };
 
@@ -40,6 +41,15 @@ export function paymentsProvider(): PaymentsProvider {
   return parsePaymentsProvider(process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER);
 }
 
+/** True when a Whop API key exists and the kill switch is off. */
+export function whopCheckoutOffered(
+  envValue: string | null | undefined,
+  whopConfigured: boolean,
+) {
+  if (!whopConfigured) return false;
+  return (envValue?.trim().toLowerCase() ?? "") !== BANK_TRANSFER_ONLY;
+}
+
 /** True when PayPal credentials exist and the kill switch is off. */
 export function paypalCheckoutOffered(
   envValue: string | null | undefined,
@@ -52,31 +62,45 @@ export function paypalCheckoutOffered(
 export function checkoutPaymentChoices(input: {
   envValue?: string | null;
   paypalConfigured: boolean;
+  whopConfigured?: boolean;
   bankTransferConfigured?: boolean;
 }) {
   const paypalOffered = paypalCheckoutOffered(input.envValue, input.paypalConfigured);
+  const whopOffered = whopCheckoutOffered(input.envValue, input.whopConfigured === true);
   const bankReady = input.bankTransferConfigured !== false;
-  if (paypalOffered && bankReady) {
-    return {
-      paypalOffered: true,
-      methods: ["bank_transfer", "paypal"] as const,
-      defaultMethod: "bank_transfer" as const,
-      showChoice: true,
-    };
-  }
-  if (paypalOffered) {
-    return {
-      paypalOffered: true,
-      methods: ["paypal"] as const,
-      defaultMethod: "paypal" as const,
-      showChoice: false,
-    };
-  }
+  const base = paypalOffered && bankReady
+    ? {
+        paypalOffered: true,
+        methods: ["bank_transfer", "paypal"] as CheckoutPaymentMethod[],
+        defaultMethod: "bank_transfer" as CheckoutPaymentMethod,
+        showChoice: true,
+      }
+    : paypalOffered
+      ? {
+          paypalOffered: true,
+          methods: ["paypal"] as CheckoutPaymentMethod[],
+          defaultMethod: "paypal" as CheckoutPaymentMethod,
+          showChoice: false,
+        }
+      : {
+          paypalOffered: false,
+          methods: ["bank_transfer"] as CheckoutPaymentMethod[],
+          defaultMethod: "bank_transfer" as CheckoutPaymentMethod,
+          showChoice: false,
+        };
+  if (!whopOffered) return { ...base, whopOffered: false };
+  const methods: CheckoutPaymentMethod[] = base.methods.includes("bank_transfer")
+    ? ["bank_transfer", "whop", ...base.methods.filter((method) => method !== "bank_transfer")]
+    : ["whop", ...base.methods];
+  const defaultMethod: CheckoutPaymentMethod = methods.includes("bank_transfer")
+    ? "bank_transfer"
+    : methods[0] ?? "whop";
   return {
-    paypalOffered: false,
-    methods: ["bank_transfer"] as const,
-    defaultMethod: "bank_transfer" as const,
-    showChoice: false,
+    paypalOffered: base.paypalOffered,
+    whopOffered: true,
+    methods,
+    defaultMethod,
+    showChoice: methods.length > 1,
   };
 }
 
@@ -98,11 +122,13 @@ export type CheckoutSurface = {
 export function checkoutSurface(input: {
   envValue?: string | null;
   paypalConfigured: boolean;
+  whopConfigured?: boolean;
   bankTransferConfigured: boolean;
 }): CheckoutSurface {
   const choices = checkoutPaymentChoices(input);
   const provider = parsePaymentsProvider(input.envValue);
   if (choices.showChoice) return { ...choices, setup: null };
+  if (choices.defaultMethod === "whop") return { ...choices, setup: null };
   if (provider === "paypal" && !input.bankTransferConfigured) {
     return {
       paypalOffered: false,
@@ -128,8 +154,10 @@ export function resolveRequestedPaymentMethod(input: {
   requested?: string | null;
   envValue?: string | null;
   paypalOffered: boolean;
+  whopOffered?: boolean;
 }): CheckoutPaymentMethod | "unavailable" {
   const requested = input.requested?.trim().toLowerCase() ?? "";
+  if (requested === "whop") return input.whopOffered ? "whop" : "unavailable";
   if (requested === "paypal") return input.paypalOffered ? "paypal" : "unavailable";
   if (requested === "bank_transfer") return "bank_transfer";
   if (requested) return "unavailable";
@@ -141,5 +169,7 @@ export function resolveRequestedPaymentMethod(input: {
 
 /** Short label for an order row. Older rows with no column read as PayID. */
 export function paymentMethodLabel(method: string | null | undefined) {
-  return method === "paypal" ? "PayPal or card" : "PayID / bank transfer";
+  if (method === "paypal") return "PayPal or card";
+  if (method === "whop") return "Card";
+  return "PayID / bank transfer";
 }

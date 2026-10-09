@@ -89,6 +89,8 @@ export function promoLabel(code: string | null): string {
 export function orderStatusLabel(status: string): string {
   if (status === "paid") return "Paid";
   if (status === "awaiting_payment") return "Awaiting payment";
+  if (status === "pending") return "Pending card";
+  if (status === "failed") return "Payment failed";
   if (status === "cancelled") return "Cancelled";
   return status;
 }
@@ -108,7 +110,7 @@ export function adminOrderStats(
   let paidToday = 0;
   let revenuePaidTodayCents = 0;
   for (const order of orders) {
-    if (order.status === "awaiting_payment") awaitingPayment += 1;
+    if (order.status === "awaiting_payment" || order.status === "pending") awaitingPayment += 1;
     if (order.status === "paid" && today && sydneyCalendarDay(order.paidAt) === today) {
       paidToday += 1;
       revenuePaidTodayCents += order.totalCents;
@@ -122,7 +124,7 @@ export function sortAdminOrders<T extends { status: string; createdAt: string | 
 ): T[] {
   return [...orders].sort((a, b) => {
     const rank = (status: string) =>
-      status === "awaiting_payment" ? 0 : status === "cancelled" ? 2 : 1;
+      status === "awaiting_payment" || status === "pending" || status === "failed" ? 0 : status === "cancelled" ? 2 : 1;
     const byStatus = rank(a.status) - rank(b.status);
     if (byStatus !== 0) return byStatus;
     return createdAtMs(b.createdAt) - createdAtMs(a.createdAt);
@@ -160,7 +162,7 @@ export function adminDeskNotice(notice: string | undefined, reference: string | 
     case "blocked":
       return "That order was cancelled and its Club points were returned, so it cannot be marked paid.";
     case "not-cancellable":
-      return "Only an order that is still awaiting payment can be cancelled.";
+      return "Only an unpaid order can be cancelled.";
     case "missing":
       return "That order was not found.";
     case "invalid":

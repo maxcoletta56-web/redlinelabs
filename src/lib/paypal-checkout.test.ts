@@ -50,8 +50,10 @@ function stored(status: StoredOrder["status"], totalCents = 7120): StoredOrder {
     shipping: null,
     clubEmail: null,
     clubPointsRedeemed: 0,
+    clubDiscountCents: 0,
     paymentMethod: "paypal",
     paypalOrderId: paypalId,
+    whopPaymentId: null,
     createdAt: "2026-10-07T00:00:00.000Z",
     paidAt: status === "paid" ? "2026-10-07T01:00:00.000Z" : null,
   };

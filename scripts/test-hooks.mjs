@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = pathResolve(dirname(fileURLToPath(import.meta.url)), "..");
 const stubUrl = new URL("./server-only-stub.mjs", import.meta.url).href;
+const neonStubUrl = new URL("./neon-stub.mjs", import.meta.url).href;
 
 function relativeUrl(specifier, parentURL) {
   if (!specifier.startsWith(".") || !parentURL) return null;
@@ -24,6 +25,13 @@ function aliasUrl(specifier) {
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === "server-only") {
     return { format: "module", shortCircuit: true, url: stubUrl };
+  }
+  if (specifier === "@neondatabase/serverless") {
+    try {
+      return await nextResolve(specifier, context);
+    } catch {
+      return { format: "module", shortCircuit: true, url: neonStubUrl };
+    }
   }
   const aliased = aliasUrl(specifier);
   if (aliased) return nextResolve(aliased, context);

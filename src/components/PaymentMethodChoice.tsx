@@ -14,15 +14,22 @@ export type CheckoutAvailability = {
   ready: boolean;
   showChoice: boolean;
   defaultMethod: CheckoutPaymentMethod;
+  methods: CheckoutPaymentMethod[];
   setup: CheckoutPaymentMethod | null;
   configured: boolean | null;
 };
+
+function knownMethod(value: string | undefined): CheckoutPaymentMethod | null {
+  if (value === "paypal" || value === "whop" || value === "bank_transfer") return value;
+  return null;
+}
 
 export function useCheckoutAvailability(): CheckoutAvailability {
   const [state, setState] = useState<CheckoutAvailability>({
     ready: false,
     showChoice: false,
     defaultMethod: paymentsProvider() === "paypal" ? "paypal" : "bank_transfer",
+    methods: ["bank_transfer"],
     setup: null,
     configured: null,
   });
@@ -35,17 +42,21 @@ export function useCheckoutAvailability(): CheckoutAvailability {
         (data: {
           showChoice?: boolean;
           defaultMethod?: string;
+          methods?: unknown;
           setup?: string | null;
           configured?: boolean;
         }) => {
           if (cancelled) return;
-          const defaultMethod = data.defaultMethod === "paypal" ? "paypal" : "bank_transfer";
-          const setup =
-            data.setup === "paypal" || data.setup === "bank_transfer" ? data.setup : null;
+          const methods = Array.isArray(data.methods)
+            ? data.methods.filter((method): method is CheckoutPaymentMethod => knownMethod(typeof method === "string" ? method : undefined) !== null)
+            : [];
+          const defaultMethod = knownMethod(data.defaultMethod) ?? (methods[0] ?? "bank_transfer");
+          const setup = knownMethod(data.setup ?? undefined);
           setState({
             ready: true,
             showChoice: Boolean(data.showChoice),
             defaultMethod,
+            methods: methods.length > 0 ? methods : [defaultMethod],
             setup,
             configured: Boolean(data.configured),
           });
@@ -64,34 +75,41 @@ export function useCheckoutAvailability(): CheckoutAvailability {
   return state;
 }
 
-export function useSelectedPaymentMethod(showChoice: boolean) {
+export function useSelectedPaymentMethod(showChoice: boolean, methods: readonly CheckoutPaymentMethod[]) {
   const [method, setMethod] = useState<CheckoutPaymentMethod>("bank_transfer");
 
   useEffect(() => {
     if (!showChoice) return;
+    const allowed = (candidate: string | null | undefined) =>
+      knownMethod(candidate ?? undefined) && methods.includes(knownMethod(candidate ?? undefined) as CheckoutPaymentMethod)
+        ? (knownMethod(candidate ?? undefined) as CheckoutPaymentMethod)
+        : null;
     const apply = () => {
       try {
         const query = new URLSearchParams(window.location.search).get("pay");
-        if (query === "paypal") {
-          setMethod("paypal");
-          window.sessionStorage.setItem(STORAGE_KEY, "paypal");
+        const fromQuery =
+          query === "card" || query === "whop"
+            ? allowed("whop")
+            : query === "paypal"
+              ? allowed("paypal")
+              : query === "payid" || query === "bank_transfer"
+                ? allowed("bank_transfer")
+                : null;
+        if (fromQuery) {
+          setMethod(fromQuery);
+          window.sessionStorage.setItem(STORAGE_KEY, fromQuery);
           return;
         }
-        if (query === "payid" || query === "bank_transfer") {
-          setMethod("bank_transfer");
-          window.sessionStorage.setItem(STORAGE_KEY, "bank_transfer");
-          return;
-        }
-        const stored = window.sessionStorage.getItem(STORAGE_KEY);
-        setMethod(stored === "paypal" ? "paypal" : "bank_transfer");
+        const stored = allowed(window.sessionStorage.getItem(STORAGE_KEY));
+        setMethod(stored ?? methods[0] ?? "bank_transfer");
       } catch {
-        setMethod("bank_transfer");
+        setMethod(methods[0] ?? "bank_transfer");
       }
     };
     apply();
     window.addEventListener(CHANGE_EVENT, apply);
     return () => window.removeEventListener(CHANGE_EVENT, apply);
-  }, [showChoice]);
+  }, [showChoice, methods]);
 
   function choose(next: CheckoutPaymentMethod) {
     setMethod(next);
@@ -103,21 +121,23 @@ export function useSelectedPaymentMethod(showChoice: boolean) {
     }
   }
 
-  return { method: showChoice ? method : "bank_transfer", choose };
+  return { method: showChoice ? method : (methods[0] ?? "bank_transfer"), choose };
 }
 
 export function PaymentMethodChoice({
   value,
   onChange,
+  methods,
   name = "paymentMethod",
   stacked = false,
 }: {
   value: CheckoutPaymentMethod;
   onChange: (method: CheckoutPaymentMethod) => void;
+  methods: readonly CheckoutPaymentMethod[];
   name?: string;
   stacked?: boolean;
 }) {
-  const options: CheckoutPaymentMethod[] = ["bank_transfer", "paypal"];
+  const options = methods.length > 0 ? methods : (["bank_transfer"] as const);
   return (
     <fieldset>
       <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
