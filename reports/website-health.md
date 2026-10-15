@@ -1,101 +1,103 @@
-# Website Health Report
+# Redlinelabs Website Health
 
-> **Purpose:** This report is owned by the **Website Health specialist agent**. It tracks the overall
-> operational health of the Redline Labs storefront (`https://redlinelabs.shop`) — that the site
-> builds, deploys, renders, and serves its core pages and flows without errors. It is the
-> first place to look when "the site is broken" and the umbrella owner for issues that do not
-> clearly belong to one of the other specialist reports.
+Last Updated: 8 October 2026
 
-Last Updated: 25 September 2026
+Overall Status: Healthy enough to stay on the current production deploy. `cursor/redlinelabs-shop-1c01` is at `efe984f` (merge of pull request #105). GitHub Actions run `37710478087` passed lint, typecheck, and build. Vercel production deployment `6924553393` completed successfully. This environment cannot open a TLS connection to `https://redlinelabs.shop` or `*.vercel.app`, so the new checkout choice was reviewed in source and was not clicked on the live site. That TLS failure is not an outage. No render or build break was found in the push. The storefront is still Redline Labs black and gold. PayID stays the default. PayPal is an extra choice when its credentials are present, unless `NEXT_PUBLIC_PAYMENTS_PROVIDER` is `bank_transfer_only`.
 
-Overall Status: The live site at https://redlinelabs.shop/ is up, Stripe live checkout is configured, and the main catalogue pages return 200. Checkout on this branch no longer treats a browser store-credit balance as a Stripe coupon. That fix is not on production until it is reviewed and deployed. The current design system is Redline Labs black and gold.
+This file is the umbrella health record: build, deploy, and whether the core pages render. Search markup stays in `seo-aeo-health.md`. Catalogue data stays in `catalogue-merchandising-health.md`. Cart and checkout conversion stay in `ecommerce-cro-health.md`. Lint, tests, and Core Web Vitals stay in `qa-performance-health.md`. Secrets and compliance stay in `security-compliance-health.md`.
 
-## Scope / responsibilities
+The copy of this file on the production branch was the 25 September scaffold. Draft pull request #103 recorded production at `78e01b6` and was not merged. Do not merge #103 after this report. It says PayPal runs only when the public flag is `paypal`, which pull request #105 changed.
 
-- Successful production build (`next build`) and Vercel deployment health.
-- Availability and correct rendering of core routes: home (`/`), catalogue (`/shop`),
-  product pages (`/product/[slug]`), cart (`/cart`), checkout (`/checkout`), account
-  (`/account`), and the policy pages.
-- Global layout, navigation (`Header`, `Footer`), providers, and error/not-found handling.
-- Console errors, hydration mismatches, broken images, and broken internal links.
-- Third-party embeds that affect page health (e.g. the optional AssistLoop chat widget).
-- Redirects declared in `next.config.ts` resolving correctly.
+## Critical Issues
 
-## Out of scope (see sibling reports)
+None confirmed on this pass.
 
-- Search/structured-data specifics → `seo-aeo-health.md`
-- Catalogue/product data correctness → `catalogue-merchandising-health.md`
-- Cart/checkout conversion tuning → `ecommerce-cro-health.md`
-- Automated tests & performance budgets → `qa-performance-health.md`
-- Secrets, headers, compliance → `security-compliance-health.md`
+A green Vercel deploy still does not prove `PAYID_ADDRESS`, `PAYID_ACCOUNT_NAME`, `DATABASE_URL`, `RESEND_API_KEY`, `PAYPAL_CLIENT_ID`, or `PAYPAL_CLIENT_SECRET` are set. If PayID or the database is missing, bank-transfer checkout cannot take an order. If the Resend key is missing, the order still saves and the mailer logs once. PayPal stays hidden until its two secrets are set. That is unverified, not a confirmed production failure.
 
-## Key files & signals
+The orders migration backfills `payment_method` and `paypal_order_id` from `db/orders.sql` during the Vercel build when `DATABASE_URL` is set. Deployment `6924553393` succeeded, so the script did not refuse the build. If the database URL was unset, the script skips and a later insert would fail on the new columns. Confirm those two columns exist before treating a checkout error as an application bug.
 
-- `next.config.ts` — image `remotePatterns`, redirects.
-- `src/app/layout.tsx` — root layout, global chrome, metadata base.
-- `src/app/not-found.tsx`, `src/components/RouteFallback.tsx` — error surfaces.
-- `src/components/Header.tsx`, `src/components/Footer.tsx` — global navigation.
-- Vercel deployment logs and Preview URLs per branch/PR.
+## High Priority Issues
 
-## Health checklist
+- Pull request #105 offers PayPal beside PayID and writes both through the same order row. Do not add a second PayPal client, and do not set `NEXT_PUBLIC_PAYMENTS_PROVIDER`. `bank_transfer_only` is the kill switch. CRO owns any change to the default rail.
+- Unchecked Remember me still stores the account email in the client-readable cookie `rl_account_session`. The checked path, which is the default, keeps the sign-in in `localStorage` under `redline-session-v1`. Security owns that follow-up. Do not rebuild sign-in.
+- Fourteen catalogue images were last observed returning HTTP 403 from `i0.wp.com` on 25 September 2026. `ProductImage` then shows `/brand/vial.png`. Detail belongs in `catalogue-merchandising-health.md`. Image hosts were not fetched again here.
+- `reports/ecommerce-cro-health.md` still describes Stripe embedded checkout. It does not record bank transfer, PayPal, the continue-shopping links, Remember me, or the #105 choice. The SEO, QA, security, and catalogue reports are still the 25 September scaffolds. Record those deploys in the owning reports. Do not implement the behaviour again.
 
-- [x] `npm run build` completes with all routes generated. Local build on 25 September 2026 succeeded, including `/product/bacterial-water`. CI on the base branch now runs lint, typecheck, and build.
-- [x] Home, catalogue, and a sample product page return HTTP 200. Production probe the same day: home, shop, about, FAQ, contact, cart, checkout, account, four policy pages, and `/product/bpc-157` returned 200.
-- [x] No console/hydration errors on core pages. Local browser pass reported no console issues.
-- [x] Header/footer links resolve (no 404s). Those routes returned 200. Mobile menu showed Home, Shop, About, FAQ, and Contact.
-- [ ] Declared redirects (`/product/bac-water`, `/product/product-bacterial-water`) 308 to the canonical slug. Not re-checked in this pass.
-- [ ] Remote product images load from the allow-listed host. One sampled BPC-157 image returned 200. Image failures for other listings belong in `catalogue-merchandising-health.md`.
+## Medium Priority Issues
 
-## Current status
+- `GET /api/checkout` sets `paypalOffered` to `showChoice`. That is true only when both rails can run. A PayPal-only response has `defaultMethod: "paypal"` and `paypalOffered: false`. The cart and checkout pages read `showChoice` and `defaultMethod`, so the page still follows the PayPal-only path. Nothing else reads the mismatched field. CRO can correct the field when it next touches that route.
+- `/checkout/success` still confirms a PayPal capture from the httpOnly cookie `rl_paypal_checkout` (30 minutes, path `/`). The cookie holds the receipt, including email and shipping. Bank-transfer buyers stay on `/order/[reference]`. An unfinished PayPal return now offers retry and a PayID link on the same order. Do not point bank-transfer orders at `/checkout/success`.
+- GitHub CI runs lint, typecheck, and build. It does not run `npm test`. `src/lib/paypal-checkout.test.ts` did not run in Actions run `37710478087`.
+- Inter is now a self-hosted variable font (`src/app/fonts/InterVariable.woff2`, about 352 KB) via `next/font/local`. The production build no longer fetches Google Fonts. QA should confirm the font file is the first paint face and that the extra weight range is worth the bytes.
+- `node_modules` is absent here and this environment cannot reach `registry.npmjs.org`, so this pass did not run `npm run check` locally. GitHub Actions remains the build evidence for `efe984f`.
 
-Production is serving the site. It is behind the repository: `GET /product/bacterial-water` returned 404 on 25 September 2026 and that URL was absent from the live sitemap, while the listing is already in `src/data/products.json`. The homepage cache `age` was about 4.5 days. Publishing that listing is a deploy of existing catalogue commits, not part of the checkout change.
+## Low Priority Issues
 
-AssistLoop is enabled in production. The homepage HTML preloads `https://assistloop.ai/assistloop-widget.js`.
+- Content-Security-Policy is still report-only. `form-action` allows `https://www.paypal.com` and `https://www.sandbox.paypal.com`. Card checkout redirects the browser to PayPal from the server approval URL.
+- Previously noted unused files are still unused: root `index.mts` (the only `ai` import), `src/components/Placeholder.tsx` (no imports), and the default `public/*.svg` files. They were left in place.
+- The test runner still warns that `package.json` has no `"type": "module"` when loading TypeScript tests.
+- `FaqList` keeps closed answers in the HTML with the `hidden` attribute. Panel ids are `faq-panel-0` and so on, with no page prefix. Each current page renders one list, so ids do not collide today.
+- The cart drawer, cart page, and checkout still have one “Continue shopping” link each. The drawer now also shows the payment choice when both rails are available. That choice does not clear the cart.
 
-`npx tsc --noEmit` used to fail with `Cannot find name 'LayoutProps'` until `next build` generated route types. The base branch now types the root layout `children` as `ReactNode`, so that failure is closed on this merge.
+## Changes Made
 
-Contact is a `mailto:` composer. The newsletter form says it does not start a mailing list. Both render and do what they say.
+No storefront code was changed in this health pass. Pull request #105 is already on the production branch.
 
-### Handed to sibling reports
+PayPal is offered beside PayID. `src/components/PaymentMethodChoice.tsx` renders the choice. `src/lib/paypal-checkout.ts` inserts an unpaid order before the redirect and records the PayPal order id. `payment_method` and `paypal_order_id` are on `db/orders.sql`. The build migration adds missing columns without dropping rows. A failed PayPal call after the row is saved sends the buyer to `/order/[reference]?paypal=unavailable`, where they can retry PayPal or pay by PayID. Header, gold and black palette, and catalogue data were not part of the #105 diff.
 
-These came out of the same pass. They stay listed here so the audit is not dropped, and the owning report should record them.
+Inter is loaded from `src/app/fonts/InterVariable.woff2` in `src/app/layout.tsx`. `next/font/google` is no longer imported.
 
-- `ecommerce-cro-health.md`: checkout used to create a Stripe coupon from a browser store-credit amount. Account balances live only in `localStorage`. This branch ignores that amount and no longer subtracts it from “Due now”. The CRO checklist still says store credit should apply at checkout; that item disagrees with this code.
-- `ecommerce-cro-health.md`: the live checkout path did not require age and research-use confirmation on the server. The server action and `POST /api/checkout` now reject a session unless both are true. Account, FAQ, checkout, and the restock control no longer promise email alerts or an automatic credit deduction.
-- `security-compliance-health.md`: accounts, orders, addresses, and stock alerts are browser-local. There is no Stripe webhook. `GET /api/checkout/session` returns email and shipping to anyone with the Checkout Session id. Live homepage headers were HSTS only, plus `Access-Control-Allow-Origin: *`.
-- `seo-aeo-health.md`: product JSON-LD marks every listing `InStock`. FAQ content has no `FAQPage` schema. Slugs include `products-dsip`, `product-tb-1`, and the misspelling `products-kisspepien`.
-- `catalogue-merchandising-health.md`: listing titles mix case. Catalogue photos are remote `i0.wp.com` files with a `/brand/vial.png` fallback.
-- `qa-performance-health.md`: no product analytics in the repo. Draft pull request `#22` is Vercel Speed Insights. The test runner warns that `package.json` has no `"type": "module"`. Dead code: root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`, default `public/*.svg` files, and unused `public/brand/hero.png` and `public/brand/logo.png`.
+`reports/project-overview.md` now matches that checkout. The production copy had been left on the #102 wording (PayPal only when the public flag is `paypal`, and no `vercel.json`).
 
-### Changes on this branch
+Remember me from pull request #97 is unchanged. The continue-shopping links from pull requests #88, #91, and #95 are unchanged. Do not add another. The admin receipt path from pull request #82 is unchanged.
 
-- Checkout no longer turns a browser store-credit balance into a Stripe coupon.
-- Checkout requires age and research-use confirmation before creating a session.
-- Checkout, account, FAQ, and the product restock control match that behaviour.
-- No visual redesign. Header, gold/black palette, catalogue data, and the DGC20 coupon behaviour are unchanged.
+This report supersedes the 6 October write-up on draft pull request #103, which stopped at `78e01b6`.
 
-### Tests performed
+Closed since the 25 September write-up, so they should not be reopened as new defects:
 
-- `npm test`: 32 passed, 0 failed.
-- `npm run lint`: passed.
-- `npm run build` (Next.js 16.3.4): passed. Static product paths include `/product/bacterial-water`.
-- `npx tsc --noEmit` after that build: passed. Re-run after this merge because the base branch added `npm run typecheck` and changed `src/app/layout.tsx`.
-- Local browser pass against `next start`: FAQ account answer, account benefit cards, BPC-157 restock line, shop search `bpc`, checkout summary with store credit $0.00, and the mobile menu at 390px. No card payment was submitted.
+- Browser store credit is not sent to the payment rail (pull request #68).
+- Guest checkout collects an Australian shipping address (pull request #83).
+- `bacterial-water` is in `src/data/products.json`. The 25 September production 404 was a stale deploy.
+- The admin desk and the bearer route both schedule the payment-received email (pull request #82).
+- Filled cart, cart drawer, and checkout already link back to `/shop` (pull requests #88, #91, and #95).
+- Account sign-in has Remember me, checked by default (pull request #97).
+- PayPal guest card checkout replaced Stripe and Payoneer (pull request #102). #105 keeps that client and adds it as a choice next to PayID.
 
-### Build status
+## Tests Performed
 
-Local production build succeeded on 25 September 2026 before this merge. This branch has not been deployed. Production was not updated.
+- Reviewed `78e01b6..efe984f` (25 files). Added `PaymentMethodChoice`, `paypal-checkout.ts`, and the two order columns. Checkout, the cart drawer, the cart page, the order page, and the success page branch on the selected method.
+- Confirmed `checkoutPaymentChoices` shows both methods only when PayPal credentials exist and bank transfer is configured, and that `bank_transfer_only` hides PayPal.
+- Confirmed an omitted `paymentMethod` still follows the legacy rail: PayID unless `paymentsProvider()` is `paypal` and PayPal is offered.
+- Confirmed bank transfer still redirects to `/order/{reference}`. PayPal capture still returns through `/checkout/success`.
+- Confirmed the cart drawer “Continue shopping” link still goes to `/shop` and only closes the drawer.
+- Confirmed `src/app/layout.tsx` uses `next/font/local` and no longer imports `next/font/google`.
+- GitHub Actions run `37710478087` on `efe984f`: success (lint, typecheck, and build).
+- GitHub deployment `6924553393` for `efe984f`: environment Production, state success, created 8 October 2026. Vercel status on the commit is success.
+- `npm test` and `npm run check` were not run locally. `node_modules` is absent and this environment cannot reach `registry.npmjs.org`.
+- The live site and the Vercel deployment URL were not opened. Checkout was not submitted.
 
-### Outstanding work
+## Build Status
 
-- Review and, only when explicitly requested, deploy the checkout fix. Production still applies client-supplied store credit until then.
-- Decide whether Bacterial Water should be published by deploying the existing catalogue commits.
-- Keep the Redline Labs black and gold storefront. A historical branch named `cursor/metro-uniforms-about-151c` is not the current brand.
-- Use a Vercel preview for this branch. Do not promote it to production without an explicit request.
+The production-branch build for `efe984f` succeeded in GitHub Actions, and Vercel reported production deployment `6924553393` complete. This health branch updates the report and the project overview. It should not be promoted ahead of an explicit request, and it does not need a separate production deploy.
 
-## Change log
+## Outstanding Work
 
-| Date | Agent | Summary |
-| --- | --- | --- |
-| _initial_ | setup | Report scaffold created. |
-| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. Render and deploy findings stay here. Checkout, security, SEO, catalogue, and test findings are handed to the sibling reports. |
+- CRO: record pull request #105 in `ecommerce-cro-health.md`. The choice already exists. Do not add another payment client, and do not change `NEXT_PUBLIC_PAYMENTS_PROVIDER` unless that change is explicitly requested.
+- Security: record PayPal credential handling, the `rl_paypal_checkout` receipt cookie, the Remember me cookie, and the public `paypalConfigured` / `bankTransferConfigured` booleans on `GET /api/checkout`. Leave secret values out of the repo and this report.
+- When egress allows, open `/`, `/shop`, `/checkout`, and `/cart` and confirm they return 200. With PayPal secrets unset, checkout copy should describe PayID only and the choice should be absent. Do not submit a payment.
+- When egress allows, confirm an existing `/order/[reference]` still renders. A missing `payment_method` column would 500 that page.
+- Confirm PayID, database, and Resend variables exist in Vercel by name only. Confirm the orders table has `payment_method` and `paypal_order_id`.
+- Have the SEO agent write pull request #86 into `seo-aeo-health.md`.
+- Merge one current health report onto the production branch only when that merge is explicitly requested. Then close the older health drafts (#103 and earlier) so the next agent does not audit from the 25 September scaffold.
+- Leave the black and gold storefront as it is. Do not apply a Metro Uniforms redesign.
+
+## Recommendations
+
+- Keep PayID as the default rail. Offer PayPal only when its secrets are set. Use `bank_transfer_only` to hide it. Do not infer the card rail from the presence of `src/lib/paypal.ts`.
+- Keep a single PayPal implementation in `src/lib/paypal.ts`, `src/lib/paypal-checkout.ts`, and `src/lib/checkout-session.ts`. Do not restore `payoneer.ts` or `stripe-keys.ts`.
+- Keep the mark-paid receipt on `markOrderPaidWithPaymentEmail`. Do not add `record-admin-payment.ts` back, and do not merge pull request #80’s copy of that path.
+- Keep one “Continue shopping” link on checkout, the cart page, and the cart drawer.
+- Keep specialist agents on their own reports. The next CRO pass should record #105, not rebuild it.
+- Add `npm test` to CI so `src/lib/paypal-checkout.test.ts` runs before a production deploy.
+- Treat `reports/project-overview.md` as the architecture source of truth. The payment section now matches #105.
+- Do not merge draft pull request #103 after this report. It describes production as `78e01b6` and would overwrite this #105 note.
