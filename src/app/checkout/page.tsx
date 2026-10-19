@@ -17,7 +17,7 @@ import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress 
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { isMemberSpecial, memberUnitCents } from "@/lib/membership";
-import { checkoutTotals } from "@/lib/promo-pricing";
+import { checkoutTotals, priceCardOrderCents } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
@@ -74,6 +74,21 @@ const PROVIDER_COPY = {
         <code className="text-[#d4af37]">PAYID_ADDRESS</code>,{" "}
         <code className="text-[#d4af37]">PAYID_ACCOUNT_NAME</code>, and{" "}
         <code className="text-[#d4af37]">DATABASE_URL</code>.
+      </>
+    ),
+  },
+  whop: {
+    intro:
+      "Pay by card in the form on this page. Card details stay with Whop. Orders of $200 or more receive 10% off before any coupon. The amount is calculated on the server.",
+    paying: "Paying as",
+    payingDetail: "Enter the card in the secure form below. You stay on this page.",
+    addressNote: "This address is saved with the order before the card form opens.",
+    creditNote: "It is not deducted from the card charge.",
+    summaryNote:
+      "Orders of $200 or more receive 10% off the catalogue subtotal before any coupon. Store credit saved in this browser is not deducted. The amount charged is taken from the catalogue, not from the browser cart.",
+    setup: (
+      <>
+        Card checkout is not configured. Add <code className="text-[#d4af37]">WHOP_API_KEY</code>.
       </>
     ),
   },
@@ -167,8 +182,12 @@ export default function CheckoutPage() {
     items: pricedItems,
     promo,
   });
+  const cardPricing = priceCardOrderCents(totals.catalogCents, promo);
+  const payingByCard = paymentMethod === "whop";
+  const dueCents = payingByCard ? cardPricing.totalCents : totals.discountedCents;
+  const promoOffCents = payingByCard ? cardPricing.promoCents : totals.discountCents;
   const browserCreditCents = user?.storeCreditCents ?? 0;
-  const payable = centsToDollars(totals.discountedCents);
+  const payable = centsToDollars(dueCents);
   const summaryItems = pricedItems;
 
   const cartItems = useMemo(
@@ -344,7 +363,7 @@ export default function CheckoutPage() {
               </fieldset>
             )}
             {availability.showChoice && (
-              <PaymentMethodChoice value={method} onChange={choose} />
+              <PaymentMethodChoice value={method} onChange={choose} methods={availability.methods} />
             )}
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <fieldset className="space-y-4">
@@ -509,11 +528,19 @@ export default function CheckoutPage() {
             {formatPrice(centsToDollars(memberSavingsCents))} off the regular total.
           </p>
         )}
-        {totals.discountCents > 0 && (
+        {payingByCard && cardPricing.volumeCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders $200+</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(cardPricing.volumeCents))}
+            </span>
+          </div>
+        )}
+        {promoOffCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(totals.discountCents))}
+              −{formatPrice(centsToDollars(promoOffCents))}
             </span>
           </div>
         )}

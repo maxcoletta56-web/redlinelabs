@@ -89,8 +89,14 @@ export function promoLabel(code: string | null): string {
 export function orderStatusLabel(status: string): string {
   if (status === "paid") return "Paid";
   if (status === "awaiting_payment") return "Awaiting payment";
+  if (status === "pending") return "Awaiting card payment";
+  if (status === "failed") return "Card payment failed";
   if (status === "cancelled") return "Cancelled";
   return status;
+}
+
+function isUnsettled(status: string) {
+  return status === "awaiting_payment" || status === "pending" || status === "failed";
 }
 
 export type AdminOrderStats = {
@@ -108,7 +114,7 @@ export function adminOrderStats(
   let paidToday = 0;
   let revenuePaidTodayCents = 0;
   for (const order of orders) {
-    if (order.status === "awaiting_payment") awaitingPayment += 1;
+    if (isUnsettled(order.status)) awaitingPayment += 1;
     if (order.status === "paid" && today && sydneyCalendarDay(order.paidAt) === today) {
       paidToday += 1;
       revenuePaidTodayCents += order.totalCents;
@@ -122,7 +128,7 @@ export function sortAdminOrders<T extends { status: string; createdAt: string | 
 ): T[] {
   return [...orders].sort((a, b) => {
     const rank = (status: string) =>
-      status === "awaiting_payment" ? 0 : status === "cancelled" ? 2 : 1;
+      isUnsettled(status) ? 0 : status === "cancelled" ? 2 : 1;
     const byStatus = rank(a.status) - rank(b.status);
     if (byStatus !== 0) return byStatus;
     return createdAtMs(b.createdAt) - createdAtMs(a.createdAt);

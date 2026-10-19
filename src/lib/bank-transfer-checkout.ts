@@ -19,6 +19,7 @@ import {
 } from "@/lib/orders";
 import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 import { lookupPromo, promoDiscountCents } from "@/lib/promo";
+import { priceCardOrderCents } from "@/lib/promo-pricing";
 import { withTimeout } from "@/lib/with-timeout";
 
 export type BankTransferShippingInput = {
@@ -76,9 +77,12 @@ export type CreateBankTransferOrderOptions = {
   paypalOrderId?: string | null;
   /**
    * PayPal records the order before a card is captured, and does not need
-   * PayID details to do that. Bank transfer still requires them.
+   * PayID details to do that. Bank transfer still requires them. Whop card
+   * checkout skips them too: the card form replaces the PayID instructions.
    */
   skipBankConfiguration?: boolean;
+  /** Card orders email only after payment.succeeded, not when the row is saved. */
+  skipCreatedEmail?: boolean;
 };
 
 export type CheckoutOrderInput = {
@@ -163,7 +167,12 @@ export async function createCheckoutOrder(
   input: CheckoutOrderInput,
   options?: CreateBankTransferOrderOptions,
 ): Promise<CheckoutOrder> {
-  const paymentMethod = options?.paymentMethod === "paypal" ? "paypal" : "bank_transfer";
+  const paymentMethod =
+    options?.paymentMethod === "paypal"
+      ? "paypal"
+      : options?.paymentMethod === "whop"
+        ? "whop"
+        : "bank_transfer";
   if (!options?.skipBankConfiguration && !resolveBankTransfer(process.env)) {
     throw new Error("Bank transfer is not configured");
   }
@@ -190,7 +199,10 @@ export async function createCheckoutOrder(
   });
   const promo = membershipOnly ? null : lookupPromo(input.promoCode);
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
-  const payableCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
+  const cardPriced = paymentMethod === "whop" ? priceCardOrderCents(subtotalCents, promo) : null;
+  const payableCents = cardPriced
+    ? cardPriced.totalCents
+    : subtotalCents - promoDiscountCents(subtotalCents, promo);
   if (payableCents <= 0) {
     throw new Error("Order total must be greater than zero");
   }
@@ -226,6 +238,7 @@ export async function createCheckoutOrder(
           clubDiscountCents: 0,
           paymentMethod,
           paypalOrderId: options?.paypalOrderId ?? null,
+          status: paymentMethod === "whop" ? "pending" : "awaiting_payment",
         },
         sql,
       ),
@@ -246,10 +259,9 @@ export async function createCheckoutOrder(
     shipping,
   };
   try {
-    if (options?.deliver) {
-      await options.deliver(notice);
-    } else {
-      await deliverOrderNotice(reference, notice);
+    if (!options?.skipCreatedEmail) {
+      if (options?.deliver) await options.deliver(notice);
+      else await deliverOrderNotice(reference, notice);
     }
   } catch (error) {
     console.error("[mailer] order email failed", {
