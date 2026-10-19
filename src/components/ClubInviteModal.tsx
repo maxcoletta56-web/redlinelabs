@@ -2,23 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { shouldInviteOnPath } from "@/lib/club-invite";
 import { MEMBERSHIP_PRICE_CENTS, MEMBER_DISCOUNT_PERCENT } from "@/lib/membership";
 import { formatPrice } from "@/lib/products";
-import { RESEARCH_DISCLAIMER } from "@/lib/company";
 
-const DISMISSED_KEY = "redline-club-invite-v1";
+/** New key so the membership banner shows once, even if the old points invite was dismissed. */
+const DISMISSED_KEY = "redline-club-invite-v2";
 
 /** Long enough that the page the customer came for renders first. */
-const DELAY_MS = 6_000;
-
-const INVITED_ROUTES = ["/shop", "/product", "/cart"];
-
-function shouldInvite(pathname: string) {
-  return INVITED_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
-}
+const DELAY_MS = 1_500;
 
 function alreadySeen() {
   try {
@@ -37,14 +30,13 @@ function remember() {
 }
 
 /**
- * One invitation per browser, on catalogue routes only — never on checkout,
- * the order page or /club itself, where it would interrupt a customer who is
+ * One join banner per browser, on the home page and catalogue routes. Never on
+ * checkout, the order page or /club, where it would interrupt someone who is
  * already paying or already joining.
  */
 export function ClubInviteModal() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const closeRef = useRef<HTMLButtonElement | null>(null);
 
   const dismiss = useCallback(() => {
     remember();
@@ -52,7 +44,7 @@ export function ClubInviteModal() {
   }, []);
 
   useEffect(() => {
-    if (!shouldInvite(pathname) || alreadySeen()) return;
+    if (!shouldInviteOnPath(pathname) || alreadySeen()) return;
     const timer = window.setTimeout(() => {
       if (!alreadySeen()) setOpen(true);
     }, DELAY_MS);
@@ -61,7 +53,6 @@ export function ClubInviteModal() {
 
   useEffect(() => {
     if (!open) return;
-    closeRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") dismiss();
     };
@@ -71,56 +62,43 @@ export function ClubInviteModal() {
 
   if (!open) return null;
 
+  const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
-      role="presentation"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) dismiss();
-      }}
-    >
-      <div
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[45] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-5">
+      <aside
+        className="club-invite-banner pointer-events-auto surface mx-auto flex w-full max-w-[720px] flex-col gap-4 border border-[rgba(212,175,55,0.34)] p-4 shadow-[0_-12px_40px_rgba(0,0,0,0.45)] sm:flex-row sm:items-center sm:p-5"
         role="dialog"
-        aria-modal="true"
+        aria-modal="false"
         aria-labelledby="club-invite-title"
-        className="surface w-full max-w-[460px] p-6"
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <p className="kicker">Redline Club</p>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={dismiss}
-            aria-label="Close"
-            className="-mt-1 min-h-11 px-2 text-xl leading-none text-[#8f8c84] hover:text-[#d4af37]"
+          <h2
+            id="club-invite-title"
+            className="mt-1 text-[1.35rem] leading-tight font-semibold tracking-[-0.02em] text-white"
           >
-            ×
-          </button>
+            Join the club
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-[#8f8c84]">
+            {price} a month. Members get {MEMBER_DISCOUNT_PERCENT}% off a short list of products,
+            applied at checkout with no code.
+          </p>
         </div>
-        <h2
-          id="club-invite-title"
-          className="mt-2 text-[1.6rem] leading-tight font-semibold tracking-[-0.02em] text-white"
-        >
-          Member pricing from {formatPrice(MEMBERSHIP_PRICE_CENTS / 100)} a month.
-        </h2>
-        <p className="mt-3 text-sm leading-7 text-[#8f8c84]">
-          Members get {MEMBER_DISCOUNT_PERCENT}% off a short list of products. The list changes on
-          the 1st, and the discount applies at checkout with no code.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <Link href="/club" className="btn" onClick={dismiss}>
-            See membership
+            Join the club
           </Link>
           <button
             type="button"
             onClick={dismiss}
-            className="min-h-11 text-sm text-[#8f8c84] underline hover:text-[#d4af37]"
+            aria-label="Close"
+            className="min-h-11 px-2 text-sm text-[#8f8c84] underline hover:text-[#d4af37]"
           >
             No thanks
           </button>
         </div>
-        <p className="mt-5 text-[11px] leading-5 text-[#8f8c84]">{RESEARCH_DISCLAIMER}</p>
-      </div>
+      </aside>
     </div>
   );
 }
