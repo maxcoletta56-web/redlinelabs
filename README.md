@@ -23,7 +23,7 @@ Card checkout charges through PayPal. The server creates an order with `PAYPAL_C
 
 Bank-transfer checkout stores the order, then emails the customer the same PayID instructions shown on `/order/[reference]` and sends the merchant a copy. Marking that order paid with `POST /api/admin/orders/[reference]/paid` emails the customer that payment was received. Create a [Resend](https://resend.com) account, verify the sending domain, and add `RESEND_API_KEY` plus `ORDER_EMAIL_FROM` (for example `Redline Labs <orders@redlinelabs.shop>`) in Vercel under Project Settings → Environment Variables. `ORDER_NOTIFY_EMAIL` is the merchant inbox; when it is unset the mailer uses `PAYID_ADDRESS`. If `RESEND_API_KEY` is missing, checkout still completes, the mailer logs once, and no email is sent. Names and a short setup note are in `env.example`.
 
-Redline Club (points programme) setup, the outstanding rate decisions and the deployment checklist are in [docs/redline-club.md](docs/redline-club.md). Earning and redemption stay off until those decisions are made.
+Redline VIP Membership is $50 a month, with member pricing applied at checkout. The older points-programme notes and the deployment checklist are in [docs/redline-club.md](docs/redline-club.md). Point earning and redemption stay off.
 
 ## Stack
 
