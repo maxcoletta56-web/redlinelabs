@@ -11,3 +11,12 @@ export function shouldInviteOnPath(pathname: string) {
     route === "/" ? pathname === "/" : pathname === route || pathname.startsWith(`${route}/`),
   );
 }
+
+/**
+ * The banner stays mounted for the whole session. Close it when the customer
+ * leaves an invited route, including a client navigation onto checkout.
+ * A dismissal is permanent; leaving the page is not.
+ */
+export function shouldKeepInviteOpen(pathname: string, seen: boolean) {
+  return shouldInviteOnPath(pathname) && !seen;
+}
