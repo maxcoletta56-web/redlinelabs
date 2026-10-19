@@ -21,6 +21,35 @@ export function promoDiscountCents(subtotalCents: number, promo: CheckoutPromo |
   return Math.max(0, subtotalCents - applyPercentOff(subtotalCents, promo.percentOff));
 }
 
+/** Catalogue subtotal, in cents, at which the order takes 10% off. */
+export const VOLUME_DISCOUNT_MINIMUM_CENTS = 20_000;
+
+export const VOLUME_DISCOUNT_PERCENT = 10;
+
+/** 10% off the catalogue subtotal once it reaches $200. Below that, zero. */
+export function volumeDiscountCents(subtotalCents: number) {
+  const subtotal = Math.max(0, Math.round(subtotalCents));
+  if (subtotal < VOLUME_DISCOUNT_MINIMUM_CENTS) return 0;
+  return Math.round((subtotal * VOLUME_DISCOUNT_PERCENT) / 100);
+}
+
+/**
+ * Payable total from a catalogue subtotal. The $200 volume discount is taken
+ * first, then any promo percent on what remains.
+ */
+export function priceOrderCents(subtotalCents: number, promo: CheckoutPromo | null) {
+  const subtotal = Math.max(0, Math.round(subtotalCents));
+  const volumeCents = volumeDiscountCents(subtotal);
+  const afterVolume = subtotal - volumeCents;
+  const discountCents = promoDiscountCents(afterVolume, promo);
+  return {
+    subtotalCents: subtotal,
+    volumeDiscountCents: volumeCents,
+    discountCents,
+    totalCents: afterVolume - discountCents,
+  };
+}
+
 export function checkoutTotals({
   items,
   promo,
@@ -29,10 +58,11 @@ export function checkoutTotals({
   promo: CheckoutPromo | null;
 }) {
   const catalogCents = items.reduce((sum, item) => sum + toCents(item.price) * item.qty, 0);
-  const discountCents = promoDiscountCents(catalogCents, promo);
+  const priced = priceOrderCents(catalogCents, promo);
   return {
     catalogCents,
-    discountedCents: catalogCents - discountCents,
-    discountCents,
+    volumeDiscountCents: priced.volumeDiscountCents,
+    discountedCents: priced.totalCents,
+    discountCents: priced.discountCents,
   };
 }

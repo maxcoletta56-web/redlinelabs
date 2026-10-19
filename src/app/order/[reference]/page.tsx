@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
+import { WhopOrderPayment } from "@/components/WhopCheckout";
 import { retryPaypalOrder } from "@/app/actions/checkout";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
 import { CLUB_DISCOUNT_LABEL, formatCents } from "@/lib/club";
@@ -46,14 +47,21 @@ function formatDate(iso: string | null) {
   }).format(date);
 }
 
+function statusLabel(order: StoredOrder) {
+  if (order.status === "paid") return "Payment received";
+  if (order.status === "cancelled") return "Order cancelled";
+  if (order.status === "failed") return "Payment failed";
+  if (order.status === "pending") return "Card payment in progress";
+  return "Awaiting payment";
+}
+
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : order.status === "cancelled" ? "Order cancelled" : "Awaiting payment"}
+      {statusLabel(order)}
     </p>
   );
 }
@@ -85,6 +93,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
 
   const paid = order.status === "paid";
   const awaiting = order.status === "awaiting_payment";
+  const cardOrder = order.paymentMethod === "whop";
+  const cardOpen = cardOrder && (order.status === "pending" || order.status === "failed");
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
@@ -118,6 +128,12 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
+          : order.status === "failed"
+            ? "The card payment did not go through. Nothing else is due until you pay. Continue the card payment below, or start checkout again."
+          : order.status === "pending" && cardOrder
+            ? "Card payment is open. If your bank asked you to verify the charge, that step can still be in progress. This page updates when the payment clears."
+          : order.status === "cancelled"
+            ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
           : !awaiting
             ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
           : paypalOrder
@@ -161,7 +177,9 @@ export default async function OrderPage({ params, searchParams }: Props) {
           </div>
         )}
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
-          <span>{paid ? "Paid" : awaiting ? "Amount due" : "Order total"}</span>
+          <span>
+            {paid ? "Paid" : awaiting || cardOpen ? "Amount due" : "Order total"}
+          </span>
           <span className="text-[#d4af37]">
             {formatPrice(order.totalCents / 100)} {order.currency.toUpperCase()}
           </span>
@@ -201,7 +219,19 @@ export default async function OrderPage({ params, searchParams }: Props) {
         </form>
       )}
 
-      {awaiting && (
+      {cardOpen && (
+        <section className="surface mb-8 p-6" aria-labelledby="card-payment">
+          <h2
+            id="card-payment"
+            className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase"
+          >
+            Card payment
+          </h2>
+          <WhopOrderPayment reference={order.reference} />
+        </section>
+      )}
+
+      {awaiting && !cardOrder && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"

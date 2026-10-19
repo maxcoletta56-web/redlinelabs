@@ -95,14 +95,28 @@ const PROVIDER_COPY = {
       </>
     ),
   },
+  whop: {
+    intro:
+      "Payment stays on this page. Card details are entered in the secure Whop frame and never reach this site. A bank verification step, such as 3D Secure, returns you here. The order is paid only after that payment is confirmed.",
+    paying: "Paying as",
+    payingDetail: "Card details are handled by Whop.",
+    addressNote: "This address is saved with the order before the card form opens.",
+    creditNote: "It is not deducted from the card charge.",
+    summaryNote:
+      "Store credit saved in this browser is not deducted from the card charge. Apply a coupon for 20% off the total order amount. Prices charged are taken from the catalogue, not from the browser cart.",
+    setup: (
+      <>
+        Card checkout is not configured. Add <code className="text-[#d4af37]">WHOP_API_KEY</code>.
+      </>
+    ),
+  },
 } as const;
 
 export default function CheckoutPage() {
   const availability = useCheckoutAvailability();
-  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
-  const copy =
-    PROVIDER_COPY[availability.showChoice ? method : availability.defaultMethod];
+  const { method, choose } = useSelectedPaymentMethod(availability.methods);
   const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
+  const copy = PROVIDER_COPY[paymentMethod];
   const configured = availability.ready ? availability.configured : null;
   const { items } = useCart();
   const { promo } = usePromo();
@@ -344,7 +358,12 @@ export default function CheckoutPage() {
               </fieldset>
             )}
             {availability.showChoice && (
-              <PaymentMethodChoice value={method} onChange={choose} />
+              <PaymentMethodChoice value={method} onChange={choose} options={availability.methods} />
+            )}
+            {paymentMethod === "whop" && availability.whopEnvironment === "sandbox" && (
+              <p className="text-sm leading-6 text-[#8f8c84]">
+                Sandbox mode. Use test card 4242 4242 4242 4242, any future expiry, and any CVC.
+              </p>
             )}
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <fieldset className="space-y-4">
@@ -503,6 +522,17 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
+        {totals.volumeDiscountCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders of $200 or more</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(totals.volumeDiscountCents))}
+            </span>
+          </div>
+        )}
+        <p className="mb-3 text-xs leading-5 text-[#8f8c84]">
+          Orders of $200 or more include 10% off the catalogue subtotal before any coupon.
+        </p>
         {memberSavingsCents > 0 && (
           <p className="mb-3 text-sm text-[#8f8c84]">
             Member price is already in the subtotal —{" "}
