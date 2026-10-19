@@ -71,6 +71,19 @@ test("customer order email includes the PayID instructions and the research line
   assert.equal(email.html.includes("BAC Water <5ml>"), false);
 });
 
+test("emails show the Club points discount as \"Club points −$X\" and keep the promo separate", () => {
+  const email = buildCustomerOrderEmail({ ...confirmation, clubDiscountCents: 500, totalCents: 3900 });
+  assert.match(email.text, /Club points −\$5\.00/);
+  assert.match(email.text, /Promo code DGC20/);
+  assert.match(email.html, /Club points/);
+  assert.match(email.html, /−\$5\.00/);
+  const merchant = buildMerchantOrderEmail({ ...confirmation, notifyEmail: "ops@example.com", clubDiscountCents: 500, totalCents: 3900 });
+  assert.match(merchant.text, /Club points −\$5\.00/);
+
+  const plain = buildCustomerOrderEmail(confirmation);
+  assert.doesNotMatch(plain.text, /Club points/);
+});
+
 test("order emails include the ship-to lines and stay safe without an address", () => {
   const shipping = {
     line1: "1 Laboratory Road <dock>",

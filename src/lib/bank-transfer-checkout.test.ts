@@ -8,7 +8,6 @@ import {
   type BankTransferShippingInput,
 } from "./bank-transfer-checkout.ts";
 import type { OrderCreatedNotice } from "./mailer.ts";
-import type { ClubMember, RedemptionHold } from "./club-db.ts";
 
 const goodAddress: BankTransferShippingInput = {
   name: "  Ada Lovelace  ",
@@ -149,50 +148,6 @@ test("createBankTransferOrder stores a trimmed address and still succeeds if mai
 });
 
 
-function clubMember(overrides: Partial<ClubMember> = {}): ClubMember {
-  return {
-    email: "ada@example.com",
-    firstName: "Ada",
-    memberCode: "RL-ACDEFG",
-    pointsBalance: 1_000,
-    lifetimeSpendCents: 0,
-    firstOrderBonusAt: null,
-    membershipUntil: null,
-    membershipCancelAt: null,
-    createdAt: "2026-10-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-function clubHooks(member: ClubMember | null) {
-  const held: RedemptionHold[] = [];
-  const tagged: string[] = [];
-  const released: RedemptionHold[] = [];
-  return {
-    held,
-    tagged,
-    released,
-    hooks: {
-      authenticate: async () => member,
-      hold: async (input: { email: string; points: number }) => {
-        const hold: RedemptionHold = {
-          ledgerId: 1,
-          points: input.points,
-          member: member ?? clubMember(),
-        };
-        held.push(hold);
-        return hold;
-      },
-      tag: async (_hold: RedemptionHold, reference: string) => {
-        tagged.push(reference);
-      },
-      release: async (hold: RedemptionHold) => {
-        released.push(hold);
-      },
-    },
-  };
-}
-
 test("an active member pays 30% less on this month's special, on PayID and PayPal", async () => {
   const restore = payIdEnv();
   const { sql } = recorder();
@@ -238,7 +193,6 @@ test("an active member pays 30% less on this month's special, on PayID and PayPa
 test("a membership that does not check out pays the full total", async () => {
   const restore = payIdEnv();
   const { sql } = recorder();
-  const club = clubHooks(null);
   try {
     const order = await createBankTransferOrder(
       {
@@ -246,11 +200,10 @@ test("a membership that does not check out pays the full total", async () => {
         shipping: goodAddress,
         club: { email: "stranger@example.com", code: "RL-ACDEFG", points: 200 },
       },
-      { sql, deliver: async () => {}, club: club.hooks },
+      { sql, deliver: async () => {} },
     );
 
     assert.equal(order.totalCents, 8_900);
-    assert.equal(club.held.length, 0);
   } finally {
     restore();
   }
@@ -264,7 +217,6 @@ test("a failed insert does not spend a membership or points", async () => {
       return [];
     },
   };
-  const club = clubHooks(clubMember());
   try {
     await assert.rejects(
       () =>
@@ -274,11 +226,10 @@ test("a failed insert does not spend a membership or points", async () => {
             shipping: goodAddress,
             club: { email: "ada@example.com", code: "RL-ACDEFG", points: 200 },
           },
-          { sql: failing, deliver: async () => {}, club: club.hooks },
+          { sql: failing, deliver: async () => {} },
         ),
       /database is down/,
     );
-    assert.equal(club.released.length, 0);
   } finally {
     restore();
   }
@@ -286,7 +237,6 @@ test("a failed insert does not spend a membership or points", async () => {
 
 test("a club redemption sent with PayPal is ignored and the charge stays the full total", async () => {
   const { calls, sql } = recorder();
-  const club = clubHooks(clubMember({ pointsBalance: 1_000 }));
   const order = await createCheckoutOrder(
     {
       ...orderInput,
@@ -296,7 +246,6 @@ test("a club redemption sent with PayPal is ignored and the charge stays the ful
     {
       sql,
       deliver: async () => {},
-      club: club.hooks,
       paymentMethod: "paypal",
       skipBankConfiguration: true,
     },
@@ -304,10 +253,9 @@ test("a club redemption sent with PayPal is ignored and the charge stays the ful
 
   assert.equal(order.paymentMethod, "paypal");
   assert.equal(order.totalCents, 8_900);
-  assert.equal(club.held.length, 0);
-  assert.equal(club.tagged.length, 0);
   const insert = calls.find((call) => call.query.startsWith("INSERT"));
   assert.equal(insert?.params?.[10], null);
   assert.equal(insert?.params?.[11], 0);
-  assert.equal(insert?.params?.[12], "paypal");
+  assert.equal(insert?.params?.[12], 0);
+  assert.equal(insert?.params?.[13], "paypal");
 });

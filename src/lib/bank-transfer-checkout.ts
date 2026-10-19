@@ -223,6 +223,7 @@ export async function createCheckoutOrder(
           shipping,
           clubEmail: activeMember ? email : null,
           clubPointsRedeemed: 0,
+          clubDiscountCents: 0,
           paymentMethod,
           paypalOrderId: options?.paypalOrderId ?? null,
         },
@@ -233,7 +234,7 @@ export async function createCheckoutOrder(
     );
 
   const notice: OrderCreatedNotice = {
-    clubPointsRedeemed: 0,
+    clubDiscountCents: 0,
     reference,
     firstName,
     lastName,

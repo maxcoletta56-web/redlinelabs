@@ -89,6 +89,7 @@ export function promoLabel(code: string | null): string {
 export function orderStatusLabel(status: string): string {
   if (status === "paid") return "Paid";
   if (status === "awaiting_payment") return "Awaiting payment";
+  if (status === "cancelled") return "Cancelled";
   return status;
 }
 
@@ -120,7 +121,8 @@ export function sortAdminOrders<T extends { status: string; createdAt: string | 
   orders: readonly T[],
 ): T[] {
   return [...orders].sort((a, b) => {
-    const rank = (status: string) => (status === "awaiting_payment" ? 0 : 1);
+    const rank = (status: string) =>
+      status === "awaiting_payment" ? 0 : status === "cancelled" ? 2 : 1;
     const byStatus = rank(a.status) - rank(b.status);
     if (byStatus !== 0) return byStatus;
     return createdAtMs(b.createdAt) - createdAtMs(a.createdAt);
@@ -147,6 +149,18 @@ export function adminDeskNotice(notice: string | undefined, reference: string | 
       const normalized = normalizeOrderReference(reference);
       return normalized ? `Marked ${normalized} paid.` : "Payment recorded.";
     }
+    case "cancelled": {
+      const normalized = normalizeOrderReference(reference);
+      return normalized
+        ? `Cancelled ${normalized}. Any Club points reserved for it were returned.`
+        : "Order cancelled.";
+    }
+    case "release-failed":
+      return "Order cancelled, but its Club points could not be returned yet. Cancel it again or run club reconciliation.";
+    case "blocked":
+      return "That order was cancelled and its Club points were returned, so it cannot be marked paid.";
+    case "not-cancellable":
+      return "Only an order that is still awaiting payment can be cancelled.";
     case "missing":
       return "That order was not found.";
     case "invalid":

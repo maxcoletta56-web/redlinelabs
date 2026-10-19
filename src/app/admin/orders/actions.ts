@@ -7,7 +7,7 @@ import { settleAdminOrderPaid } from "@/lib/admin-mark-paid";
 import { adminSecretMatches, adminSessionValid } from "@/lib/admin-auth";
 import { clearAdminSession, readAdminSessionToken, setAdminSession } from "@/lib/admin-session";
 import { normalizeOrderReference } from "@/lib/order-reference";
-import { ordersConfigured } from "@/lib/orders";
+import { cancelOrderAndReleasePoints, ordersConfigured } from "@/lib/orders";
 import { rateLimit } from "@/lib/rate-limit";
 
 function clientIp(headerList: Headers) {
@@ -66,4 +66,44 @@ export async function markAdminOrderPaid(formData: FormData) {
 
   revalidatePath("/admin/orders");
   redirect(settled.location, RedirectType.replace);
+}
+
+/**
+ * Cancels an unpaid order and returns any Club points reserved for it. Doing
+ * it again retries the release, so a failed release can be recovered here.
+ */
+export async function cancelAdminOrder(formData: FormData) {
+  const token = await readAdminSessionToken();
+  if (!adminSessionValid(token, process.env.ADMIN_API_SECRET)) {
+    redirect("/admin/orders?error=signed-out", RedirectType.replace);
+  }
+  if (formData.get("confirm") !== "yes") {
+    redirect("/admin/orders", RedirectType.replace);
+  }
+
+  const rawReference = formData.get("reference");
+  const reference = normalizeOrderReference(typeof rawReference === "string" ? rawReference : "");
+  if (!reference) {
+    redirect("/admin/orders?notice=invalid", RedirectType.replace);
+  }
+  if (!ordersConfigured()) {
+    redirect("/admin/orders?notice=unavailable", RedirectType.replace);
+  }
+
+  let location = "/admin/orders?notice=failed";
+  try {
+    const result = await cancelOrderAndReleasePoints(reference);
+    if (result.outcome === "missing") location = "/admin/orders?notice=missing";
+    else if (result.outcome === "paid") location = "/admin/orders?notice=not-cancellable";
+    else if (result.releaseFailed) location = "/admin/orders?notice=release-failed";
+    else location = `/admin/orders?notice=cancelled&reference=${encodeURIComponent(reference)}`;
+  } catch (error) {
+    console.error("[admin] cancel order failed", {
+      reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+  }
+
+  revalidatePath("/admin/orders");
+  redirect(location, RedirectType.replace);
 }

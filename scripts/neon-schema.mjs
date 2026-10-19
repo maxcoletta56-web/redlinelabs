@@ -23,14 +23,14 @@ export function neonSqlEndpoint(connectionString) {
   return `https://${hostname}/sql`;
 }
 
-export async function neonQuery(connectionString, query) {
+export async function neonQuery(connectionString, query, params = []) {
   const response = await fetch(neonSqlEndpoint(connectionString), {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "neon-connection-string": connectionString,
     },
-    body: JSON.stringify({ query, params: [] }),
+    body: JSON.stringify({ query, params }),
   });
   const body = await response.text();
   if (!response.ok) {

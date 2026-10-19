@@ -1,5 +1,5 @@
 import { resolveBankTransfer, transferDescription } from "./bank-transfer.ts";
-import { pointsValueCents } from "./club.ts";
+import { CLUB_DISCOUNT_LABEL } from "./club.ts";
 import { COMPANY_EMAIL, RESEARCH_DISCLAIMER } from "./company.ts";
 import { formatShippingAddress, type ShippingAddressView } from "./order-shipping.ts";
 
@@ -32,7 +32,7 @@ export type OrderConfirmationInput = {
   subtotalCents: number;
   totalCents: number;
   promoCode: string | null;
-  clubPointsRedeemed?: number;
+  clubDiscountCents?: number;
   payId: string;
   accountName: string;
   orderUrl: string;
@@ -221,21 +221,20 @@ function paymentInstructionsHtml(input: OrderConfirmationInput) {
 
 type TotalsInput = Pick<
   OrderConfirmationInput,
-  "subtotalCents" | "totalCents" | "promoCode" | "clubPointsRedeemed"
+  "subtotalCents" | "totalCents" | "promoCode" | "clubDiscountCents"
 >;
 
 /** Splits the saving so the promo line is not inflated by redeemed points. */
 function discounts(input: TotalsInput) {
-  const clubCents = pointsValueCents(input.clubPointsRedeemed ?? 0);
+  const clubCents = Math.max(0, Math.floor(input.clubDiscountCents ?? 0));
   return {
-    clubPoints: Math.max(0, Math.floor(input.clubPointsRedeemed ?? 0)),
     clubCents,
     promoCents: Math.max(0, input.subtotalCents - input.totalCents - clubCents),
   };
 }
 
 function totalsText(input: TotalsInput) {
-  const { clubPoints, clubCents, promoCents } = discounts(input);
+  const { clubCents, promoCents } = discounts(input);
   const lines = [`Total: ${formatAudFromCents(input.totalCents)} AUD`];
   if (input.promoCode || clubCents > 0) {
     const detail = [`Subtotal: ${formatAudFromCents(input.subtotalCents)}`];
@@ -243,7 +242,7 @@ function totalsText(input: TotalsInput) {
       detail.push(`Promo code ${input.promoCode}: −${formatAudFromCents(promoCents)}`);
     }
     if (clubCents > 0) {
-      detail.push(`Redline Club points (${clubPoints}): −${formatAudFromCents(clubCents)}`);
+      detail.push(`${CLUB_DISCOUNT_LABEL} −${formatAudFromCents(clubCents)}`);
     }
     lines.unshift(...detail);
   }
@@ -264,7 +263,7 @@ function shippingHtml(shipping: ShippingAddressView | null | undefined) {
 }
 
 function totalsHtml(input: TotalsInput) {
-  const { clubPoints, clubCents, promoCents } = discounts(input);
+  const { clubCents, promoCents } = discounts(input);
   const rows = [];
   if (input.promoCode || clubCents > 0) {
     rows.push(totalRow("Subtotal", formatAudFromCents(input.subtotalCents)));
@@ -272,9 +271,7 @@ function totalsHtml(input: TotalsInput) {
       rows.push(totalRow(`Promo code ${input.promoCode}`, `−${formatAudFromCents(promoCents)}`));
     }
     if (clubCents > 0) {
-      rows.push(
-        totalRow(`Redline Club points (${clubPoints})`, `−${formatAudFromCents(clubCents)}`),
-      );
+      rows.push(totalRow(CLUB_DISCOUNT_LABEL, `−${formatAudFromCents(clubCents)}`));
     }
   }
   rows.push(totalRow("Total", `${formatAudFromCents(input.totalCents)} AUD`));
@@ -344,6 +341,8 @@ export function buildMerchantOrderEmail(
     shippingText(input.shipping),
   ];
   if (input.promoCode) lines.push(`Promo code: ${input.promoCode}`);
+  const clubCents = Math.max(0, Math.floor(input.clubDiscountCents ?? 0));
+  if (clubCents > 0) lines.push(`${CLUB_DISCOUNT_LABEL} −${formatAudFromCents(clubCents)}`);
   lines.push(
     "",
     "Items",
@@ -358,12 +357,17 @@ export function buildMerchantOrderEmail(
   const promoHtml = input.promoCode
     ? `<p style="margin:0 0 12px;">Promo code: ${escapeHtml(input.promoCode)}</p>`
     : "";
+  const clubHtml =
+    clubCents > 0
+      ? `<p style="margin:0 0 12px;">${CLUB_DISCOUNT_LABEL} −${escapeHtml(formatAudFromCents(clubCents))}</p>`
+      : "";
   const html = htmlShell(
     `New order ${input.reference}`,
     `<p style="margin:0 0 4px;">Customer: ${escapeHtml(name)}</p>
     <p style="margin:0 0 4px;">Email: ${escapeHtml(input.email)}</p>
     ${shippingHtml(input.shipping)}
     ${promoHtml}
+    ${clubHtml}
     ${itemsTable(input.items)}
     <p style="margin:16px 0;color:#d4af37;">Total: ${escapeHtml(amount)} AUD</p>
     <p style="margin:0;"><a href="${escapeHtml(input.orderUrl)}" style="color:#d4af37;">Open order ${escapeHtml(input.reference)}</a></p>`,
@@ -508,7 +512,7 @@ export type OrderCreatedNotice = {
   subtotalCents: number;
   totalCents: number;
   promoCode: string | null;
-  clubPointsRedeemed?: number;
+  clubDiscountCents?: number;
   shipping?: ShippingAddressView | null;
 };
 

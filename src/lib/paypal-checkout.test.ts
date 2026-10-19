@@ -130,8 +130,9 @@ test("PayPal checkout inserts an unpaid order before redirecting", async () => {
   assert.equal(insert?.params?.[7], "ada@example.com");
   assert.equal(insert?.params?.[10], null);
   assert.equal(insert?.params?.[11], 0);
-  assert.equal(insert?.params?.[12], "paypal");
-  assert.equal(insert?.params?.[13], null);
+  assert.equal(insert?.params?.[12], 0);
+  assert.equal(insert?.params?.[13], "paypal");
+  assert.equal(insert?.params?.[14], null);
   const storedShipping = JSON.parse(String(insert?.params?.[9])) as { line1: string; postcode: string };
   assert.equal(storedShipping.line1, "1 Laboratory Road");
   assert.equal(storedShipping.postcode, "2000");
@@ -171,10 +172,11 @@ test("a completed PayPal capture marks the order paid once", async () => {
   assert.equal(capture.sent.length, 1);
   assert.equal(capture.sent[0]?.reference, "RL-7F3K2Q");
   assert.equal(capture.sent[0]?.totalCents, 7120);
-  assert.deepEqual(capture.awards, ["RL-7F3K2Q"]);
+  // Both captures ask for the award; the database makes the second a no-op.
+  assert.deepEqual(capture.awards, ["RL-7F3K2Q", "RL-7F3K2Q"]);
 });
 
-test("a second PayPal capture does not award club points again", async () => {
+test("a repeat PayPal capture re-asks for the award, which the database dedupes", async () => {
   const capture = emailHooks(stored("paid"));
   const settled = await settleCapturedPaypalOrder(
     {
@@ -188,7 +190,7 @@ test("a second PayPal capture does not award club points again", async () => {
   );
   assert.equal(settled.ok, true);
   if (settled.ok) assert.equal(settled.alreadyPaid, true);
-  assert.deepEqual(capture.awards, []);
+  assert.deepEqual(capture.awards, ["RL-7F3K2Q"]);
 });
 
 test("a capture whose amount or currency does not match the order is refused", async () => {

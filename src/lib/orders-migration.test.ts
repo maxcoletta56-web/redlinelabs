@@ -25,6 +25,7 @@ const ORDERS_COLUMNS = [
   "shipping",
   "club_email",
   "club_points_redeemed",
+  "club_discount_cents",
   "created_at",
   "paid_at",
   "payment_method",

@@ -4,8 +4,13 @@ type Bucket = {
 
 const buckets = new Map<string, Bucket>();
 
-export function rateLimit(key: string, limit: number, windowMs: number) {
-  const now = Date.now();
+export function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+  clock: () => number = Date.now,
+) {
+  const now = clock();
   const bucket = buckets.get(key) ?? { hits: [] };
   bucket.hits = bucket.hits.filter((time) => now - time < windowMs);
   if (bucket.hits.length >= limit) {

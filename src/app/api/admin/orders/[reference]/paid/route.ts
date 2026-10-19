@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authorizeAdmin } from "@/lib/admin-auth";
 import { normalizeOrderReference } from "@/lib/order-reference";
-import { markOrderPaidWithPaymentEmail, ordersConfigured } from "@/lib/orders";
+import { OrderCancelledError, markOrderPaidWithPaymentEmail, ordersConfigured } from "@/lib/orders";
 
 export async function POST(
   request: NextRequest,
@@ -34,6 +34,9 @@ export async function POST(
       paidAt: order.paidAt,
     });
   } catch (error) {
+    if (error instanceof OrderCancelledError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("[admin] mark order paid failed", {
       reference: normalized,
       errorName: error instanceof Error ? error.name : "unknown",
