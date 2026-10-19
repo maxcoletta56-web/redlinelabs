@@ -8,20 +8,23 @@ import {
   useCheckoutAvailability,
   useSelectedPaymentMethod,
 } from "@/components/PaymentMethodChoice";
+import { WhopCheckoutElement } from "@/components/WhopCheckout";
+import type { WhopEmbedSession } from "@/lib/whop-embed";
 import { useAccount } from "@/lib/account";
 import { MEMBERSHIP_PRICE_CENTS, MEMBERSHIP_SLUG } from "@/lib/membership";
 import { formatPrice } from "@/lib/products";
 
 /**
  * Subscribe from an account that already exists in this browser. The $50 fee
- * uses the same PayID and PayPal rails as a normal order.
+ * uses the same PayID, card, and PayPal rails as a normal order.
  */
 export function ClubJoinForm() {
   const { user, hydrated } = useAccount();
   const availability = useCheckoutAvailability();
-  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const { method, choose } = useSelectedPaymentMethod(availability.methods);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [session, setSession] = useState<WhopEmbedSession | null>(null);
   const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
 
   if (!hydrated) {
@@ -47,6 +50,18 @@ export function ClubJoinForm() {
   }
 
   const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
+
+  if (session) {
+    return (
+      <div className="surface space-y-4 p-6">
+        <p className="text-sm leading-6 text-[#cfc8b8]">
+          Pay {price} by card for a month of member pricing. The charge uses the price saved with
+          the order.
+        </p>
+        <WhopCheckoutElement session={session} />
+      </div>
+    );
+  }
 
   return (
     <form
@@ -80,6 +95,11 @@ export function ClubJoinForm() {
           researchUse: true,
         })
           .then((result) => {
+            if (result.ok && "whop" in result) {
+              setSession(result.whop);
+              setPending(false);
+              return;
+            }
             if (result.ok) {
               window.location.assign(result.redirectUrl);
               return;
@@ -98,7 +118,7 @@ export function ClubJoinForm() {
         member pricing. Nothing is shipped.
       </p>
       {availability.showChoice && (
-        <PaymentMethodChoice value={paymentMethod} onChange={choose} />
+        <PaymentMethodChoice value={paymentMethod} onChange={choose} options={availability.methods} />
       )}
       <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
         <input name="ageConfirmed" type="checkbox" className="mt-1" />

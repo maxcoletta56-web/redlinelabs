@@ -15,6 +15,9 @@ import {
 } from "@/lib/payments-provider";
 import { PaypalOrderSavedError } from "@/lib/paypal-checkout";
 import { checkoutBodySchema } from "@/lib/validation";
+import type { WhopEmbedSession } from "@/lib/whop-embed";
+import { createWhopCardCheckout, resumeWhopCardCheckout, WhopOrderSavedError } from "@/lib/whop-checkout";
+import { whopConfigured } from "@/lib/whop";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
@@ -27,6 +30,7 @@ const PROVIDER_TIMEOUT_MS = 15_000;
  */
 export type CheckoutStart =
   | { ok: true; redirectUrl: string }
+  | { ok: true; whop: WhopEmbedSession }
   | { ok: false; error: string };
 
 export async function startCartCheckoutSession(input: {
@@ -61,13 +65,22 @@ export async function startCartCheckoutSession(input: {
     process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured(),
   );
+  const cardOffered = whopConfigured();
   const method = resolveRequestedPaymentMethod({
     requested: parsed.data.paymentMethod,
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalOffered,
+    whopOffered: cardOffered,
   });
   if (method === "unavailable") {
-    return { ok: false, error: "PayPal checkout is not available. Nothing has been charged." };
+    const requested = parsed.data.paymentMethod;
+    return {
+      ok: false,
+      error:
+        requested === "whop"
+          ? "Card checkout is not available. Nothing has been charged."
+          : "PayPal checkout is not available. Nothing has been charged.",
+    };
   }
 
   try {
@@ -84,6 +97,25 @@ export async function startCartCheckoutSession(input: {
         researchUse: true,
       });
       return { ok: true, redirectUrl: order.redirectUrl };
+    }
+
+    if (method === "whop") {
+      const session = await withTimeout(
+        createWhopCardCheckout({
+          items: parsed.data.items,
+          email: parsed.data.email,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          shipping: input.shipping,
+          promoCode: parsed.data.promoCode,
+          club: parsed.data.club,
+          ageConfirmed: true,
+          researchUse: true,
+        }),
+        PROVIDER_TIMEOUT_MS,
+        "Card checkout",
+      );
+      return { ok: true, whop: session };
     }
 
     const redirectUrl = await withTimeout(
@@ -105,6 +137,9 @@ export async function startCartCheckoutSession(input: {
     if (error instanceof PaypalOrderSavedError) {
       return { ok: true, redirectUrl: `/order/${error.reference}?paypal=unavailable` };
     }
+    if (error instanceof WhopOrderSavedError) {
+      return { ok: true, redirectUrl: `/order/${error.reference}` };
+    }
     console.error("[checkout] submit failed", {
       provider: method,
       slugs: parsed.data.items.map((item) => `${item.slug}${item.option ? `:${item.option}` : ""}`),
@@ -119,7 +154,9 @@ export async function startCartCheckoutSession(input: {
       error:
         method === "bank_transfer"
           ? "We could not create your order. Nothing has been charged."
-          : "PayPal did not respond. Nothing has been charged.",
+          : method === "whop"
+            ? "Card checkout did not open. Nothing has been charged."
+            : "PayPal did not respond. Nothing has been charged.",
     };
   }
 }
@@ -143,4 +180,26 @@ export async function retryPaypalOrder(formData: FormData) {
     return `/order/${reference}?paypal=unavailable`;
   });
   redirect(destination);
+}
+
+/** A new embedded session for a card order that is still unpaid. The amount is the stored total. */
+export async function resumeWhopCheckout(reference: string): Promise<CheckoutStart> {
+  const normalized = normalizeOrderReference(reference);
+  if (!normalized) return { ok: false, error: "That order cannot be paid by card" };
+  if (!whopConfigured()) {
+    return { ok: false, error: "Card checkout is not available. Nothing has been charged." };
+  }
+  try {
+    const session = await withTimeout(resumeWhopCardCheckout(normalized), PROVIDER_TIMEOUT_MS, "Card checkout");
+    return { ok: true, whop: session };
+  } catch (error) {
+    console.error("[checkout] Whop resume failed", {
+      reference: normalized,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Card checkout could not be opened",
+    };
+  }
 }

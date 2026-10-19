@@ -37,6 +37,7 @@ test("FAMILY70 is a 70 percent checkout code", () => {
     promo,
   });
   assert.equal(totals.catalogCents, 10000);
+  assert.equal(totals.volumeDiscountCents, 0);
   assert.equal(totals.discountedCents, 3000);
   assert.equal(totals.discountCents, 7000);
 });
@@ -63,7 +64,7 @@ test("takes 20 percent off the order total, not each line", () => {
   assert.equal(totals.discountCents, 1333);
 });
 
-test("applies store credit after 20 percent off the total", () => {
+test("applies the $200 volume discount before a promo percent", () => {
   const totals = checkoutTotals({
     items: [
       { price: 89, qty: 2 },
@@ -72,9 +73,10 @@ test("applies store credit after 20 percent off the total", () => {
     promo: lookupPromo("DGC20"),
   });
   assert.equal(totals.catalogCents, 30300);
-  assert.equal(totals.discountedCents, 24240);
-  assert.equal(totals.discountCents, 6060);
+  assert.equal(totals.volumeDiscountCents, 3030);
+  assert.equal(totals.discountCents, 5454);
+  assert.equal(totals.discountedCents, 21816);
   const creditCents = creditToApplyCents(1000, totals.discountedCents);
   assert.equal(creditCents, 1000);
-  assert.equal(totals.discountedCents - creditCents, 23240);
+  assert.equal(totals.discountedCents - creditCents, 20816);
 });

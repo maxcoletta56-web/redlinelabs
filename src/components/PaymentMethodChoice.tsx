@@ -14,17 +14,26 @@ export type CheckoutAvailability = {
   ready: boolean;
   showChoice: boolean;
   defaultMethod: CheckoutPaymentMethod;
-  setup: CheckoutPaymentMethod | null;
+  methods: CheckoutPaymentMethod[];
+  setup: "bank_transfer" | "paypal" | null;
   configured: boolean | null;
+  whopEnvironment: "sandbox" | "production" | null;
 };
+
+function asMethod(value: unknown): CheckoutPaymentMethod | null {
+  if (value === "bank_transfer" || value === "paypal" || value === "whop") return value;
+  return null;
+}
 
 export function useCheckoutAvailability(): CheckoutAvailability {
   const [state, setState] = useState<CheckoutAvailability>({
     ready: false,
     showChoice: false,
     defaultMethod: paymentsProvider() === "paypal" ? "paypal" : "bank_transfer",
+    methods: [paymentsProvider() === "paypal" ? "paypal" : "bank_transfer"],
     setup: null,
     configured: null,
+    whopEnvironment: null,
   });
 
   useEffect(() => {
@@ -35,19 +44,33 @@ export function useCheckoutAvailability(): CheckoutAvailability {
         (data: {
           showChoice?: boolean;
           defaultMethod?: string;
+          methods?: unknown;
           setup?: string | null;
           configured?: boolean;
+          whopEnvironment?: string | null;
         }) => {
           if (cancelled) return;
-          const defaultMethod = data.defaultMethod === "paypal" ? "paypal" : "bank_transfer";
+          const methods = Array.isArray(data.methods)
+            ? data.methods.map(asMethod).filter((method): method is CheckoutPaymentMethod => method !== null)
+            : [];
+          const fallback = paymentsProvider() === "paypal" ? "paypal" : "bank_transfer";
+          const resolved = methods.length > 0 ? methods : [fallback];
+          const requestedDefault = asMethod(data.defaultMethod);
+          const defaultMethod =
+            requestedDefault && resolved.includes(requestedDefault) ? requestedDefault : resolved[0] ?? fallback;
           const setup =
             data.setup === "paypal" || data.setup === "bank_transfer" ? data.setup : null;
           setState({
             ready: true,
-            showChoice: Boolean(data.showChoice),
+            showChoice: Boolean(data.showChoice) && resolved.length > 1,
             defaultMethod,
+            methods: resolved,
             setup,
             configured: Boolean(data.configured),
+            whopEnvironment:
+              data.whopEnvironment === "sandbox" || data.whopEnvironment === "production"
+                ? data.whopEnvironment
+                : null,
           });
         },
       )
@@ -64,36 +87,43 @@ export function useCheckoutAvailability(): CheckoutAvailability {
   return state;
 }
 
-export function useSelectedPaymentMethod(showChoice: boolean) {
-  const [method, setMethod] = useState<CheckoutPaymentMethod>("bank_transfer");
+function methodFromToken(value: string | null): CheckoutPaymentMethod | null {
+  if (value === "paypal") return "paypal";
+  if (value === "card" || value === "whop") return "whop";
+  if (value === "payid" || value === "bank_transfer") return "bank_transfer";
+  return null;
+}
+
+export function useSelectedPaymentMethod(methods: readonly CheckoutPaymentMethod[]) {
+  const showChoice = methods.length > 1;
+  const fallback = methods.includes("bank_transfer") ? "bank_transfer" : methods[0] ?? "bank_transfer";
+  const [method, setMethod] = useState<CheckoutPaymentMethod>(fallback);
 
   useEffect(() => {
     if (!showChoice) return;
     const apply = () => {
+      const allowed = new Set(methods);
+      const pick = (candidate: CheckoutPaymentMethod | null) =>
+        candidate && allowed.has(candidate) ? candidate : fallback;
       try {
-        const query = new URLSearchParams(window.location.search).get("pay");
-        if (query === "paypal") {
-          setMethod("paypal");
-          window.sessionStorage.setItem(STORAGE_KEY, "paypal");
+        const query = methodFromToken(new URLSearchParams(window.location.search).get("pay"));
+        if (query && allowed.has(query)) {
+          setMethod(query);
+          window.sessionStorage.setItem(STORAGE_KEY, query);
           return;
         }
-        if (query === "payid" || query === "bank_transfer") {
-          setMethod("bank_transfer");
-          window.sessionStorage.setItem(STORAGE_KEY, "bank_transfer");
-          return;
-        }
-        const stored = window.sessionStorage.getItem(STORAGE_KEY);
-        setMethod(stored === "paypal" ? "paypal" : "bank_transfer");
+        setMethod(pick(methodFromToken(window.sessionStorage.getItem(STORAGE_KEY))));
       } catch {
-        setMethod("bank_transfer");
+        setMethod(fallback);
       }
     };
     apply();
     window.addEventListener(CHANGE_EVENT, apply);
     return () => window.removeEventListener(CHANGE_EVENT, apply);
-  }, [showChoice]);
+  }, [showChoice, methods, fallback]);
 
   function choose(next: CheckoutPaymentMethod) {
+    if (!methods.includes(next)) return;
     setMethod(next);
     try {
       window.sessionStorage.setItem(STORAGE_KEY, next);
@@ -103,28 +133,30 @@ export function useSelectedPaymentMethod(showChoice: boolean) {
     }
   }
 
-  return { method: showChoice ? method : "bank_transfer", choose };
+  return { method: showChoice ? method : fallback, choose };
 }
 
 export function PaymentMethodChoice({
   value,
   onChange,
+  options,
   name = "paymentMethod",
   stacked = false,
 }: {
   value: CheckoutPaymentMethod;
   onChange: (method: CheckoutPaymentMethod) => void;
+  options: readonly CheckoutPaymentMethod[];
   name?: string;
   stacked?: boolean;
 }) {
-  const options: CheckoutPaymentMethod[] = ["bank_transfer", "paypal"];
+  const columns = stacked ? "" : options.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   return (
     <fieldset>
       <legend className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
         Payment method
       </legend>
       <div
-        className={stacked ? "grid gap-2" : "grid gap-2 sm:grid-cols-2"}
+        className={`grid gap-2 ${columns}`}
         role="radiogroup"
         aria-label="Payment method"
       >
