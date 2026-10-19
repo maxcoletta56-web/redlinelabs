@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { startCartCheckoutSession } from "@/app/actions/checkout";
+import { WhopCheckoutElement } from "@/components/WhopCheckout";
+import type { WhopEmbedSession } from "@/lib/whop-embed";
 import {
   PaymentMethodChoice,
   useCheckoutAvailability,
@@ -22,6 +24,7 @@ export function ClubJoinForm() {
   const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [cardSession, setCardSession] = useState<WhopEmbedSession | null>(null);
   const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
 
   if (!hydrated) {
@@ -47,6 +50,17 @@ export function ClubJoinForm() {
   }
 
   const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
+
+  if (cardSession) {
+    return (
+      <div className="surface space-y-4 p-6">
+        <p className="text-sm leading-6 text-[#cfc8b8]">
+          Pay {price} by card for a month of member pricing. The charge is the server price.
+        </p>
+        <WhopCheckoutElement session={cardSession} />
+      </div>
+    );
+  }
 
   return (
     <form
@@ -80,6 +94,11 @@ export function ClubJoinForm() {
           researchUse: true,
         })
           .then((result) => {
+            if (result.ok && "whop" in result) {
+              setCardSession(result.whop);
+              setPending(false);
+              return;
+            }
             if (result.ok) {
               window.location.assign(result.redirectUrl);
               return;
@@ -98,7 +117,7 @@ export function ClubJoinForm() {
         member pricing. Nothing is shipped.
       </p>
       {availability.showChoice && (
-        <PaymentMethodChoice value={paymentMethod} onChange={choose} />
+        <PaymentMethodChoice value={paymentMethod} onChange={choose} methods={availability.methods} />
       )}
       <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
         <input name="ageConfirmed" type="checkbox" className="mt-1" />

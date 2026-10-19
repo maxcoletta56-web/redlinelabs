@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
+import { WhopOrderPayment } from "@/components/WhopCheckout";
 import { retryPaypalOrder } from "@/app/actions/checkout";
 import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
 import { CLUB_DISCOUNT_LABEL, formatCents } from "@/lib/club";
@@ -12,6 +13,8 @@ import { normalizeOrderReference } from "@/lib/order-reference";
 import { formatShippingAddress } from "@/lib/order-shipping";
 import { findOrder, type StoredOrder } from "@/lib/orders";
 import { paymentMethodLabel, paypalCheckoutOffered } from "@/lib/payments-provider";
+import { lookupPromo } from "@/lib/promo";
+import { priceCardOrderCents } from "@/lib/promo-pricing";
 import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
 
@@ -47,13 +50,22 @@ function formatDate(iso: string | null) {
 }
 
 function StatusBadge({ order }: { order: StoredOrder }) {
-  const paid = order.status === "paid";
+  const label =
+    order.status === "paid"
+      ? "Payment received"
+      : order.status === "cancelled"
+        ? "Order cancelled"
+        : order.status === "failed"
+          ? "Card payment failed"
+          : order.status === "pending"
+            ? "Awaiting card payment"
+            : "Awaiting payment";
   return (
     <p
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : order.status === "cancelled" ? "Order cancelled" : "Awaiting payment"}
+      {label}
     </p>
   );
 }
@@ -85,6 +97,9 @@ export default async function OrderPage({ params, searchParams }: Props) {
 
   const paid = order.status === "paid";
   const awaiting = order.status === "awaiting_payment";
+  const cardOrder = order.paymentMethod === "whop";
+  const cardOpen = cardOrder && (order.status === "pending" || order.status === "failed");
+  const cardPrice = cardOrder ? priceCardOrderCents(order.subtotalCents, lookupPromo(order.promoCode)) : null;
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
@@ -118,8 +133,12 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : !awaiting
+          : order.status === "cancelled"
             ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
+          : cardOpen
+            ? order.status === "failed"
+              ? "The card payment did not complete. You can try the same order again below. This page does not mark the order paid."
+              : "Complete the card payment below. The order ships once the payment is verified, usually the same business day."
           : paypalOrder
             ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
             : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
@@ -144,12 +163,19 @@ export default async function OrderPage({ params, searchParams }: Props) {
             </li>
           ))}
         </ul>
+        {cardPrice && cardPrice.volumeCents > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders $200+</span>
+            <span className="text-[#d4af37]">−{formatPrice(cardPrice.volumeCents / 100)}</span>
+          </div>
+        )}
         {order.promoCode && (
           <div className="mb-3 flex justify-between text-sm">
             <span>Promo code {order.promoCode}</span>
             <span className="text-[#d4af37]">
               −{formatPrice(
-                (order.subtotalCents - order.totalCents - order.clubDiscountCents) / 100,
+                (cardPrice ? cardPrice.promoCents : order.subtotalCents - order.totalCents - order.clubDiscountCents) /
+                  100,
               )}
             </span>
           </div>
@@ -161,7 +187,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
           </div>
         )}
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
-          <span>{paid ? "Paid" : awaiting ? "Amount due" : "Order total"}</span>
+          <span>{paid ? "Paid" : awaiting || cardOpen ? "Amount due" : "Order total"}</span>
           <span className="text-[#d4af37]">
             {formatPrice(order.totalCents / 100)} {order.currency.toUpperCase()}
           </span>
@@ -199,6 +225,18 @@ export default async function OrderPage({ params, searchParams }: Props) {
             Pay with PayPal or card
           </button>
         </form>
+      )}
+
+      {cardOpen && (
+        <section className="surface mb-8 p-6" aria-labelledby="card-payment">
+          <h2
+            id="card-payment"
+            className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase"
+          >
+            Card payment
+          </h2>
+          <WhopOrderPayment reference={order.reference} />
+        </section>
       )}
 
       {awaiting && (
