@@ -1,101 +1,71 @@
-# Website Health Report
+# Redlinelabs Website Health
 
-> **Purpose:** This report is owned by the **Website Health specialist agent**. It tracks the overall
-> operational health of the Redline Labs storefront (`https://redlinelabs.shop`) — that the site
-> builds, deploys, renders, and serves its core pages and flows without errors. It is the
-> first place to look when "the site is broken" and the umbrella owner for issues that do not
-> clearly belong to one of the other specialist reports.
+Last Updated: 19 October 2026
 
-Last Updated: 25 September 2026
+Overall Status: Production is serving `60c51cab72a220d60d2c71c3a123cad14b67ade3` (Join the club banner on the home page and catalogue). GitHub CI run `39210123815` passed lint, typecheck, and build. Production deployment `7167216455` succeeded. That deploy still uses a `vercel.json` build that skips `scripts/ensure-club-tables.mjs`, so a paid membership can be stored without the member row being extended. The storefront remains Redline Labs black and gold. This environment cannot open `https://redlinelabs.shop` (TLS closed during the handshake); that failure is not treated as an outage.
 
-Overall Status: The live site at https://redlinelabs.shop/ is up, Stripe live checkout is configured, and the main catalogue pages return 200. Checkout on this branch no longer treats a browser store-credit balance as a Stripe coupon. That fix is not on production until it is reviewed and deployed. The current design system is Redline Labs black and gold.
+## Critical Issues
 
-## Scope / responsibilities
+- On production at `60c51ca`, `vercel.json` `buildCommand` runs the comments and orders scripts and then `next build`. `package.json` also runs `scripts/ensure-club-tables.mjs`. Vercel uses `vercel.json`, so this deploy did not apply `db/club.sql`. Membership activation inserts `email`, `first_name`, and `member_code_hash` only. An existing `club_members.member_code` column that is still `NOT NULL` rejects that insert. Runtime `ensureClubTables` adds `membership_until` and `membership_cancel_at` and does not drop the `NOT NULL`. A failed activation is logged and does not undo the paid order, so the customer can pay $50 and stay inactive until the schema is applied. Draft pull request #115 already contains the build-command alignment and `src/lib/build-command.test.ts`. This pass does not copy that change.
+- If any plaintext member codes remain and `CLUB_CODE_SECRET` is unset, `scripts/ensure-club-tables.mjs` exits 1. The next Vercel build would then fail and keep serving `60c51ca`. Set the secret before merging #115 when those rows exist. A missing `DATABASE_URL` still skips the script and the build succeeds.
+- Do not merge the older health pull requests (#112, #109, #106, #103, #100, #99, #94, #92, #89, #87, #84, #80, #76, #75, #69) after this one. #112 stops at pull request #111, before monthly membership. #115's report stops at `6b62464`, before the banner. If #115 is merged for the schema fix, keep this report.
 
-- Successful production build (`next build`) and Vercel deployment health.
-- Availability and correct rendering of core routes: home (`/`), catalogue (`/shop`),
-  product pages (`/product/[slug]`), cart (`/cart`), checkout (`/checkout`), account
-  (`/account`), and the policy pages.
-- Global layout, navigation (`Header`, `Footer`), providers, and error/not-found handling.
-- Console errors, hydration mismatches, broken images, and broken internal links.
-- Third-party embeds that affect page health (e.g. the optional AssistLoop chat widget).
-- Redirects declared in `next.config.ts` resolving correctly.
+## High Priority Issues
 
-## Out of scope (see sibling reports)
+- The Join the club banner is mounted once in `Providers` and previously stayed open after a client navigation from home, the catalogue, a product, or the cart onto `/checkout`, `/order/[reference]`, or `/club`. The path helper already excluded those routes, and the unit test only covered the helper, so the open banner could still sit over checkout. `shouldKeepInviteOpen` now closes it when the path is no longer eligible. Dismissal still uses `localStorage` key `redline-club-invite-v2` and is the only thing that suppresses a later visit.
+- On an invited route the banner is `position: fixed` at the bottom, `z-[45]`, full width on a phone, with no page padding. The cart page "Continue to checkout" control and an in-flow "Add to cart" can sit underneath it until the customer dismisses it. The cart drawer is `z-50`, so the drawer checkout control stays above the banner. Header is `z-40`. Hand the overlap to the conversion report. This pass does not restyle the banner.
+- `docs/redline-club.md` and `README.md` on production still describe a points programme. The live offer is Redline VIP Membership: $50 a month (`MEMBERSHIP_PRICE_CENTS` 5000), 30% off six products from `SPECIAL_POOL`, rotating on the 1st in Australia/Sydney, with no code. Points redemption (`ClubRedeem`, `club-state`) is gone. #115 updates those docs. Do not turn `CLUB_PROGRAM.approved` on and do not rebuild redemption.
+- Membership orders created from `/club` store a placeholder shipping address (`Membership — no delivery`, Sydney NSW 2000). `/order/[reference]` and the order email show that address. The club form does this so a digital membership can use the existing address check.
+- `reports/project-overview.md` on production still says there is no `vercel.json` and that checkout is PayPal-only. #115 corrects that file. This pass leaves it so the two edits do not diverge.
+- Open Whop checkout pull requests are based on older branches. Merging one onto this membership checkout would need a fresh pass over `normalizeShipping`, member pricing, and the club schema. Do not merge them from this health check.
 
-- Search/structured-data specifics → `seo-aeo-health.md`
-- Catalogue/product data correctness → `catalogue-merchandising-health.md`
-- Cart/checkout conversion tuning → `ecommerce-cro-health.md`
-- Automated tests & performance budgets → `qa-performance-health.md`
-- Secrets, headers, compliance → `security-compliance-health.md`
+## Medium Priority Issues
 
-## Key files & signals
+- The banner uses `role="dialog"` with `aria-modal="false"` and does not move focus, so a screen reader may not announce it. Escape still dismisses it. The previous modal printed `RESEARCH_DISCLAIMER`; the banner does not. Checkout still requires age and research-use confirmation before an order is created. Hand the disclaimer question to the compliance report.
+- The banner waits 1.5 seconds (previously 6) and uses a new dismissal key, so a browser that closed the old invite sees this one once. That matches the commit.
+- Push CI run `39207356691` for `6b62464` was cancelled with no steps. The later push CI run `39210123815` for `60c51ca` passed. `npm test` is still absent from `.github/workflows/ci.yml`.
+- Checkout previews member prices from `POST /api/club/status` using the email only. The amount charged is recomputed in `createCheckoutOrder` from the catalogue and `isActiveMember`. A lookup failure charges the regular total. The status response is only `{ active: true | false }`.
+- Paying the same membership order twice does not add a second month. The ledger unique index on `(order_reference, reason)` makes the second `membership` insert a no-op.
+- This environment cannot treat a TLS failure to `redlinelabs.shop`, `*.vercel.app`, or `registry.npmjs.org` as a production outage. GitHub Actions can build. A probe on 19 October 2026 failed with `UNEXPECTED_EOF_WHILE_READING` for both the shop and the production deployment host.
+- Sibling reports under `reports/` were last written for the 25 September Stripe-era pass. They are not a description of this deploy. Search, catalogue photos, headers, and performance budgets stay with those owners.
 
-- `next.config.ts` — image `remotePatterns`, redirects.
-- `src/app/layout.tsx` — root layout, global chrome, metadata base.
-- `src/app/not-found.tsx`, `src/components/RouteFallback.tsx` — error surfaces.
-- `src/components/Header.tsx`, `src/components/Footer.tsx` — global navigation.
-- Vercel deployment logs and Preview URLs per branch/PR.
+## Low Priority Issues
 
-## Health checklist
+- The Vercel project lives under a team slug that contains "metrouniforms". That is hosting, not the storefront brand. Do not restyle the site to Metro Uniforms.
+- `node --test` warns that `package.json` has no `"type": "module"`. Leave that for a separate change.
+- Account, cart, and policy pages were not walked in a browser on this pass. `node_modules` is absent here, so the dev server was not started.
 
-- [x] `npm run build` completes with all routes generated. Local build on 25 September 2026 succeeded, including `/product/bacterial-water`. CI on the base branch now runs lint, typecheck, and build.
-- [x] Home, catalogue, and a sample product page return HTTP 200. Production probe the same day: home, shop, about, FAQ, contact, cart, checkout, account, four policy pages, and `/product/bpc-157` returned 200.
-- [x] No console/hydration errors on core pages. Local browser pass reported no console issues.
-- [x] Header/footer links resolve (no 404s). Those routes returned 200. Mobile menu showed Home, Shop, About, FAQ, and Contact.
-- [ ] Declared redirects (`/product/bac-water`, `/product/product-bacterial-water`) 308 to the canonical slug. Not re-checked in this pass.
-- [ ] Remote product images load from the allow-listed host. One sampled BPC-157 image returned 200. Image failures for other listings belong in `catalogue-merchandising-health.md`.
+## Changes Made
 
-## Current status
+- `shouldKeepInviteOpen` closes the Join the club banner when the customer leaves an invited route, including a client navigation onto checkout, an order, or `/club`.
+- `src/lib/club-invite.test.ts` covers that close rule.
+- This report replaces the 25 September Stripe-era status that was still on the production branch.
+- No palette, layout, catalogue price, or earn-rate change. The banner visual treatment shipped in `60c51ca` is unchanged.
 
-Production is serving the site. It is behind the repository: `GET /product/bacterial-water` returned 404 on 25 September 2026 and that URL was absent from the live sitemap, while the listing is already in `src/data/products.json`. The homepage cache `age` was about 4.5 days. Publishing that listing is a deploy of existing catalogue commits, not part of the checkout change.
+## Tests Performed
 
-AssistLoop is enabled in production. The homepage HTML preloads `https://assistloop.ai/assistloop-widget.js`.
+- Inspection of `6b62464..60c51ca` (banner CSS, `ClubInviteModal`, invite routes). `/` is an exact match so it does not invite every path. Checkout, `/order`, and `/club` are excluded by `shouldInviteOnPath`.
+- Local `node --experimental-strip-types --test src/lib/club-invite.test.ts`: 3 passed, 0 failed.
+- GitHub CI `39210123815` on `60c51ca`: lint, typecheck, and build passed.
+- GitHub production deployment `7167216455` and preview deployment `7167216566` for `60c51ca`: state `success`. That success does not mean `db/club.sql` ran.
+- `npm ci` was not run. `registry.npmjs.org` is blocked from this environment, and `node_modules` is not present, so `npm run lint`, `npm run typecheck`, `npm run build`, and `npm run check` were not run here.
 
-`npx tsc --noEmit` used to fail with `Cannot find name 'LayoutProps'` until `next build` generated route types. The base branch now types the root layout `children` as `ReactNode`, so that failure is closed on this merge.
+## Build Status
 
-Contact is a `mailto:` composer. The newsletter form says it does not start a mailing list. Both render and do what they say.
+Push CI for `60c51ca` succeeded. Production deployment `7167216455` succeeded and is the build that skipped the club script. This branch has not been deployed. Do not merge it unless explicitly asked. Merging #115 afterwards still needs `CLUB_CODE_SECRET` when plaintext member codes remain, or the build fails and Vercel keeps `60c51ca`.
 
-### Handed to sibling reports
+## Outstanding Work
 
-These came out of the same pass. They stay listed here so the audit is not dropped, and the owning report should record them.
+- Merge pull request #115 only when asked, so the next production build applies `db/club.sql`. Keep this health report if the two reports conflict.
+- Confirm `CLUB_CODE_SECRET` is set before that merge if plaintext member codes still exist.
+- A green deploy still does not prove `PAYID_ADDRESS`, `PAYID_ACCOUNT_NAME`, `DATABASE_URL`, PayPal, or Resend variables are set.
+- Give the cart and product overlap of the bottom banner to the conversion agent. Do not add a second banner.
+- Close or leave the older health pull requests unmerged so they cannot replace this report.
+- Hand the placeholder membership address and the email-only status check to the checkout and security reports. Do not rebuild points.
 
-- `ecommerce-cro-health.md`: checkout used to create a Stripe coupon from a browser store-credit amount. Account balances live only in `localStorage`. This branch ignores that amount and no longer subtracts it from “Due now”. The CRO checklist still says store credit should apply at checkout; that item disagrees with this code.
-- `ecommerce-cro-health.md`: the live checkout path did not require age and research-use confirmation on the server. The server action and `POST /api/checkout` now reject a session unless both are true. Account, FAQ, checkout, and the restock control no longer promise email alerts or an automatic credit deduction.
-- `security-compliance-health.md`: accounts, orders, addresses, and stock alerts are browser-local. There is no Stripe webhook. `GET /api/checkout/session` returns email and shipping to anyone with the Checkout Session id. Live homepage headers were HSTS only, plus `Access-Control-Allow-Origin: *`.
-- `seo-aeo-health.md`: product JSON-LD marks every listing `InStock`. FAQ content has no `FAQPage` schema. Slugs include `products-dsip`, `product-tb-1`, and the misspelling `products-kisspepien`.
-- `catalogue-merchandising-health.md`: listing titles mix case. Catalogue photos are remote `i0.wp.com` files with a `/brand/vial.png` fallback.
-- `qa-performance-health.md`: no product analytics in the repo. Draft pull request `#22` is Vercel Speed Insights. The test runner warns that `package.json` has no `"type": "module"`. Dead code: root `index.mts` (only consumer of the `ai` dependency), `src/components/Placeholder.tsx`, default `public/*.svg` files, and unused `public/brand/hero.png` and `public/brand/logo.png`.
+## Recommendations
 
-### Changes on this branch
-
-- Checkout no longer turns a browser store-credit balance into a Stripe coupon.
-- Checkout requires age and research-use confirmation before creating a session.
-- Checkout, account, FAQ, and the product restock control match that behaviour.
-- No visual redesign. Header, gold/black palette, catalogue data, and the DGC20 coupon behaviour are unchanged.
-
-### Tests performed
-
-- `npm test`: 32 passed, 0 failed.
-- `npm run lint`: passed.
-- `npm run build` (Next.js 16.3.4): passed. Static product paths include `/product/bacterial-water`.
-- `npx tsc --noEmit` after that build: passed. Re-run after this merge because the base branch added `npm run typecheck` and changed `src/app/layout.tsx`.
-- Local browser pass against `next start`: FAQ account answer, account benefit cards, BPC-157 restock line, shop search `bpc`, checkout summary with store credit $0.00, and the mobile menu at 390px. No card payment was submitted.
-
-### Build status
-
-Local production build succeeded on 25 September 2026 before this merge. This branch has not been deployed. Production was not updated.
-
-### Outstanding work
-
-- Review and, only when explicitly requested, deploy the checkout fix. Production still applies client-supplied store credit until then.
-- Decide whether Bacterial Water should be published by deploying the existing catalogue commits.
-- Keep the Redline Labs black and gold storefront. A historical branch named `cursor/metro-uniforms-about-151c` is not the current brand.
-- Use a Vercel preview for this branch. Do not promote it to production without an explicit request.
-
-## Change log
-
-| Date | Agent | Summary |
-| --- | --- | --- |
-| _initial_ | setup | Report scaffold created. |
-| 2026-09-25 | checkout integrity | Merged the 25 September audit into this scaffold. Render and deploy findings stay here. Checkout, security, SEO, catalogue, and test findings are handed to the sibling reports. |
+- Keep one build command in `vercel.json` and `package.json`. The test on #115 is the guard. Do not add a second copy of that test here.
+- Leave `CLUB_PROGRAM.approved` false until earn rates are explicitly supplied.
+- Add `npm test` to CI in a separate change. The current gate is lint, typecheck, and build, which does not run `club-invite.test.ts`.
+- Keep using preview deployments for storefront work. Production is `cursor/redlinelabs-shop-1c01`. There is no `main`.

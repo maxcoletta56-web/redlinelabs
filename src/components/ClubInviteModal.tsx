@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { shouldInviteOnPath } from "@/lib/club-invite";
+import { shouldKeepInviteOpen } from "@/lib/club-invite";
 import { MEMBERSHIP_PRICE_CENTS, MEMBER_DISCOUNT_PERCENT } from "@/lib/membership";
 import { formatPrice } from "@/lib/products";
 
@@ -44,9 +44,12 @@ export function ClubInviteModal() {
   }, []);
 
   useEffect(() => {
-    if (!shouldInviteOnPath(pathname) || alreadySeen()) return;
+    if (!shouldKeepInviteOpen(pathname, alreadySeen())) {
+      setOpen(false);
+      return;
+    }
     const timer = window.setTimeout(() => {
-      if (!alreadySeen()) setOpen(true);
+      if (shouldKeepInviteOpen(pathname, alreadySeen())) setOpen(true);
     }, DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [pathname]);
