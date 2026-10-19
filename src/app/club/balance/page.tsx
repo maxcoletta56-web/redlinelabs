@@ -5,9 +5,9 @@ import { PageIntro } from "@/components/PageIntro";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Club balance",
+  title: "Your membership",
   description:
-    "Check your Redline Club points balance, tier and recent points activity with your email and member code.",
+    "Check whether your Redline membership is active, and cancel renewal, with your email and member code.",
   path: "/club/balance",
   index: false,
 });
@@ -15,14 +15,14 @@ export const metadata: Metadata = pageMetadata({
 export default function ClubBalancePage() {
   return (
     <div className="wrap max-w-[620px] py-16">
-      <PageIntro kicker="Redline Club" title="Your points balance" crumb="Club balance">
-        Enter the email you joined with and the member code from your welcome message.
+      <PageIntro kicker="Redline Membership" title="Your membership" crumb="Membership">
+        Enter the email you subscribed with and the member code from your welcome message.
       </PageIntro>
       <ClubBalanceLookup />
       <p className="mt-8 text-sm leading-7 text-[#8f8c84]">
         Not a member yet?{" "}
         <Link href="/club" className="text-[#d4af37]">
-          Join the Redline Club
+          See membership
         </Link>
         .
       </p>

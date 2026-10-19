@@ -1,6 +1,8 @@
 import {
   adjustPoints,
   authenticateMember,
+  cancelMembership,
+  isActiveMember,
   joinClub,
   listLedger,
   listMembers,
@@ -17,6 +19,7 @@ import {
   pointsValueCents,
   tierProgress,
 } from "./club.ts";
+import { membershipIsActive } from "./membership.ts";
 import { authorizeAdmin } from "./admin-auth.ts";
 import { clientKey, rateLimit } from "./rate-limit.ts";
 
@@ -27,6 +30,8 @@ export type ClubApiDeps = {
   listLedger?: typeof listLedger;
   adjustPoints?: typeof adjustPoints;
   listMembers?: typeof listMembers;
+  isActiveMember?: typeof isActiveMember;
+  cancelMembership?: typeof cancelMembership;
   now?: () => number;
 };
 
@@ -72,6 +77,9 @@ export function memberSummary(member: ClubMember) {
     nextTier: progress.next?.name ?? null,
     nextTierRemainingCents: progress.remainingCents,
     tierProgressPercent: progress.percent,
+    membershipUntil: member.membershipUntil,
+    membershipCancelAt: member.membershipCancelAt,
+    membershipActive: membershipIsActive(member.membershipUntil),
   };
 }
 
@@ -231,6 +239,49 @@ export async function clubAdminMembersGet(
   } catch (error) {
     if (error instanceof ClubUnavailableError) return unavailable();
     return Response.json({ error: "Could not list members" }, { status: 502 });
+  }
+}
+
+const STATUS_LIMIT = { limit: 20, windowMs: 60_000 };
+
+/** Email-only, and only a boolean: checkout uses it to preview member prices. */
+export async function clubStatusPost(request: Request, deps: ClubApiDeps = {}): Promise<Response> {
+  const limited = rateLimit(`club-status:${clientKey(request)}`, STATUS_LIMIT.limit, STATUS_LIMIT.windowMs);
+  if (!limited.ok) return tooMany(limited.retryAfterMs);
+  const body = await readBody(request);
+  const email = normalizeClubEmail(readString(body?.email));
+  if (!isClubEmail(email)) return Response.json({ active: false });
+  try {
+    const active = await (deps.isActiveMember ?? isActiveMember)(email);
+    return Response.json({ active });
+  } catch (error) {
+    if (error instanceof ClubUnavailableError) return Response.json({ active: false });
+    return Response.json({ active: false });
+  }
+}
+
+export async function clubCancelPost(request: Request, deps: ClubApiDeps = {}): Promise<Response> {
+  const limited = rateLimit(
+    `club-cancel:${clientKey(request)}`,
+    BALANCE_LIMIT.limit,
+    BALANCE_LIMIT.windowMs,
+  );
+  if (!limited.ok) return tooMany(limited.retryAfterMs);
+  const body = await readBody(request);
+  const email = readString(body?.email);
+  const code = readString(body?.code);
+  if (!isClubEmail(email) || !code) {
+    return Response.json({ error: "Enter the email and member code" }, { status: 400 });
+  }
+  try {
+    const member = await (deps.cancelMembership ?? cancelMembership)(email, code);
+    if (!member) {
+      return Response.json({ error: "That email and member code do not match" }, { status: 401 });
+    }
+    return Response.json({ member: memberSummary(member) });
+  } catch (error) {
+    if (error instanceof ClubUnavailableError) return unavailable();
+    return Response.json({ error: "Could not cancel that membership" }, { status: 502 });
   }
 }
 

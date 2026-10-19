@@ -372,6 +372,17 @@ async function awardClubPointsForOrder(order: StoredOrder) {
   });
 }
 
+/** A paid membership fee extends access by one month. Other orders do nothing. */
+async function activateMembershipForPaidOrder(order: StoredOrder) {
+  if (!order.items.some((item) => item.slug === "redline-membership")) return null;
+  const { activatePaidMembership } = await import("./club-db.ts");
+  return activatePaidMembership({
+    email: order.email,
+    firstName: order.firstName,
+    orderReference: order.reference,
+  });
+}
+
 function paymentReceivedNotice(order: StoredOrder): PaymentReceivedNotice {
   return {
     reference: order.reference,
@@ -414,6 +425,15 @@ export async function markOrderPaidWithPaymentEmail(
       await award(order);
     } catch (error) {
       console.error("[club] award on paid failed", {
+        reference: order.reference,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
+
+    try {
+      await activateMembershipForPaidOrder(order);
+    } catch (error) {
+      console.error("[club] membership activation failed", {
         reference: order.reference,
         errorName: error instanceof Error ? error.name : "unknown",
       });

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { JOIN_BONUS_POINTS, formatCents, pointsValueCents } from "@/lib/club";
+import { MEMBERSHIP_PRICE_CENTS, MEMBER_DISCOUNT_PERCENT } from "@/lib/membership";
+import { formatPrice } from "@/lib/products";
 import { RESEARCH_DISCLAIMER } from "@/lib/company";
 
 const DISMISSED_KEY = "redline-club-invite-v1";
@@ -100,16 +101,15 @@ export function ClubInviteModal() {
           id="club-invite-title"
           className="mt-2 text-[1.6rem] leading-tight font-semibold tracking-[-0.02em] text-white"
         >
-          {formatCents(pointsValueCents(JOIN_BONUS_POINTS))} in points, just for joining.
+          Member pricing from {formatPrice(MEMBERSHIP_PRICE_CENTS / 100)} a month.
         </h2>
         <p className="mt-3 text-sm leading-7 text-[#8f8c84]">
-          Members earn at least 1 point per $1 spent, and 100 points is{" "}
-          {formatCents(pointsValueCents(100))} off. Join free and we add {JOIN_BONUS_POINTS} points
-          now, plus another {JOIN_BONUS_POINTS} after your first order.
+          Members get {MEMBER_DISCOUNT_PERCENT}% off a short list of products. The list changes on
+          the 1st, and the discount applies at checkout with no code.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link href="/club" className="btn" onClick={dismiss}>
-            Join the club
+            See membership
           </Link>
           <button
             type="button"

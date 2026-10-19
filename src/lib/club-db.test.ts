@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  activatePaidMembership,
   authenticateMember,
   awardOrderPoints,
   holdRedemption,
@@ -161,4 +162,33 @@ test("an order from a non-member is ignored", async () => {
     null,
   );
   assert.equal(statement(calls, "INSERT INTO club_points_ledger").length, 0);
+});
+
+test("paying the same membership order twice extends access once", async () => {
+  let ledgerInserted = false;
+  const { sql, calls } = fakeSql((query) => {
+    if (query.startsWith("SELECT") && query.includes("club_members")) return [memberRow()];
+    if (query.startsWith("INSERT INTO club_points_ledger")) {
+      if (ledgerInserted) return [];
+      ledgerInserted = true;
+      return [{ id: 4 }];
+    }
+    if (query.includes("interval '1 month'")) {
+      return [memberRow({ membership_until: "2026-11-19T00:00:00Z" })];
+    }
+    return [];
+  });
+
+  const first = await activatePaidMembership(
+    { email: "ada@example.com", firstName: "Ada", orderReference: "RL-MEM001" },
+    sql,
+  );
+  const second = await activatePaidMembership(
+    { email: "ada@example.com", firstName: "Ada", orderReference: "RL-MEM001" },
+    sql,
+  );
+
+  assert.equal(first?.membershipUntil, "2026-11-19T00:00:00Z");
+  assert.equal(second?.email, "ada@example.com");
+  assert.equal(statement(calls, "interval '1 month'").length, 1);
 });

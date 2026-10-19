@@ -5,8 +5,13 @@ CREATE TABLE IF NOT EXISTS club_members (
   points_balance INTEGER NOT NULL DEFAULT 0,
   lifetime_spend_cents INTEGER NOT NULL DEFAULT 0,
   first_order_bonus_at TIMESTAMPTZ,
+  membership_until TIMESTAMPTZ,
+  membership_cancel_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE club_members ADD COLUMN IF NOT EXISTS membership_until TIMESTAMPTZ;
+ALTER TABLE club_members ADD COLUMN IF NOT EXISTS membership_cancel_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS club_points_ledger (
   id BIGSERIAL PRIMARY KEY,

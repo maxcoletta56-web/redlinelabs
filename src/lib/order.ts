@@ -1,3 +1,4 @@
+import { MEMBERSHIP_PRICE_CENTS, MEMBERSHIP_SLUG } from "@/lib/membership";
 import { getProduct, optionLabel, type Product, type Variant } from "@/lib/products";
 
 export type CartLineInput = {
@@ -27,6 +28,23 @@ function selectedVariant(product: Product, option: string | null): Variant | nul
 export function resolveCartLines(input: CartLineInput[]): ResolvedLine[] {
   if (!Array.isArray(input) || input.length === 0) {
     throw new Error("Cart is empty");
+  }
+
+  if (input.some((line) => line.slug === MEMBERSHIP_SLUG)) {
+    if (input.length !== 1 || Number(input[0]?.qty) !== 1) {
+      throw new Error("Membership is purchased on its own");
+    }
+    return [
+      {
+        slug: MEMBERSHIP_SLUG,
+        name: "Redline Membership",
+        option: null,
+        variantLabel: null,
+        sku: "RL-MEMBERSHIP",
+        qty: 1,
+        unitAmountCents: MEMBERSHIP_PRICE_CENTS,
+      },
+    ];
   }
 
   return input.map((line) => {

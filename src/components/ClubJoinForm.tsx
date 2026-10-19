@@ -2,55 +2,51 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { JOIN_BONUS_POINTS, formatCents, pointsValueCents } from "@/lib/club";
+import { startCartCheckoutSession } from "@/app/actions/checkout";
+import {
+  PaymentMethodChoice,
+  useCheckoutAvailability,
+  useSelectedPaymentMethod,
+} from "@/components/PaymentMethodChoice";
+import { useAccount } from "@/lib/account";
+import { MEMBERSHIP_PRICE_CENTS, MEMBERSHIP_SLUG } from "@/lib/membership";
+import { formatPrice } from "@/lib/products";
 
-type JoinState =
-  | { status: "idle" }
-  | { status: "joined"; memberCode: string }
-  | { status: "existing"; message: string };
-
-export function ClubJoinForm({ id = "club-join" }: { id?: string }) {
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [pending, setPending] = useState(false);
+/**
+ * Subscribe from an account that already exists in this browser. The $50 fee
+ * uses the same PayID and PayPal rails as a normal order.
+ */
+export function ClubJoinForm() {
+  const { user, hydrated } = useAccount();
+  const availability = useCheckoutAvailability();
+  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
   const [error, setError] = useState<string | null>(null);
-  const [state, setState] = useState<JoinState>({ status: "idle" });
+  const [pending, setPending] = useState(false);
+  const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
 
-  if (state.status === "joined") {
+  if (!hydrated) {
+    return <p className="text-sm text-[#8f8c84]">Loading your account…</p>;
+  }
+
+  if (!user) {
     return (
-      <div className="surface p-6" role="status">
-        <p className="kicker mb-2">Welcome to the club</p>
+      <div className="surface p-6">
         <p className="text-sm leading-7 text-[#cfc8b8]">
-          {JOIN_BONUS_POINTS} points — worth {formatCents(pointsValueCents(JOIN_BONUS_POINTS))} —
-          are on your balance. Another {JOIN_BONUS_POINTS} land after your first order is paid.
+          Create an account or log in to subscribe. Membership is {price} a month.
         </p>
-        <p className="mt-4 text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
-          Your member code
-        </p>
-        <p className="mt-1 font-mono text-[22px] tracking-[0.18em] text-[#d4af37]">
-          {state.memberCode}
-        </p>
-        <p className="mt-3 text-xs leading-6 text-[#8f8c84]">
-          Save this code. With your email it is how you check your balance and spend points at
-          checkout. We cannot show it again here.
-        </p>
-        <Link href="/club/balance" className="btn-ghost mt-4 inline-flex">
-          Check my balance
-        </Link>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link href="/account?mode=signup&next=/club" className="btn">
+            Create account
+          </Link>
+          <Link href="/account?mode=login&next=/club" className="btn-ghost">
+            Log in
+          </Link>
+        </div>
       </div>
     );
   }
 
-  if (state.status === "existing") {
-    return (
-      <div className="surface p-6" role="status">
-        <p className="text-sm leading-7 text-[#cfc8b8]">{state.message}</p>
-        <Link href="/club/balance" className="btn-ghost mt-4 inline-flex">
-          Go to balance lookup
-        </Link>
-      </div>
-    );
-  }
+  const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
 
   return (
     <form
@@ -58,64 +54,59 @@ export function ClubJoinForm({ id = "club-join" }: { id?: string }) {
       onSubmit={(event) => {
         event.preventDefault();
         if (pending) return;
+        const form = new FormData(event.currentTarget);
+        if (form.get("ageConfirmed") !== "on" || form.get("researchUse") !== "on") {
+          setError("Age and research-use confirmation are required");
+          return;
+        }
         setPending(true);
         setError(null);
-        fetch("/api/club/join", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim(), firstName: firstName.trim() }),
+        startCartCheckoutSession({
+          items: [{ slug: MEMBERSHIP_SLUG, qty: 1 }],
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          shipping: {
+            name: `${user.firstName} ${user.lastName}`.trim(),
+            line1: "Membership — no delivery",
+            line2: "",
+            city: "Sydney",
+            state: "NSW",
+            postal_code: "2000",
+            country: "AU",
+          },
+          paymentMethod,
+          ageConfirmed: true,
+          researchUse: true,
         })
-          .then(async (response) => {
-            const body: unknown = await response.json().catch(() => null);
-            const record = (body ?? {}) as Record<string, unknown>;
-            if (!response.ok) {
-              setError(
-                typeof record.error === "string" ? record.error : "Could not join right now",
-              );
+          .then((result) => {
+            if (result.ok) {
+              window.location.assign(result.redirectUrl);
               return;
             }
-            if (record.created && typeof record.memberCode === "string") {
-              setState({ status: "joined", memberCode: record.memberCode });
-              return;
-            }
-            setState({
-              status: "existing",
-              message:
-                typeof record.message === "string"
-                  ? record.message
-                  : "That email is already in the club.",
-            });
+            setError(result.error);
+            setPending(false);
           })
-          .catch(() => setError("Could not join right now"))
-          .finally(() => setPending(false));
+          .catch(() => {
+            setError("Checkout could not be started. Nothing has been charged.");
+            setPending(false);
+          });
       }}
     >
-      <label htmlFor={`${id}-first-name`} className="block">
-        <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
-          First name (optional)
-        </span>
-        <input
-          id={`${id}-first-name`}
-          className="field w-full"
-          value={firstName}
-          autoComplete="given-name"
-          onChange={(event) => setFirstName(event.target.value)}
-        />
+      <p className="text-sm leading-6 text-[#cfc8b8]">
+        Subscribe as <span className="text-white">{user.email}</span>. Pay {price} for a month of
+        member pricing. Nothing is shipped.
+      </p>
+      {availability.showChoice && (
+        <PaymentMethodChoice value={paymentMethod} onChange={choose} />
+      )}
+      <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
+        <input name="ageConfirmed" type="checkbox" className="mt-1" />
+        <span>I am 18 or older.</span>
       </label>
-      <label htmlFor={`${id}-email`} className="block">
-        <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
-          Email
-        </span>
-        <input
-          id={`${id}-email`}
-          type="email"
-          required
-          inputMode="email"
-          autoComplete="email"
-          className="field w-full"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
+      <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
+        <input name="researchUse" type="checkbox" className="mt-1" />
+        <span>I am buying for laboratory research use only.</span>
       </label>
       {error && (
         <p className="text-xs leading-5 text-[#d4af37]" role="alert">
@@ -123,12 +114,8 @@ export function ClubJoinForm({ id = "club-join" }: { id?: string }) {
         </p>
       )}
       <button type="submit" className="btn w-full" disabled={pending} aria-busy={pending}>
-        {pending ? "Joining…" : "Join the club"}
+        {pending ? "Starting checkout…" : `Subscribe — ${price}/month`}
       </button>
-      <p className="text-xs leading-6 text-[#8f8c84]">
-        Membership is free. Use the same email at checkout and points are added automatically once
-        payment clears.
-      </p>
     </form>
   );
 }

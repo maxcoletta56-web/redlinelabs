@@ -157,6 +157,8 @@ function clubMember(overrides: Partial<ClubMember> = {}): ClubMember {
     pointsBalance: 1_000,
     lifetimeSpendCents: 0,
     firstOrderBonusAt: null,
+    membershipUntil: null,
+    membershipCancelAt: null,
     createdAt: "2026-10-01T00:00:00Z",
     ...overrides,
   };
@@ -191,26 +193,43 @@ function clubHooks(member: ClubMember | null) {
   };
 }
 
-test("club points come off the total and are capped to the real balance", async () => {
+test("an active member pays 30% less on this month's special, on PayID and PayPal", async () => {
   const restore = payIdEnv();
   const { sql } = recorder();
-  const club = clubHooks(clubMember({ pointsBalance: 300 }));
+  const october = new Date("2026-10-19T00:00:00.000Z");
   try {
-    const order = await createBankTransferOrder(
+    const payId = await createBankTransferOrder(
       {
         ...orderInput,
+        items: [{ slug: "glow", option: "70", qty: 1 }],
         shipping: goodAddress,
-        // Asks for 10,000 points on a 300-point balance.
         club: { email: "ada@example.com", code: "RL-ACDEFG", points: 10_000 },
       },
-      { sql, deliver: async () => {}, club: club.hooks },
+      {
+        sql,
+        deliver: async () => {},
+        membership: { isActive: async () => true, now: () => october },
+      },
     );
+    // Glow 70mg is $170. Member price is 30% off. A points payload does not stack.
+    assert.equal(payId.totalCents, 11_900);
 
-    // $89 catalogue line, 300 points = $15 off.
-    assert.equal(order.totalCents, 7_400);
-    assert.equal(club.held[0]?.points, 300);
-    assert.equal(club.tagged[0], order.reference);
-    assert.equal(club.released.length, 0);
+    const paypal = await createCheckoutOrder(
+      {
+        ...orderInput,
+        items: [{ slug: "glow", option: "70", qty: 1 }],
+        shipping: goodAddress,
+      },
+      {
+        sql,
+        deliver: async () => {},
+        paymentMethod: "paypal",
+        skipBankConfiguration: true,
+        membership: { isActive: async () => true, now: () => october },
+      },
+    );
+    assert.equal(paypal.paymentMethod, "paypal");
+    assert.equal(paypal.totalCents, 11_900);
   } finally {
     restore();
   }
@@ -237,7 +256,7 @@ test("a membership that does not check out pays the full total", async () => {
   }
 });
 
-test("held points go back when the order cannot be written", async () => {
+test("a failed insert does not spend a membership or points", async () => {
   const restore = payIdEnv();
   const failing: Sql = {
     query: async (query) => {
@@ -259,7 +278,7 @@ test("held points go back when the order cannot be written", async () => {
         ),
       /database is down/,
     );
-    assert.equal(club.released[0]?.points, 200);
+    assert.equal(club.released.length, 0);
   } finally {
     restore();
   }

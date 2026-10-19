@@ -11,6 +11,8 @@ function member(overrides: Partial<ClubMember> = {}): ClubMember {
     pointsBalance: 450,
     lifetimeSpendCents: 60_000,
     firstOrderBonusAt: null,
+    membershipUntil: null,
+    membershipCancelAt: null,
     createdAt: "2026-10-01T00:00:00Z",
     ...overrides,
   };

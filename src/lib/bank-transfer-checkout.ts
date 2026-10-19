@@ -1,14 +1,12 @@
 import "server-only";
 
 import { isAuState } from "@/lib/account-data";
-import { pointsValueCents, resolveRedemption } from "@/lib/club";
+import { isActiveMember } from "@/lib/club-db";
 import {
-  authenticateMember,
-  holdRedemption,
-  releaseRedemption,
-  tagRedemption,
-  type RedemptionHold,
-} from "@/lib/club-db";
+  MEMBERSHIP_SLUG,
+  isMemberSpecial,
+  memberUnitCents,
+} from "@/lib/membership";
 import { resolveBankTransfer } from "@/lib/bank-transfer";
 import { getSql, type Sql } from "@/lib/db";
 import { sendOrderCreatedEmails, type OrderCreatedNotice } from "@/lib/mailer";
@@ -66,12 +64,11 @@ export type ClubRedemptionInput = {
 export type CreateBankTransferOrderOptions = {
   /** Injected by tests. Production uses DATABASE_URL via getSql(). */
   sql?: Sql | null;
-  /** Injected by tests. Production reads the club tables through club-db. */
-  club?: {
-    authenticate: typeof authenticateMember;
-    hold: typeof holdRedemption;
-    tag: typeof tagRedemption;
-    release: typeof releaseRedemption;
+  /** Kept so older checkout callers can still pass a club payload. It is not spent. */
+  club?: object;
+  membership?: {
+    isActive: (email: string) => Promise<boolean>;
+    now?: () => Date;
   };
   /** Injected by tests. Production schedules mail and never awaits the send. */
   deliver?: (notice: OrderCreatedNotice) => Promise<void>;
@@ -182,21 +179,22 @@ export async function createCheckoutOrder(
     throw new Error("A shipping address is required");
   }
 
-  const lines = resolveCartLines(input.items);
-  const promo = lookupPromo(input.promoCode);
+  const catalogueLines = resolveCartLines(input.items);
+  const email = trimmed(input.email, 200).toLowerCase();
+  const membershipOnly = catalogueLines.every((line) => line.slug === MEMBERSHIP_SLUG);
+  const now = options?.membership?.now?.() ?? new Date();
+  const activeMember = membershipOnly ? false : await membershipActive(email, options);
+  const lines = catalogueLines.map((line) => {
+    if (!activeMember || !isMemberSpecial(line.slug, now)) return line;
+    return { ...line, unitAmountCents: memberUnitCents(line.unitAmountCents) };
+  });
+  const promo = membershipOnly ? null : lookupPromo(input.promoCode);
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
   const payableCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
   if (payableCents <= 0) {
     throw new Error("Order total must be greater than zero");
   }
-
-  // Redemption is per order, and only on PayID. A club payload sent with PayPal
-  // is ignored so the card is charged the full total.
-  const hold =
-    paymentMethod === "bank_transfer"
-      ? await holdClubPoints(input.club, payableCents, options)
-      : null;
-  const totalCents = payableCents - (hold ? pointsValueCents(hold.points) : 0);
+  const totalCents = payableCents;
 
   const items: OrderItemSnapshot[] = lines.map((line) => ({
     slug: line.slug,
@@ -209,12 +207,9 @@ export async function createCheckoutOrder(
   }));
   const firstName = trimmed(input.firstName, 120) || "Customer";
   const lastName = trimmed(input.lastName, 120) || "Account";
-  const email = trimmed(input.email, 200).toLowerCase();
   const promoCode = promo?.code ?? null;
 
-  let reference: string;
-  try {
-    reference = await withTimeout(
+  const reference = await withTimeout(
       insertOrder(
         {
           currency: "aud",
@@ -226,8 +221,8 @@ export async function createCheckoutOrder(
           email,
           items,
           shipping,
-          clubEmail: hold?.member.email ?? null,
-          clubPointsRedeemed: hold?.points ?? 0,
+          clubEmail: activeMember ? email : null,
+          clubPointsRedeemed: 0,
           paymentMethod,
           paypalOrderId: options?.paypalOrderId ?? null,
         },
@@ -236,25 +231,9 @@ export async function createCheckoutOrder(
       DATABASE_TIMEOUT_MS,
       "The order database",
     );
-  } catch (error) {
-    // The points were taken off the balance before the insert; give them back.
-    if (hold) await releaseClubPoints(hold, options);
-    throw error;
-  }
-
-  if (hold) {
-    try {
-      await (options?.club?.tag ?? tagRedemption)(hold, reference, sql);
-    } catch (error) {
-      console.error("[club] could not tag the redemption with its order", {
-        reference,
-        errorName: error instanceof Error ? error.name : "unknown",
-      });
-    }
-  }
 
   const notice: OrderCreatedNotice = {
-    clubPointsRedeemed: hold?.points ?? 0,
+    clubPointsRedeemed: 0,
     reference,
     firstName,
     lastName,
@@ -296,53 +275,14 @@ export async function createCheckoutOrder(
   };
 }
 
-/**
- * Verifies the member server-side, re-caps the requested points against the
- * live balance and this order's size, then takes them off the balance before
- * the order is written. A club failure never blocks the order: the customer
- * simply pays the undiscounted total.
- */
-async function holdClubPoints(
-  club: ClubRedemptionInput | null | undefined,
-  payableCents: number,
-  options?: CreateBankTransferOrderOptions,
-): Promise<RedemptionHold | null> {
-  if (!club) return null;
+async function membershipActive(email: string, options?: CreateBankTransferOrderOptions) {
+  if (options?.membership) return options.membership.isActive(email);
   try {
-    const sql = databaseFor(options);
-    const member = await (options?.club?.authenticate ?? authenticateMember)(
-      club.email,
-      club.code,
-      sql,
-    );
-    if (!member) return null;
-    const { points } = resolveRedemption({
-      requestedPoints: club.points,
-      balancePoints: member.pointsBalance,
-      payableCents,
-    });
-    if (points <= 0) return null;
-    return await (options?.club?.hold ?? holdRedemption)(
-      { email: member.email, points },
-      sql,
-    );
+    return await isActiveMember(email, databaseFor(options), options?.membership?.now?.());
   } catch (error) {
-    console.error("[club] could not apply points at checkout", {
+    console.error("[club] membership lookup failed", {
       errorName: error instanceof Error ? error.name : "unknown",
     });
-    return null;
-  }
-}
-
-async function releaseClubPoints(
-  hold: RedemptionHold,
-  options?: CreateBankTransferOrderOptions,
-) {
-  try {
-    await (options?.club?.release ?? releaseRedemption)(hold, databaseFor(options));
-  } catch (error) {
-    console.error("[club] could not return held points", {
-      errorName: error instanceof Error ? error.name : "unknown",
-    });
+    return false;
   }
 }

@@ -3,150 +3,71 @@ import Link from "next/link";
 import { ClubJoinForm } from "@/components/ClubJoinForm";
 import { PageIntro } from "@/components/PageIntro";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
-import {
-  CLUB_TIERS,
-  FIRST_ORDER_BONUS_POINTS,
-  JOIN_BONUS_POINTS,
-  REDEEM_STEP_POINTS,
-  formatCents,
-  percentBack,
-  pointsValueCents,
-  type ClubTier,
-} from "@/lib/club";
+import { MEMBERSHIP_PRICE_CENTS } from "@/lib/membership";
+import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Redline Club",
+  title: "Redline Membership",
   description:
-    "Join the Redline Club: free membership, 100 welcome points, and points on every paid order. Four tiers by lifetime spend, from 5% back up to 10% back in points.",
+    "Redline VIP Membership is $50 a month. Members get automatic pricing on selected products, refreshed on the 1st. Cancel anytime.",
   path: "/club",
 });
 
-function earnRate(tier: ClubTier) {
-  const perDollar = tier.earnBasis / 100;
-  const rate = String(Number(perDollar.toFixed(2)));
-  return `${rate} ${perDollar === 1 ? "point" : "points"} per $1`;
-}
-
-function TierCard({ tier, top, wide }: { tier: ClubTier; top: boolean; wide?: boolean }) {
-  return (
-    <li className={`surface relative p-5${wide ? " sm:col-span-2" : ""}`}>
-      {top && (
-        <span className="absolute top-4 right-4 rounded-full border border-[rgba(212,175,55,0.34)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">
-          Top tier
-        </span>
-      )}
-      <p className="text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
-        {tier.name}
-      </p>
-      <p className="mt-2 text-[1.75rem] leading-none font-semibold tracking-[-0.02em] text-white">
-        {percentBack(tier)}% back
-      </p>
-      <p className="mt-2 text-sm text-[#d4af37]">{earnRate(tier)}</p>
-      <p className="mt-1 text-xs text-[#8f8c84]">
-        {tier.fromCents === 0
-          ? "From your first order"
-          : `From ${formatCents(tier.fromCents)} lifetime spend`}
-      </p>
-    </li>
-  );
-}
+const benefits = [
+  "Exclusive member-only pricing on selected products every month",
+  "Discounts apply automatically — no codes needed",
+  "New offers refresh monthly",
+  "Cancel anytime — access continues until the end of the period you have paid",
+];
 
 export default function ClubPage() {
-  const steps = [
-    {
-      title: "Join free",
-      body: `We add ${JOIN_BONUS_POINTS} points — ${formatCents(
-        pointsValueCents(JOIN_BONUS_POINTS),
-      )} — to your balance straight away, and another ${FIRST_ORDER_BONUS_POINTS} once your first order is paid.`,
-    },
-    {
-      title: "Earn on every paid order",
-      body: "Order with your membership email and points land when your payment clears. Spend more over time and the earn rate goes up with your tier.",
-    },
-    {
-      title: "Spend points at checkout",
-      body: `${REDEEM_STEP_POINTS} points is ${formatCents(
-        pointsValueCents(REDEEM_STEP_POINTS),
-      )} off. Apply them in the checkout summary with your email and member code.`,
-    },
-  ];
+  const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
 
   return (
     <div className="wrap max-w-[980px] py-16">
       <ResearchDisclaimer className="mb-10" />
-      <PageIntro kicker="Redline Club" title="Welcome to the club" crumb="Club">
-        The more you order, the more comes back. Membership is free, points are earned on every
-        paid order, and your tier rises with your lifetime spend.
+      <PageIntro kicker="Redline Membership" title="Redline VIP Membership" crumb="Membership">
+        Member-only prices on a short list of products, refreshed on the 1st of each month.
       </PageIntro>
 
-      <ul className="mb-12 grid gap-4 sm:grid-cols-2">
-        {CLUB_TIERS.map((tier, index) => (
-          <TierCard
-            key={tier.id}
-            tier={tier}
-            top={index === CLUB_TIERS.length - 1}
-            wide={index === CLUB_TIERS.length - 1 && CLUB_TIERS.length % 2 === 1}
-          />
-        ))}
-      </ul>
-
-      <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
-        <section aria-labelledby="club-how">
-          <h2 id="club-how" className="mb-5 text-[13px] font-semibold tracking-[0.12em] uppercase">
-            How it works
-          </h2>
-          <ol className="space-y-5">
-            {steps.map((step, index) => (
-              <li key={step.title} className="flex gap-4">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[rgba(212,175,55,0.34)] text-xs text-[#d4af37]">
-                  {index + 1}
+      <div className="mb-12 grid gap-6 lg:grid-cols-[1fr_360px]">
+        <section className="surface p-6" aria-labelledby="membership-price">
+          <p id="membership-price" className="text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
+            VIP Membership
+          </p>
+          <p className="mt-3 text-[2.4rem] leading-none font-semibold tracking-[-0.03em] text-white">
+            {price}
+            <span className="ml-2 text-base font-medium text-[#8f8c84]">/ month</span>
+          </p>
+          <ul className="mt-6 space-y-3 text-sm leading-6 text-[#cfc8b8]">
+            {benefits.map((benefit) => (
+              <li key={benefit} className="flex gap-3">
+                <span className="text-[#d4af37]" aria-hidden>
+                  ✓
                 </span>
-                <div>
-                  <p className="text-[15px] font-medium text-white">{step.title}</p>
-                  <p className="mt-1 text-sm leading-7 text-[#8f8c84]">{step.body}</p>
-                </div>
+                <span>{benefit}</span>
               </li>
             ))}
-          </ol>
-
-          <h2
-            id="club-rules"
-            className="mt-10 mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase"
-          >
-            The fine print
-          </h2>
-          <ul className="space-y-2 text-sm leading-7 text-[#8f8c84]">
-            <li>
-              {REDEEM_STEP_POINTS} points = {formatCents(pointsValueCents(REDEEM_STEP_POINTS))}.
-              Points are redeemed in blocks of {REDEEM_STEP_POINTS}.
-            </li>
-            <li>
-              Points are earned on the amount you actually pay, after any coupon or points you
-              applied, and are added once payment clears.
-            </li>
-            <li>Tiers are set by lifetime paid spend and never go down.</li>
-            <li>
-              Points have no cash value, cannot be transferred, and an order always keeps at least
-              {" "}
-              {formatCents(100)} payable.
-            </li>
-            <li>
-              Your member code is how your balance is protected — keep it to yourself, and email us
-              if you lose it.
-            </li>
           </ul>
+          <p className="mt-6 text-sm leading-7 text-[#8f8c84]">
+            This month&apos;s prices are on the{" "}
+            <Link href="/club/specials" className="text-[#d4af37]">
+              member specials
+            </Link>{" "}
+            page. They apply when the checkout email has an active membership.
+          </p>
         </section>
 
         <aside>
           <h2 className="mb-5 text-[13px] font-semibold tracking-[0.12em] uppercase">
-            Join the club
+            Get started
           </h2>
           <ClubJoinForm />
           <p className="mt-4 text-sm leading-7 text-[#8f8c84]">
             Already a member?{" "}
             <Link href="/club/balance" className="text-[#d4af37]">
-              Check your points balance
+              Check your membership
             </Link>
             .
           </p>

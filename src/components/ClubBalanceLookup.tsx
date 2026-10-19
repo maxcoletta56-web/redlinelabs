@@ -8,10 +8,9 @@ type MemberSummary = {
   tier: string;
   points: number;
   pointsValueCents: number;
-  lifetimeSpendCents: number;
-  nextTier: string | null;
-  nextTierRemainingCents: number;
-  tierProgressPercent: number;
+  membershipUntil: string | null;
+  membershipCancelAt: string | null;
+  membershipActive: boolean;
 };
 
 type LedgerEntry = {
@@ -47,6 +46,7 @@ export function ClubBalanceLookup() {
   const [error, setError] = useState<string | null>(null);
   const [member, setMember] = useState<MemberSummary | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [cancelNote, setCancelNote] = useState<string | null>(null);
 
   return (
     <div className="space-y-8">
@@ -119,47 +119,58 @@ export function ClubBalanceLookup() {
           </p>
         )}
         <button type="submit" className="btn w-full" disabled={pending} aria-busy={pending}>
-          {pending ? "Checking…" : "Show my balance"}
+          {pending ? "Checking…" : "Show my membership"}
         </button>
       </form>
 
       {member && (
         <section className="surface p-6" aria-live="polite">
-          <p className="kicker mb-2">{member.tier} member</p>
-          <p className="text-[2rem] font-semibold tracking-[-0.03em] text-white">
-            {formatPoints(member.points)} points
+          <p className="kicker mb-2">
+            {member.membershipActive ? "Active membership" : "No active membership"}
           </p>
-          <p className="mt-1 text-sm text-[#8f8c84]">
-            Worth {formatCents(member.pointsValueCents)} off your next order.
+          <p className="text-[1.6rem] font-semibold tracking-[-0.03em] text-white">
+            {member.membershipActive
+              ? `Access until ${formatDate(member.membershipUntil)}`
+              : "Member prices are off"}
           </p>
-          <dl className="mt-6 space-y-2 text-sm text-[#8f8c84]">
-            <div className="flex justify-between gap-4">
-              <dt>Lifetime spend</dt>
-              <dd className="text-[#cfc8b8]">{formatCents(member.lifetimeSpendCents)}</dd>
-            </div>
-            {member.nextTier && (
-              <div className="flex justify-between gap-4">
-                <dt>To {member.nextTier}</dt>
-                <dd className="text-[#cfc8b8]">
-                  {formatCents(member.nextTierRemainingCents)} more spend
-                </dd>
-              </div>
-            )}
-          </dl>
-          {member.nextTier && (
-            <div
-              className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[rgba(212,175,55,0.16)]"
-              role="progressbar"
-              aria-valuenow={member.tierProgressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Progress to ${member.nextTier}`}
+          <p className="mt-2 text-sm leading-6 text-[#8f8c84]">
+            {member.membershipCancelAt
+              ? "Renewal is cancelled. Pricing stays on until the date above."
+              : "Cancel anytime. Access continues until the end of the period you have paid."}
+          </p>
+          {member.membershipActive && !member.membershipCancelAt && (
+            <button
+              type="button"
+              className="btn-ghost mt-4"
+              onClick={() => {
+                setCancelNote(null);
+                fetch("/api/club/cancel", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+                })
+                  .then(async (response) => {
+                    const body: unknown = await response.json().catch(() => null);
+                    const record = (body ?? {}) as { member?: MemberSummary; error?: string };
+                    if (!response.ok || !record.member) {
+                      setCancelNote(record.error ?? "Could not cancel that membership");
+                      return;
+                    }
+                    setMember(record.member);
+                    setCancelNote("Renewal cancelled. Access continues until the paid period ends.");
+                  })
+                  .catch(() => setCancelNote("Could not cancel that membership"));
+              }}
             >
-              <div
-                className="h-full bg-[#d4af37]"
-                style={{ width: `${member.tierProgressPercent}%` }}
-              />
-            </div>
+              Cancel renewal
+            </button>
+          )}
+          {cancelNote && <p className="mt-3 text-sm text-[#d4af37]">{cancelNote}</p>}
+          {member.points > 0 && (
+            <p className="mt-4 text-sm text-[#8f8c84]">
+              Older points balance: {formatPoints(member.points)} ({formatCents(member.pointsValueCents)}).
+              New orders use member pricing instead of points.
+            </p>
           )}
 
           {ledger.length > 0 && (

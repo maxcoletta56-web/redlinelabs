@@ -10,6 +10,7 @@ import {
   pointsForOrder,
   tierForSpend,
 } from "./club.ts";
+import { membershipIsActive } from "./membership.ts";
 
 export type ClubMember = {
   email: string;
@@ -18,10 +19,12 @@ export type ClubMember = {
   pointsBalance: number;
   lifetimeSpendCents: number;
   firstOrderBonusAt: string | null;
+  membershipUntil: string | null;
+  membershipCancelAt: string | null;
   createdAt: string | null;
 };
 
-export type ClubLedgerReason = "join" | "first_order" | "order" | "redeem" | "adjust";
+export type ClubLedgerReason = "join" | "first_order" | "order" | "redeem" | "adjust" | "membership";
 
 export type ClubLedgerEntry = {
   id: number;
@@ -47,8 +50,16 @@ export const CREATE_CLUB_MEMBERS = `CREATE TABLE IF NOT EXISTS club_members (
   points_balance INTEGER NOT NULL DEFAULT 0,
   lifetime_spend_cents INTEGER NOT NULL DEFAULT 0,
   first_order_bonus_at TIMESTAMPTZ,
+  membership_until TIMESTAMPTZ,
+  membership_cancel_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 )`;
+
+export const ADD_MEMBERSHIP_UNTIL =
+  "ALTER TABLE club_members ADD COLUMN IF NOT EXISTS membership_until TIMESTAMPTZ";
+
+export const ADD_MEMBERSHIP_CANCEL =
+  "ALTER TABLE club_members ADD COLUMN IF NOT EXISTS membership_cancel_at TIMESTAMPTZ";
 
 export const CREATE_CLUB_LEDGER = `CREATE TABLE IF NOT EXISTS club_points_ledger (
   id BIGSERIAL PRIMARY KEY,
@@ -73,6 +84,8 @@ const MEMBER_COLUMNS = [
   "points_balance",
   "lifetime_spend_cents",
   `to_char(first_order_bonus_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS first_order_bonus_at`,
+  `to_char(membership_until AT TIME ZONE 'UTC', ${ISO_UTC}) AS membership_until`,
+  `to_char(membership_cancel_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS membership_cancel_at`,
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
 ].join(", ");
 
@@ -114,6 +127,16 @@ const CLAIM_FIRST_ORDER_BONUS =
 const TAG_REDEMPTION =
   "UPDATE club_points_ledger SET order_reference = $2 WHERE id = $1 AND order_reference IS NULL";
 
+const EXTEND_MEMBERSHIP =
+  "UPDATE club_members SET membership_cancel_at = NULL, membership_until = " +
+  "(GREATEST(COALESCE(membership_until, now()), now()) + interval '1 month') " +
+  `WHERE email = $1 RETURNING ${MEMBER_COLUMNS}`;
+
+const CANCEL_MEMBERSHIP =
+  "UPDATE club_members SET membership_cancel_at = now() " +
+  "WHERE email = $1 AND membership_until > now() AND membership_cancel_at IS NULL " +
+  `RETURNING ${MEMBER_COLUMNS}`;
+
 const LIST_MEMBERS = `SELECT ${MEMBER_COLUMNS} FROM club_members ORDER BY created_at DESC LIMIT $1`;
 
 export function clubConfigured() {
@@ -122,6 +145,8 @@ export function clubConfigured() {
 
 export async function ensureClubTables(sql: Sql) {
   await ensureTable(sql, "club_members", CREATE_CLUB_MEMBERS);
+  await ensureTable(sql, "club_members_membership_until", ADD_MEMBERSHIP_UNTIL);
+  await ensureTable(sql, "club_members_membership_cancel_at", ADD_MEMBERSHIP_CANCEL);
   await ensureTable(sql, "club_points_ledger", CREATE_CLUB_LEDGER);
   await ensureTable(sql, "club_points_ledger_order_reason", CREATE_CLUB_LEDGER_INDEX);
 }
@@ -153,6 +178,8 @@ export function readMemberRow(row: unknown): ClubMember | null {
     pointsBalance: readInt(record.points_balance),
     lifetimeSpendCents: readInt(record.lifetime_spend_cents),
     firstOrderBonusAt: readTimestamp(record.first_order_bonus_at),
+    membershipUntil: readTimestamp(record.membership_until),
+    membershipCancelAt: readTimestamp(record.membership_cancel_at),
     createdAt: readTimestamp(record.created_at),
   };
 }
@@ -178,6 +205,55 @@ function database(sql: Sql | null) {
 async function firstMember(sql: Sql, query: string, params: unknown[]) {
   const result = await sql.query(query, params);
   return readMemberRow(rowsOf(result)[0]) ?? null;
+}
+
+export async function isActiveMember(
+  email: string,
+  sql: Sql | null = getSql(),
+  now = new Date(),
+): Promise<boolean> {
+  const member = await findMember(email, sql);
+  return membershipIsActive(member?.membershipUntil, now);
+}
+
+/**
+ * One paid membership order extends access by a month. A second call with the
+ * same order reference does nothing, so capture and mark-paid can both run.
+ */
+export async function activatePaidMembership(
+  input: { email: string; firstName?: string; orderReference: string },
+  sql: Sql | null = getSql(),
+  makeCode: () => string = generateMemberCode,
+): Promise<ClubMember | null> {
+  const email = normalizeClubEmail(input.email);
+  const reference = input.orderReference.trim();
+  if (!isClubEmail(email) || !reference) return null;
+  const db = database(sql);
+  await ensureClubTables(db);
+
+  const existing = await firstMember(db, SELECT_MEMBER, [email]);
+  if (!existing) {
+    const firstName = (input.firstName ?? "").trim().slice(0, 120);
+    await firstMember(db, INSERT_MEMBER, [email, firstName, makeCode(), 0]);
+  }
+
+  const inserted = rowsOf(
+    await db.query(INSERT_LEDGER, [email, 0, "membership", reference, "One month of member pricing"]),
+  );
+  if (inserted.length === 0) return firstMember(db, SELECT_MEMBER, [email]);
+  return firstMember(db, EXTEND_MEMBERSHIP, [email]);
+}
+
+/** Access continues until the paid period ends. Renewal is what stops. */
+export async function cancelMembership(
+  email: string,
+  code: string,
+  sql: Sql | null = getSql(),
+): Promise<ClubMember | null> {
+  const member = await authenticateMember(email, code, sql);
+  if (!member) return null;
+  const db = database(sql);
+  return (await firstMember(db, CANCEL_MEMBERSHIP, [member.email])) ?? member;
 }
 
 export async function findMember(

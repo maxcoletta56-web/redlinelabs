@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { startCartCheckoutSession } from "@/app/actions/checkout";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
-import { useClub } from "@/lib/club-state";
 import type { CartLineInput } from "@/lib/order";
 import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 import { withTimeout } from "@/lib/with-timeout";
@@ -40,7 +39,6 @@ export function CartCheckout({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const { member, points } = useClub();
 
   useEffect(() => {
     let cancelled = false;
@@ -52,11 +50,6 @@ export function CartCheckout({
         lastName,
         shipping,
         promoCode,
-        // Points are a request on PayID only. PayPal is always the full total.
-        club:
-          paymentMethod === "bank_transfer" && member && points > 0
-            ? { email: member.email, code: member.code, points }
-            : null,
         paymentMethod,
         ageConfirmed,
         researchUse,
@@ -95,8 +88,6 @@ export function CartCheckout({
     paymentMethod,
     ageConfirmed,
     researchUse,
-    member,
-    points,
   ]);
 
   if (error) {

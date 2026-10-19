@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CartCheckout } from "@/components/CartCheckout";
-import { ClubRedeem } from "@/components/ClubRedeem";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Field, SelectField } from "@/components/Field";
 import {
@@ -17,10 +16,9 @@ import { useAccount } from "@/lib/account";
 import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
+import { isMemberSpecial, memberUnitCents } from "@/lib/membership";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
-import { formatPoints, pointsValueCents } from "@/lib/club";
-import { useClub } from "@/lib/club-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
 
@@ -108,10 +106,8 @@ export default function CheckoutPage() {
   const configured = availability.ready ? availability.configured : null;
   const { items } = useCart();
   const { promo } = usePromo();
-  const { points: selectedClubPoints } = useClub();
-  // Points only come off the order when this checkout is PayID.
-  const clubPoints = paymentMethod === "bank_transfer" ? selectedClubPoints : 0;
   const { user, hydrated } = useAccount();
+  const [memberStatus, setMemberStatus] = useState({ email: "", active: false });
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [customer, setCustomer] = useState<{
@@ -125,17 +121,55 @@ export default function CheckoutPage() {
   const firstName = customer.firstName ?? user?.firstName ?? "";
   const lastName = customer.lastName ?? user?.lastName ?? "";
   const email = customer.email ?? user?.email ?? "";
+
+  useEffect(() => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed.includes("@")) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      fetch("/api/club/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      })
+        .then((response) => response.json())
+        .then((body: { active?: boolean }) => {
+          if (!cancelled) setMemberStatus({ email: trimmed, active: body.active === true });
+        })
+        .catch(() => {
+          if (!cancelled) setMemberStatus({ email: trimmed, active: false });
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [email]);
+
+  const memberActive = memberStatus.email === email.trim().toLowerCase() && memberStatus.active;
+
+  const pricedItems = useMemo(() => {
+    const now = new Date();
+    return items.map((item) => {
+      if (!memberActive || !isMemberSpecial(item.slug, now)) return item;
+      return { ...item, price: memberUnitCents(Math.round(item.price * 100)) / 100 };
+    });
+  }, [items, memberActive]);
   const selectedAddress =
     user?.addresses.find((address) => address.id === addressId) ??
     (user ? defaultAddress(user) : null);
   const savedShipping = selectedAddress ? draftFromSaved(selectedAddress) : EMPTY_SHIPPING;
   const shippingDraft = shippingOverrides ?? savedShipping;
+  const catalogue = checkoutTotals({ items, promo: null });
+  const memberPriced = checkoutTotals({ items: pricedItems, promo: null });
+  const memberSavingsCents = catalogue.catalogCents - memberPriced.catalogCents;
   const totals = checkoutTotals({
-    items,
+    items: pricedItems,
     promo,
   });
   const browserCreditCents = user?.storeCreditCents ?? 0;
   const payable = centsToDollars(totals.discountedCents);
+  const summaryItems = pricedItems;
 
   const cartItems = useMemo(
     () =>
@@ -454,7 +488,7 @@ export default function CheckoutPage() {
       <aside className="surface order-1 h-fit p-6 lg:order-2">
         <h2 className="mb-4 text-[13px] font-semibold tracking-[0.12em] uppercase">Summary</h2>
         <ul className="mb-4 space-y-3 text-sm">
-          {items.map((item) => (
+          {summaryItems.map((item) => (
             <li key={`${item.slug}-${item.option}`} className="flex justify-between gap-4">
               <span>
                 {item.name}
@@ -469,7 +503,12 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
-        <ClubRedeem payableCents={totals.discountedCents} paymentMethod={paymentMethod} />
+        {memberSavingsCents > 0 && (
+          <p className="mb-3 text-sm text-[#8f8c84]">
+            Member price is already in the subtotal —{" "}
+            {formatPrice(centsToDollars(memberSavingsCents))} off the regular total.
+          </p>
+        )}
         {totals.discountCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
@@ -488,19 +527,9 @@ export default function CheckoutPage() {
             credit. {copy.creditNote}
           </p>
         )}
-        {clubPoints > 0 && (
-          <div className="mt-3 flex justify-between text-sm">
-            <span>Club points ({formatPoints(clubPoints)})</span>
-            <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(pointsValueCents(clubPoints)))}
-            </span>
-          </div>
-        )}
         <div className="mt-3 flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
           <span>Due now</span>
-          <span className="text-[#d4af37]">
-            {formatPrice(Math.max(0, payable - centsToDollars(pointsValueCents(clubPoints))))}
-          </span>
+          <span className="text-[#d4af37]">{formatPrice(payable)}</span>
         </div>
         <p className="mt-4 text-xs leading-6 text-[#8f8c84]">
           {copy.summaryNote} See the{" "}
