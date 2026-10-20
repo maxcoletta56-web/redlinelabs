@@ -1,4 +1,5 @@
 import { ensureTable, getSql, rowsOf, type Sql } from "./db.ts";
+import { MEMBERSHIP_SLUG } from "./membership.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 import type { CheckoutPaymentMethod } from "./payments-provider.ts";
 
@@ -420,6 +421,7 @@ export type PaymentReceivedNotice = {
   firstName: string;
   email: string;
   totalCents: number;
+  memberCode?: string;
 };
 
 /** Test and caller overrides. Production uses the database and the mailer. */
@@ -468,9 +470,9 @@ async function awardClubPointsForOrder(order: StoredOrder) {
   });
 }
 
-/** A paid membership fee extends access by one month. Other orders do nothing. */
+/** A paid sign-up fee opens the club. Other orders do nothing. */
 async function activateMembershipForPaidOrder(order: StoredOrder) {
-  if (!order.items.some((item) => item.slug === "redline-membership")) return null;
+  if (!order.items.some((item) => item.slug === MEMBERSHIP_SLUG)) return null;
   const { activatePaidMembership } = await import("./club-db.ts");
   return activatePaidMembership({
     email: order.email,
@@ -479,12 +481,13 @@ async function activateMembershipForPaidOrder(order: StoredOrder) {
   });
 }
 
-function paymentReceivedNotice(order: StoredOrder): PaymentReceivedNotice {
+function paymentReceivedNotice(order: StoredOrder, memberCode: string | null): PaymentReceivedNotice {
   return {
     reference: order.reference,
     firstName: order.firstName,
     email: order.email,
     totalCents: order.totalCents,
+    ...(memberCode ? { memberCode } : {}),
   };
 }
 
@@ -529,8 +532,9 @@ export async function markOrderPaidWithPaymentEmail(
   }
 
   if (existing?.status !== "paid") {
+    let memberCode: string | null = null;
     try {
-      await activateMembershipForPaidOrder(order);
+      memberCode = (await activateMembershipForPaidOrder(order))?.memberCode ?? null;
     } catch (error) {
       console.error("[club] membership activation failed", {
         reference: order.reference,
@@ -548,7 +552,8 @@ export async function markOrderPaidWithPaymentEmail(
           : await loadPaymentEmailDeps();
       const schedule = hooks.scheduleEmail ?? deps.scheduleEmail;
       const send = hooks.sendPaymentReceivedEmail ?? deps.sendPaymentReceivedEmail;
-      schedule(order.reference, () => send(paymentReceivedNotice(order)));
+      const notice = paymentReceivedNotice(order, memberCode);
+      schedule(order.reference, () => send(notice));
     } catch (error) {
       // Mail setup must not turn a committed payment into a failed update.
       console.error("[mailer] order email failed", {

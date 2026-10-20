@@ -91,7 +91,10 @@ export function memberSummary(member: ClubMember, program: ActiveClubProgram | n
     tier: progress?.tier.name ?? null,
     tierId: progress?.tier.id ?? null,
     points: member.pointsBalance,
-    pointsValueCents: program ? pointsValueCents(program, member.pointsBalance) : null,
+    pointsValueCents:
+      program?.centsPerRedeemBlock != null
+        ? pointsValueCents(program, member.pointsBalance)
+        : null,
     lifetimeSpendCents: member.lifetimeSpendCents,
     nextTier: progress?.next?.name ?? null,
     nextTierRemainingCents: progress?.remainingCents ?? null,
@@ -233,7 +236,7 @@ export async function clubBalancePost(
  */
 export async function clubQuotePost(request: Request, deps: ClubApiDeps = {}): Promise<Response> {
   const program = programFor(deps);
-  if (!program) {
+  if (!program || program.centsPerRedeemBlock == null) {
     return Response.json({ enabled: false, maxPoints: 0, maxDiscountCents: 0 });
   }
   const credentials = await verifyCredentials(request, "quote", deps);

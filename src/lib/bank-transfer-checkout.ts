@@ -1,12 +1,7 @@
 import "server-only";
 
 import { isAuState } from "@/lib/account-data";
-import { isActiveMember } from "@/lib/club-db";
-import {
-  MEMBERSHIP_SLUG,
-  isMemberSpecial,
-  memberUnitCents,
-} from "@/lib/membership";
+import { MEMBERSHIP_SLUG } from "@/lib/membership";
 import { resolveBankTransfer } from "@/lib/bank-transfer";
 import { getSql, type Sql } from "@/lib/db";
 import { sendOrderCreatedEmails, type OrderCreatedNotice } from "@/lib/mailer";
@@ -66,10 +61,6 @@ export type CreateBankTransferOrderOptions = {
   sql?: Sql | null;
   /** Kept so older checkout callers can still pass a club payload. It is not spent. */
   club?: object;
-  membership?: {
-    isActive: (email: string) => Promise<boolean>;
-    now?: () => Date;
-  };
   /** Injected by tests. Production schedules mail and never awaits the send. */
   deliver?: (notice: OrderCreatedNotice) => Promise<void>;
   paymentMethod?: CheckoutPaymentMethod;
@@ -179,15 +170,9 @@ export async function createCheckoutOrder(
     throw new Error("A shipping address is required");
   }
 
-  const catalogueLines = resolveCartLines(input.items);
+  const lines = resolveCartLines(input.items);
   const email = trimmed(input.email, 200).toLowerCase();
-  const membershipOnly = catalogueLines.every((line) => line.slug === MEMBERSHIP_SLUG);
-  const now = options?.membership?.now?.() ?? new Date();
-  const activeMember = membershipOnly ? false : await membershipActive(email, options);
-  const lines = catalogueLines.map((line) => {
-    if (!activeMember || !isMemberSpecial(line.slug, now)) return line;
-    return { ...line, unitAmountCents: memberUnitCents(line.unitAmountCents) };
-  });
+  const membershipOnly = lines.every((line) => line.slug === MEMBERSHIP_SLUG);
   const promo = membershipOnly ? null : lookupPromo(input.promoCode);
   const subtotalCents = lines.reduce((sum, line) => sum + line.unitAmountCents * line.qty, 0);
   const payableCents = subtotalCents - promoDiscountCents(subtotalCents, promo);
@@ -221,7 +206,7 @@ export async function createCheckoutOrder(
           email,
           items,
           shipping,
-          clubEmail: activeMember ? email : null,
+          clubEmail: null,
           clubPointsRedeemed: 0,
           clubDiscountCents: 0,
           paymentMethod,
@@ -276,14 +261,3 @@ export async function createCheckoutOrder(
   };
 }
 
-async function membershipActive(email: string, options?: CreateBankTransferOrderOptions) {
-  if (options?.membership) return options.membership.isActive(email);
-  try {
-    return await isActiveMember(email, databaseFor(options), options?.membership?.now?.());
-  } catch (error) {
-    console.error("[club] membership lookup failed", {
-      errorName: error instanceof Error ? error.name : "unknown",
-    });
-    return false;
-  }
-}

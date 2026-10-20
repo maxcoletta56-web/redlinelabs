@@ -25,64 +25,66 @@ import { TEST_PROGRAM, TEST_PROGRAM_CONFIG } from "./club-test-fixtures.ts";
 
 const [A, B, C, D] = TEST_PROGRAM.tiers;
 
-test("the shipped programme has confirmed tiers but is still unapproved and inactive", () => {
-  assert.equal(CLUB_PROGRAM.approved, false);
-  assert.equal(CLUB_PROGRAM_ACTIVE, false);
-  assert.equal(activeClubProgram(), null);
+test("the shipped programme earns one point per dollar and does not redeem", () => {
+  assert.equal(CLUB_PROGRAM.approved, true);
+  assert.equal(CLUB_PROGRAM_ACTIVE, true);
+  assert.equal(CLUB_PROGRAM.earningStartsAt, "2026-10-20T00:00:00.000Z");
+  assert.equal(CLUB_PROGRAM.centsPerRedeemBlock, null);
   assert.deepEqual(
-    CLUB_PROGRAM.tiers.map((tier) => [tier.name, tier.fromCents]),
+    CLUB_PROGRAM.tiers.map((tier) => [tier.name, tier.fromCents, tier.earnBasis]),
     [
-      ["Member", 0],
-      ["Silver", 50_000],
-      ["Gold", 100_000],
-      ["VIP", 200_000],
+      ["Bronze", 50_000, 100],
+      ["Silver", 100_000, 100],
+      ["Gold", 150_000, 100],
+      ["Platinum", 200_000, 100],
     ],
   );
-  // Nothing unconfirmed is filled in.
-  for (const tier of CLUB_PROGRAM.tiers) assert.equal(tier.earnBasis, null);
-  assert.equal(CLUB_PROGRAM.centsPerRedeemBlock, null);
-  assert.equal(CLUB_PROGRAM.earningStartsAt, null);
-});
-
-test("confirmed tiers alone do not activate the programme, even if marked approved", () => {
-  const result = validateClubProgram({ ...CLUB_PROGRAM, approved: true });
-  assert.equal(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.problems.some((p) => /earn rate/.test(p)));
-    assert.ok(result.problems.some((p) => /centsPerRedeemBlock/.test(p)));
-    assert.ok(result.problems.some((p) => /earningStartsAt/.test(p)));
-    assert.ok(!result.problems.some((p) => /name|threshold|start at 0/.test(p)));
-  }
-});
-
-test("the confirmed thresholds select the right tier at and just below each boundary", () => {
-  const withRates = activeClubProgram({
-    ...CLUB_PROGRAM,
-    approved: true,
-    earningStartsAt: "2026-01-01T00:00:00Z",
-    centsPerRedeemBlock: 500,
-    tiers: CLUB_PROGRAM.tiers.map((tier) => ({ ...tier, earnBasis: 100 })),
-  });
-  assert.ok(withRates);
-  if (!withRates) return;
+  const program = activeClubProgram();
+  assert.ok(program);
+  if (!program) return;
   const cases: [number, string][] = [
     [0, "Member"],
     [49_999, "Member"],
-    [50_000, "Silver"],
-    [99_999, "Silver"],
-    [100_000, "Gold"],
+    [50_000, "Bronze"],
+    [99_999, "Bronze"],
+    [100_000, "Silver"],
+    [149_999, "Silver"],
+    [150_000, "Gold"],
     [199_999, "Gold"],
-    [200_000, "VIP"],
-    [10_000_000, "VIP"],
+    [200_000, "Platinum"],
+    [10_000_000, "Platinum"],
   ];
-  for (const [spend, name] of cases) assert.equal(tierForSpend(withRates, spend).name, name, `${spend}`);
-  assert.equal(tierProgress(withRates, 49_999).remainingCents, 1);
-  assert.equal(tierProgress(withRates, 199_999).remainingCents, 1);
+  for (const [spend, name] of cases) assert.equal(tierForSpend(program, spend).name, name, `${spend}`);
+  assert.equal(tierProgress(program, 25_000).remainingCents, 25_000);
+  assert.equal(tierProgress(program, 25_000).next?.name, "Bronze");
+  assert.equal(tierProgress(program, 49_999).remainingCents, 1);
+  assert.equal(tierProgress(program, 199_999).remainingCents, 1);
+  assert.equal(pointsForOrder(tierForSpend(program, 0), 10_000), 100);
+  assert.equal(pointsValueCents(program, 10_000), 0);
+  assert.equal(maxRedeemablePoints(program, 10_000, 50_000), 0);
 });
 
 
 test("a complete, approved configuration validates", () => {
   const result = validateClubProgram(TEST_PROGRAM_CONFIG);
+  assert.equal(result.ok, true);
+});
+
+test("earning stays on when there is no points conversion", () => {
+  const result = validateClubProgram({ ...TEST_PROGRAM_CONFIG, centsPerRedeemBlock: null });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.program.centsPerRedeemBlock, null);
+  assert.equal(pointsValueCents(result.program, 500), 0);
+  assert.equal(maxRedeemablePoints(result.program, 500, 50_000), 0);
+});
+
+test("the first tier may start above zero", () => {
+  const tiers = TEST_PROGRAM_CONFIG.tiers;
+  const result = validateClubProgram({
+    ...TEST_PROGRAM_CONFIG,
+    tiers: [{ ...tiers[0], fromCents: 100 }, ...tiers.slice(1)],
+  });
   assert.equal(result.ok, true);
 });
 
@@ -94,11 +96,11 @@ test("each way a configuration can be wrong is reported", () => {
   const tiers = TEST_PROGRAM_CONFIG.tiers;
   const cases: [string, ClubProgramConfig, RegExp][] = [
     ["unapproved", { ...TEST_PROGRAM_CONFIG, approved: false }, /not marked approved/],
-    ["no conversion", { ...TEST_PROGRAM_CONFIG, centsPerRedeemBlock: null }, /centsPerRedeemBlock/],
+    ["zero conversion", { ...TEST_PROGRAM_CONFIG, centsPerRedeemBlock: 0 }, /centsPerRedeemBlock/],
     ["fractional conversion", { ...TEST_PROGRAM_CONFIG, centsPerRedeemBlock: 12.5 }, /centsPerRedeemBlock/],
     ["bad date", { ...TEST_PROGRAM_CONFIG, earningStartsAt: "soon" }, /earningStartsAt/],
     ["three tiers", withTiers(tiers.slice(0, 3)), /exactly 4/],
-    ["tier 1 not zero", withTiers([{ ...tiers[0], fromCents: 100 }, ...tiers.slice(1)]), /tier 1 must start at 0/],
+    ["negative threshold", withTiers([{ ...tiers[0], fromCents: -1 }, ...tiers.slice(1)]), /spend threshold/],
     ["thresholds not ascending", withTiers([tiers[0], tiers[2], tiers[1], tiers[3]]), /must be higher/],
     ["zero rate", withTiers([{ ...tiers[0], earnBasis: 0 }, ...tiers.slice(1)]), /earn rate/],
     ["duplicate name", withTiers([tiers[0], { ...tiers[1], name: "test a" }, ...tiers.slice(2)]), /repeats/],

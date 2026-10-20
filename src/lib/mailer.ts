@@ -45,6 +45,8 @@ export type PaymentReceivedInput = {
   email: string;
   totalCents: number;
   orderUrl: string;
+  /** Shown once, only when this payment created the club member. */
+  memberCode?: string | null;
 };
 
 export type RenderedEmail = {
@@ -384,12 +386,20 @@ export function buildMerchantOrderEmail(
 export function buildPaymentReceivedEmail(input: PaymentReceivedInput): RenderedEmail {
   const amount = formatAudFromCents(input.totalCents);
   const name = customerName(input);
+  const code = input.memberCode?.trim() ?? "";
+  const received = code
+    ? `We have received ${amount} AUD for order ${input.reference}. Your club sign-up is active and nothing is shipped.`
+    : `We have received ${amount} AUD for order ${input.reference}. It is queued for dispatch.`;
+  const codeLine = code
+    ? `Your Redline Club member code is ${code}. Keep it. You need this code and your email to see your points and tier. Points are not taken off checkout.`
+    : "";
   const text = [
     `Payment received for order ${input.reference}`,
     "",
     `Hello ${name},`,
     "",
-    `We have received ${amount} AUD for order ${input.reference}. It is queued for dispatch.`,
+    received,
+    ...(codeLine ? ["", codeLine] : []),
     "",
     `Order page: ${input.orderUrl}`,
     "",
@@ -398,10 +408,14 @@ export function buildPaymentReceivedEmail(input: PaymentReceivedInput): Rendered
     `Questions about this order: ${COMPANY_EMAIL}`,
   ].join("\n");
 
+  const codeHtml = code
+    ? `<p style="margin:0 0 16px;">Your Redline Club member code is <strong style="color:#d4af37;">${escapeHtml(code)}</strong>. Keep it. You need this code and your email to see your points and tier. Points are not taken off checkout.</p>`
+    : "";
   const html = htmlShell(
     `Payment received`,
     `<p style="margin:0 0 12px;">Hello ${escapeHtml(name)},</p>
-    <p style="margin:0 0 16px;">We have received ${escapeHtml(amount)} AUD for order ${escapeHtml(input.reference)}. It is queued for dispatch.</p>
+    <p style="margin:0 0 16px;">${escapeHtml(received)}</p>
+    ${codeHtml}
     <p style="margin:0 0 16px;"><a href="${escapeHtml(input.orderUrl)}" style="color:#d4af37;">View order ${escapeHtml(input.reference)}</a></p>
     <p style="margin:0 0 12px;color:#8f8c84;">${escapeHtml(RESEARCH_DISCLAIMER)}</p>
     <p style="margin:0;color:#8f8c84;">Questions about this order: <a href="mailto:${escapeHtml(COMPANY_EMAIL)}" style="color:#d4af37;">${escapeHtml(COMPANY_EMAIL)}</a></p>`,
@@ -561,6 +575,7 @@ export async function sendPaymentReceivedEmail(
     firstName: string;
     email: string;
     totalCents: number;
+    memberCode?: string | null;
   },
   env?: MailEnv,
   hooks: MailHooks = {},

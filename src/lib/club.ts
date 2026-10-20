@@ -4,11 +4,10 @@
  * import it. Balances are money: every number a customer could influence is
  * recomputed here from server-held values, never trusted from the client.
  *
- * Tier names and spend thresholds are confirmed. Earning rates and the
- * points-to-dollars conversion have NOT been approved. They are therefore
- * `null` in `CLUB_PROGRAM` below, and while any of them is missing or invalid the
- * programme is inactive: nothing is earned and nothing can be redeemed. See
- * docs/redline-club.md for the decisions that are still needed.
+ * Earning is on: 1 point per $1 paid, from 20 October 2026. Spend below $500
+ * is still "Member". Bronze, Silver, Gold and Platinum start at $500, $1,000,
+ * $1,500 and $2,000. There is no points-to-dollars conversion, so points never
+ * reduce a checkout total.
  */
 
 /** Points are redeemed in whole blocks of this size. */
@@ -46,20 +45,22 @@ export type ClubProgramConfig = {
 
 export const CLUB_TIER_COUNT = 4;
 
+/** Display name for spend that has not reached Bronze yet. */
+export const PRE_TIER_NAME = "Member";
+
 /**
- * The only place the programme is tuned. Tier names and lifetime-spend
- * thresholds are confirmed (AUD). Earn rates, the points conversion,
- * `earningStartsAt` and `approved` are NOT, so the programme stays inactive.
+ * The only place the programme is tuned. Earn basis 100 is 1 point per $1.
+ * `centsPerRedeemBlock` stays null on purpose: points are not a discount.
  */
 export const CLUB_PROGRAM: ClubProgramConfig = {
-  approved: false,
-  earningStartsAt: null,
+  approved: true,
+  earningStartsAt: "2026-10-20T00:00:00.000Z",
   centsPerRedeemBlock: null,
   tiers: [
-    { name: "Member", fromCents: 0, earnBasis: null },
-    { name: "Silver", fromCents: 50_000, earnBasis: null },
-    { name: "Gold", fromCents: 100_000, earnBasis: null },
-    { name: "VIP", fromCents: 200_000, earnBasis: null },
+    { name: "Bronze", fromCents: 50_000, earnBasis: 100 },
+    { name: "Silver", fromCents: 100_000, earnBasis: 100 },
+    { name: "Gold", fromCents: 150_000, earnBasis: 100 },
+    { name: "Platinum", fromCents: 200_000, earnBasis: 100 },
   ],
 };
 
@@ -72,7 +73,8 @@ export type ClubTier = {
 
 export type ActiveClubProgram = {
   tiers: readonly ClubTier[];
-  centsPerRedeemBlock: number;
+  /** `null` means points are earned and never converted into a discount. */
+  centsPerRedeemBlock: number | null;
   earningStartsAt: Date;
 };
 
@@ -93,7 +95,10 @@ export function validateClubProgram(config: ClubProgramConfig): ClubProgramValid
   const problems: string[] = [];
   if (!config.approved) problems.push("programme is not marked approved");
 
-  if (!isWholeNumber(config.centsPerRedeemBlock) || config.centsPerRedeemBlock <= 0) {
+  if (
+    config.centsPerRedeemBlock !== null &&
+    (!isWholeNumber(config.centsPerRedeemBlock) || config.centsPerRedeemBlock <= 0)
+  ) {
     problems.push("centsPerRedeemBlock must be a positive whole number of cents");
   }
 
@@ -116,7 +121,6 @@ export function validateClubProgram(config: ClubProgramConfig): ClubProgramValid
     if (!isWholeNumber(tier.fromCents) || tier.fromCents < 0) {
       problems.push(`${label} needs a whole-cent spend threshold`);
     } else {
-      if (index === 0 && tier.fromCents !== 0) problems.push("tier 1 must start at 0 cents");
       if (tier.fromCents <= previousFrom) problems.push(`${label} threshold must be higher`);
       previousFrom = tier.fromCents;
     }
@@ -129,7 +133,7 @@ export function validateClubProgram(config: ClubProgramConfig): ClubProgramValid
   return {
     ok: true,
     program: {
-      centsPerRedeemBlock: config.centsPerRedeemBlock as number,
+      centsPerRedeemBlock: config.centsPerRedeemBlock,
       earningStartsAt: startsAt,
       tiers: config.tiers.map((tier, index) => ({
         id: `tier-${index + 1}`,
@@ -141,7 +145,7 @@ export function validateClubProgram(config: ClubProgramConfig): ClubProgramValid
   };
 }
 
-/** `null` while any decision is outstanding: earning and redemption are then off. */
+/** `null` when the configuration is incomplete or not approved. */
 export function activeClubProgram(
   config: ClubProgramConfig = CLUB_PROGRAM,
 ): ActiveClubProgram | null {
@@ -159,7 +163,16 @@ export function tierCardLabel(tier: ClubTierConfig, index: number) {
 
 export function tierForSpend(program: ActiveClubProgram, lifetimeSpendCents: number): ClubTier {
   const spend = Math.max(0, Math.floor(lifetimeSpendCents || 0));
-  let current = program.tiers[0];
+  const first = program.tiers[0];
+  if (!first || spend < first.fromCents) {
+    return {
+      id: "member",
+      name: PRE_TIER_NAME,
+      fromCents: 0,
+      earnBasis: first?.earnBasis ?? 100,
+    };
+  }
+  let current = first;
   for (const tier of program.tiers) {
     if (spend >= tier.fromCents) current = tier;
   }
@@ -167,6 +180,7 @@ export function tierForSpend(program: ActiveClubProgram, lifetimeSpendCents: num
 }
 
 export function nextTier(program: ActiveClubProgram, tier: ClubTier): ClubTier | null {
+  if (tier.id === "member") return program.tiers[0] ?? null;
   const index = program.tiers.findIndex((entry) => entry.id === tier.id);
   return program.tiers[index + 1] ?? null;
 }
@@ -195,8 +209,9 @@ export function tierProgress(program: ActiveClubProgram, lifetimeSpendCents: num
   };
 }
 
-/** Dollar value of whole redemption blocks inside `points`. */
+/** Dollar value of whole redemption blocks inside `points`. Zero when redemption is off. */
 export function pointsValueCents(program: ActiveClubProgram, points: number) {
+  if (program.centsPerRedeemBlock == null) return 0;
   const blocks = Math.floor(Math.max(0, Math.floor(points || 0)) / REDEEM_STEP_POINTS);
   return blocks * program.centsPerRedeemBlock;
 }
@@ -220,6 +235,7 @@ export function maxRedeemablePoints(
 ) {
   const balance = Math.max(0, Math.floor(balancePoints || 0));
   const payable = Math.max(0, Math.floor(payableCents || 0));
+  if (program.centsPerRedeemBlock == null) return 0;
   const headroomCents = payable - MIN_PAYABLE_CENTS;
   if (headroomCents < program.centsPerRedeemBlock) return 0;
   const byBalance = Math.floor(balance / REDEEM_STEP_POINTS);

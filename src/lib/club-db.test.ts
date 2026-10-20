@@ -304,8 +304,8 @@ test("paying the same membership order twice extends access once", async () => {
       ledgerInserted = true;
       return [{ id: 4 }];
     }
-    if (query.includes("interval '1 month'")) {
-      return [memberRow({ membership_until: "2026-11-19T00:00:00Z" })];
+    if (query.includes("TIMESTAMP '9999-12-31")) {
+      return [memberRow({ membership_until: "9999-12-31T00:00:00.000Z" })];
     }
     return [];
   });
@@ -319,7 +319,9 @@ test("paying the same membership order twice extends access once", async () => {
     sql,
   );
 
-  assert.equal(first?.membershipUntil, "2026-11-19T00:00:00Z");
-  assert.equal(second?.email, "ada@example.com");
-  assert.equal(statement(calls, "interval '1 month'").length, 1);
+  assert.equal(first?.member.membershipUntil, "9999-12-31T00:00:00.000Z");
+  assert.equal(first?.memberCode, null);
+  assert.equal(second?.member.email, "ada@example.com");
+  assert.equal(second?.memberCode, null);
+  assert.equal(statement(calls, "TIMESTAMP '9999-12-31").length, 1);
 });

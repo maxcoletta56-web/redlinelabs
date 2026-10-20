@@ -148,12 +148,23 @@ test("createBankTransferOrder stores a trimmed address and still succeeds if mai
 });
 
 
-test("an active member pays 30% less on this month's special, on PayID and PayPal", async () => {
+test("a points payload does not change the catalogue price, on PayID or PayPal", async () => {
   const restore = payIdEnv();
   const { sql } = recorder();
-  const october = new Date("2026-10-19T00:00:00.000Z");
   try {
     const payId = await createBankTransferOrder(
+      {
+        ...orderInput,
+        items: [{ slug: "glow", option: "70", qty: 1 }],
+        shipping: goodAddress,
+        club: { email: "ada@example.com", code: "RL-ACDEFG", points: 10_000 },
+      },
+      { sql, deliver: async () => {} },
+    );
+    // Glow 70mg is $170. Points are not a discount.
+    assert.equal(payId.totalCents, 17_000);
+
+    const paypal = await createCheckoutOrder(
       {
         ...orderInput,
         items: [{ slug: "glow", option: "70", qty: 1 }],
@@ -163,28 +174,12 @@ test("an active member pays 30% less on this month's special, on PayID and PayPa
       {
         sql,
         deliver: async () => {},
-        membership: { isActive: async () => true, now: () => october },
-      },
-    );
-    // Glow 70mg is $170. Member price is 30% off. A points payload does not stack.
-    assert.equal(payId.totalCents, 11_900);
-
-    const paypal = await createCheckoutOrder(
-      {
-        ...orderInput,
-        items: [{ slug: "glow", option: "70", qty: 1 }],
-        shipping: goodAddress,
-      },
-      {
-        sql,
-        deliver: async () => {},
         paymentMethod: "paypal",
         skipBankConfiguration: true,
-        membership: { isActive: async () => true, now: () => october },
       },
     );
     assert.equal(paypal.paymentMethod, "paypal");
-    assert.equal(paypal.totalCents, 11_900);
+    assert.equal(paypal.totalCents, 17_000);
   } finally {
     restore();
   }

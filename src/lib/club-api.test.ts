@@ -8,6 +8,7 @@ import {
   clubQuotePost,
 } from "./club-api.ts";
 import { ClubUnavailableError } from "./club-db.ts";
+import { activeClubProgram } from "./club.ts";
 import { TEST_PROGRAM, testMember } from "./club-test-fixtures.ts";
 
 const CODE = "RL-ACDEFGHJKM";
@@ -197,6 +198,27 @@ test("a quote for a tiny order offers nothing", async () => {
     { program: TEST_PROGRAM, allowCredentialAttempt: allow, authenticateMember: async () => testMember() },
   );
   assert.equal((await response.json()).maxPoints, 0);
+});
+
+test("an earning programme with no conversion offers no redemption", async () => {
+  let authenticated = false;
+  const program = activeClubProgram();
+  assert.ok(program);
+  const response = await clubQuotePost(
+    post("/api/club/quote", { email: "quote4@example.com", code: CODE, payableCents: 9_000 }),
+    {
+      program,
+      authenticateMember: async () => {
+        authenticated = true;
+        return testMember();
+      },
+    },
+  );
+  const body = await response.json();
+  assert.equal(body.enabled, false);
+  assert.equal(body.maxPoints, 0);
+  assert.equal(body.maxDiscountCents, 0);
+  assert.equal(authenticated, false);
 });
 
 test("with the programme unapproved the quote offers no redemption and checks nothing", async () => {

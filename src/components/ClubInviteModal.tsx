@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CLUB_PROGRAM, formatCents } from "@/lib/club";
 import { shouldInviteOnPath } from "@/lib/club-invite";
-import { MEMBERSHIP_PRICE_CENTS, MEMBER_DISCOUNT_PERCENT } from "@/lib/membership";
+import { MEMBERSHIP_PRICE_CENTS } from "@/lib/membership";
 import { formatPrice } from "@/lib/products";
 
-/** New key so the large popup shows once, even if the smaller banner was dismissed. */
-const DISMISSED_KEY = "redline-club-invite-v3";
+/** New key so the $15 offer shows once, even if the older popup was dismissed. */
+const DISMISSED_KEY = "redline-club-invite-v4";
 
 /** Long enough that the page the customer came for renders first. */
 const DELAY_MS = 1_500;
@@ -103,16 +104,17 @@ export function ClubInviteModal() {
         </h2>
         <p className="mt-5 text-[2rem] leading-none font-semibold tracking-[-0.03em] text-white sm:text-[2.6rem]">
           {price}
-          <span className="ml-2 text-lg font-medium text-[#8f8c84] sm:text-xl">/ month</span>
+          <span className="ml-2 text-lg font-medium text-[#8f8c84] sm:text-xl">one-time</span>
         </p>
         <p className="mt-5 max-w-[34rem] text-base leading-7 text-[#cfc8b8] sm:text-lg">
-          Members get {MEMBER_DISCOUNT_PERCENT}% off a short list of products. The list changes on
-          the 1st, and the price applies at checkout with no code.
+          Earn 1 point for every $1 you spend. Your tier follows lifetime spend.
         </p>
         <ul className="mt-6 space-y-2 text-sm leading-6 text-[#cfc8b8] sm:text-base">
-          <li>Discounts apply automatically</li>
-          <li>New offers refresh monthly</li>
-          <li>Cancel anytime — access lasts until the period you paid for ends</li>
+          {CLUB_PROGRAM.tiers.map((tier) => (
+            <li key={tier.name}>
+              {tier.name} from {formatCents(tier.fromCents ?? 0)}
+            </li>
+          ))}
         </ul>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Link href="/club" className="btn min-h-14 w-full px-8 text-[13px] sm:w-auto" onClick={dismiss}>

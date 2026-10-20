@@ -18,8 +18,8 @@ import { activeClubProgram, type ClubProgramConfig } from "./club.ts";
 
 /**
  * SYNTHETIC values for exercising the arithmetic in tests. They are not a
- * proposal and are never imported by application code: the real programme
- * stays unapproved in CLUB_PROGRAM until the business decides.
+ * proposal and are never imported by application code. The live programme
+ * is CLUB_PROGRAM.
  */
 export const TEST_PROGRAM_CONFIG: ClubProgramConfig = {
   approved: true,

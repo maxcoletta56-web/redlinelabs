@@ -2,91 +2,52 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageIntro } from "@/components/PageIntro";
 import { ResearchDisclaimer } from "@/components/ResearchDisclaimer";
-import {
-  MEMBER_DISCOUNT_PERCENT,
-  MEMBERSHIP_PRICE_CENTS,
-  daysUntilNextOffers,
-  memberUnitCents,
-  monthSpecials,
-  offerMonthLabel,
-} from "@/lib/membership";
-import { formatPrice, getProduct } from "@/lib/products";
+import { CLUB_PROGRAM, PRE_TIER_NAME, formatCents } from "@/lib/club";
+import { MEMBERSHIP_PRICE_CENTS } from "@/lib/membership";
+import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Member specials",
+  title: "Spend tiers",
   description:
-    "This month's Redline member prices. New specials go live on the 1st. Join from $50 a month.",
+    "Redline Club tiers from lifetime spend: Bronze $500, Silver $1,000, Gold $1,500, Platinum $2,000. One point per dollar. Join for $15.",
   path: "/club/specials",
 });
 
 export default function MemberSpecialsPage() {
-  const now = new Date();
-  const label = offerMonthLabel(now);
-  const days = daysUntilNextOffers(now);
-  const offers = monthSpecials(now)
-    .map((slug) => getProduct(slug))
-    .filter((product) => product != null);
+  const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
+  const bronze = CLUB_PROGRAM.tiers[0];
 
   return (
     <div className="wrap max-w-[980px] py-16">
       <ResearchDisclaimer className="mb-10" />
-      <PageIntro kicker={`Member pricing · ${label}`} title="Member specials" crumb="Member specials">
-        This month&apos;s member-only prices. New specials go live on the 1st and end when the month
-        does.
+      <PageIntro kicker="Redline Club" title="Spend tiers" crumb="Spend tiers">
+        Points follow what you pay. The tier follows lifetime spend. Neither one changes the checkout total.
       </PageIntro>
 
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <p className="text-sm text-[#8f8c84]">
-          <span className="mr-2 text-[1.6rem] font-semibold text-white">{days}</span>
-          {days === 1 ? "day" : "days"} until new offers
+        <p className="max-w-[36rem] text-sm leading-7 text-[#8f8c84]">
+          1 point per $1 spent. Spend under {formatCents(bronze?.fromCents ?? 0)} is {PRE_TIER_NAME}.
         </p>
         <Link href="/club" className="btn">
-          Join from {formatPrice(MEMBERSHIP_PRICE_CENTS / 100)}/mo
+          Join for {price}
         </Link>
       </div>
 
-      <p className="mb-6 text-sm text-[#8f8c84]">
-        {offers.length} current offers. Prices shown are for active members.{" "}
-        {MEMBER_DISCOUNT_PERCENT}% off, no codes at checkout.
-      </p>
-
       <ul className="grid gap-4 sm:grid-cols-2">
-        {offers.map((product) => {
-          const regularCents = Math.round(product.minPrice * 100);
-          const memberCents = memberUnitCents(regularCents);
-          const saveCents = regularCents - memberCents;
-          return (
-            <li key={product.slug} className="surface p-5">
-              <p className="text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">
-                Member only
-              </p>
-              <h2 className="mt-2 text-lg font-semibold text-white">{product.name}</h2>
-              <dl className="mt-4 space-y-1 text-sm text-[#8f8c84]">
-                <div className="flex justify-between gap-4">
-                  <dt>Regular</dt>
-                  <dd>{formatPrice(product.minPrice)}</dd>
-                </div>
-                <div className="flex justify-between gap-4 text-[#cfc8b8]">
-                  <dt>Member price</dt>
-                  <dd className="text-[#d4af37]">{formatPrice(memberCents / 100)}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>{MEMBER_DISCOUNT_PERCENT}% off</dt>
-                  <dd>Save {formatPrice(saveCents / 100)}</dd>
-                </div>
-              </dl>
-              {product.variants.length > 1 && (
-                <p className="mt-3 text-xs leading-5 text-[#8f8c84]">
-                  Shown on the lowest option. Every option is {MEMBER_DISCOUNT_PERCENT}% off.
-                </p>
-              )}
-              <Link href={`/product/${product.slug}`} className="btn-ghost mt-4">
-                View product
-              </Link>
-            </li>
-          );
-        })}
+        {CLUB_PROGRAM.tiers.map((tier) => (
+          <li key={tier.name} className="surface p-5">
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-[#d4af37] uppercase">
+              {tier.name}
+            </p>
+            <h2 className="mt-2 text-[1.8rem] font-semibold tracking-[-0.03em] text-white">
+              {formatCents(tier.fromCents ?? 0)}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-[#cfc8b8]">
+              Lifetime spend from {formatCents(tier.fromCents ?? 0)}. 1 point per $1 paid.
+            </p>
+          </li>
+        ))}
       </ul>
     </div>
   );

@@ -8,6 +8,7 @@ import { resolveBankTransfer, transferDescription } from "@/lib/bank-transfer";
 import { CLUB_DISCOUNT_LABEL, formatCents } from "@/lib/club";
 import { paypalConfigured } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
+import { MEMBERSHIP_SLUG } from "@/lib/membership";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { formatShippingAddress } from "@/lib/order-shipping";
 import { findOrder, type StoredOrder } from "@/lib/orders";
@@ -95,6 +96,19 @@ export default async function OrderPage({ params, searchParams }: Props) {
   );
   const paypalFlag = Array.isArray(query.paypal) ? query.paypal[0] : query.paypal;
   const returnNotice = paypalReturnNotice(paypalFlag);
+  const clubSignup =
+    order.items.length > 0 && order.items.every((item) => item.slug === MEMBERSHIP_SLUG);
+  const statusCopy = clubSignup
+    ? paid
+      ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. Your club sign-up is active. Your member code is in the payment email. Nothing is shipped.`
+      : "Transfer the amount below and quote the order reference. Nothing is shipped. Your member code arrives in the payment email."
+    : paid
+      ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
+      : !awaiting
+        ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
+        : paypalOrder
+          ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
+          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day.";
 
   return (
     <div className="wrap max-w-[760px] py-16">
@@ -116,13 +130,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
         </p>
       )}
       <p className="mb-8 text-sm leading-7 text-[#8f8c84]">
-        {paid
-          ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-          : !awaiting
-            ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
-          : paypalOrder
-            ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
-            : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day."}
+        {statusCopy}
       </p>
 
       <section className="surface mb-8 p-6" aria-labelledby="order-summary">

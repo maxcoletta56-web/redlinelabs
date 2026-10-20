@@ -13,8 +13,8 @@ import { MEMBERSHIP_PRICE_CENTS, MEMBERSHIP_SLUG } from "@/lib/membership";
 import { formatPrice } from "@/lib/products";
 
 /**
- * Subscribe from an account that already exists in this browser. The $50 fee
- * uses the same PayID and PayPal rails as a normal order.
+ * Pay the one-time sign-up fee from an account that already exists in this
+ * browser. The fee uses the same PayID and PayPal rails as a normal order.
  */
 export function ClubJoinForm() {
   const { user, hydrated } = useAccount();
@@ -32,7 +32,7 @@ export function ClubJoinForm() {
     return (
       <div className="surface p-6">
         <p className="text-sm leading-7 text-[#cfc8b8]">
-          Create an account or log in to subscribe. Membership is {price} a month.
+          Create an account or log in to join. The sign-up fee is {price}, once.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href="/account?mode=signup&next=/club" className="btn">
@@ -68,7 +68,7 @@ export function ClubJoinForm() {
           lastName: user.lastName,
           shipping: {
             name: `${user.firstName} ${user.lastName}`.trim(),
-            line1: "Membership — no delivery",
+            line1: "Club sign-up — no delivery",
             line2: "",
             city: "Sydney",
             state: "NSW",
@@ -94,8 +94,8 @@ export function ClubJoinForm() {
       }}
     >
       <p className="text-sm leading-6 text-[#cfc8b8]">
-        Subscribe as <span className="text-white">{user.email}</span>. Pay {price} for a month of
-        member pricing. Nothing is shipped.
+        Join as <span className="text-white">{user.email}</span>. Pay {price} once. Nothing is
+        shipped.
       </p>
       {availability.showChoice && (
         <PaymentMethodChoice value={paymentMethod} onChange={choose} />
@@ -114,7 +114,7 @@ export function ClubJoinForm() {
         </p>
       )}
       <button type="submit" className="btn w-full" disabled={pending} aria-busy={pending}>
-        {pending ? "Starting checkout…" : `Subscribe — ${price}/month`}
+        {pending ? "Starting checkout…" : `Join — ${price}`}
       </button>
     </form>
   );

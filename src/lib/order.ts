@@ -37,7 +37,7 @@ export function resolveCartLines(input: CartLineInput[]): ResolvedLine[] {
     return [
       {
         slug: MEMBERSHIP_SLUG,
-        name: "Redline Membership",
+        name: "Redline Club sign-up",
         option: null,
         variantLabel: null,
         sku: "RL-MEMBERSHIP",

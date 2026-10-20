@@ -5,11 +5,11 @@ import { formatCents, formatPoints } from "@/lib/club";
 
 type MemberSummary = {
   firstName: string;
-  tier: string;
+  tier: string | null;
   points: number;
-  pointsValueCents: number;
-  membershipUntil: string | null;
-  membershipCancelAt: string | null;
+  lifetimeSpendCents: number;
+  nextTier: string | null;
+  nextTierRemainingCents: number | null;
   membershipActive: boolean;
 };
 
@@ -46,7 +46,6 @@ export function ClubBalanceLookup() {
   const [error, setError] = useState<string | null>(null);
   const [member, setMember] = useState<MemberSummary | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
-  const [cancelNote, setCancelNote] = useState<string | null>(null);
 
   return (
     <div className="space-y-8">
@@ -126,52 +125,20 @@ export function ClubBalanceLookup() {
       {member && (
         <section className="surface p-6" aria-live="polite">
           <p className="kicker mb-2">
-            {member.membershipActive ? "Active membership" : "No active membership"}
+            {member.membershipActive ? "Club member" : "Sign-up fee not recorded"}
           </p>
           <p className="text-[1.6rem] font-semibold tracking-[-0.03em] text-white">
-            {member.membershipActive
-              ? `Access until ${formatDate(member.membershipUntil)}`
-              : "Member prices are off"}
+            {member.tier ?? "Member"}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[#cfc8b8]">
+            {formatPoints(member.points)} points · lifetime spend {formatCents(member.lifetimeSpendCents)}
           </p>
           <p className="mt-2 text-sm leading-6 text-[#8f8c84]">
-            {member.membershipCancelAt
-              ? "Renewal is cancelled. Pricing stays on until the date above."
-              : "Cancel anytime. Access continues until the end of the period you have paid."}
+            {member.nextTier
+              ? `${formatCents(member.nextTierRemainingCents ?? 0)} more spend to reach ${member.nextTier}.`
+              : "This is the top tier."}{" "}
+            1 point per $1 spent. Points are not taken off checkout.
           </p>
-          {member.membershipActive && !member.membershipCancelAt && (
-            <button
-              type="button"
-              className="btn-ghost mt-4"
-              onClick={() => {
-                setCancelNote(null);
-                fetch("/api/club/cancel", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ email: email.trim(), code: code.trim() }),
-                })
-                  .then(async (response) => {
-                    const body: unknown = await response.json().catch(() => null);
-                    const record = (body ?? {}) as { member?: MemberSummary; error?: string };
-                    if (!response.ok || !record.member) {
-                      setCancelNote(record.error ?? "Could not cancel that membership");
-                      return;
-                    }
-                    setMember(record.member);
-                    setCancelNote("Renewal cancelled. Access continues until the paid period ends.");
-                  })
-                  .catch(() => setCancelNote("Could not cancel that membership"));
-              }}
-            >
-              Cancel renewal
-            </button>
-          )}
-          {cancelNote && <p className="mt-3 text-sm text-[#d4af37]">{cancelNote}</p>}
-          {member.points > 0 && (
-            <p className="mt-4 text-sm text-[#8f8c84]">
-              Older points balance: {formatPoints(member.points)} ({formatCents(member.pointsValueCents)}).
-              New orders use member pricing instead of points.
-            </p>
-          )}
 
           {ledger.length > 0 && (
             <>

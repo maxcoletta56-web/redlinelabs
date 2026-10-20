@@ -169,9 +169,26 @@ test("payment received email states the dollar amount", () => {
   assert.match(email.text, /\$44\.00 AUD/);
   assert.match(email.text, /RL-7F3K2Q/);
   assert.match(email.text, /queued for dispatch/);
+  assert.equal(email.text.includes("member code"), false);
   assert.ok(email.text.includes(COMPANY_EMAIL));
   assert.match(email.html, /<table/i);
   assert.match(email.html, /#050505/);
+});
+
+test("a new club sign-up email includes the member code once", () => {
+  const email = buildPaymentReceivedEmail({
+    reference: "RL-7F3K2Q",
+    firstName: "Ada",
+    email: "ada@example.com",
+    totalCents: 1500,
+    orderUrl: "https://redlinelabs.shop/order/RL-7F3K2Q",
+    memberCode: "RL-ACDEFGHJKM",
+  });
+
+  assert.match(email.text, /club sign-up is active/);
+  assert.match(email.text, /RL-ACDEFGHJKM/);
+  assert.equal(email.text.includes("queued for dispatch"), false);
+  assert.match(email.html, /RL-ACDEFGHJKM/);
 });
 
 test("merchant copy defaults to the PayID address", () => {

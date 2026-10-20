@@ -205,9 +205,12 @@ export const LIST_UNAWARDED_ORDERS =
   "WHERE l.order_reference = o.reference AND l.reason = 'order') " +
   "ORDER BY o.paid_at ASC, o.reference ASC LIMIT $2";
 
+/** One paid sign-up. A date this far ahead stays active without a renewal. */
+const MEMBERSHIP_OPEN_UNTIL = "9999-12-31 00:00:00+00";
+
 const EXTEND_MEMBERSHIP =
   "UPDATE club_members SET membership_cancel_at = NULL, membership_until = " +
-  "(GREATEST(COALESCE(membership_until, now()), now()) + interval '1 month') " +
+  `TIMESTAMP '${MEMBERSHIP_OPEN_UNTIL}' ` +
   `WHERE email = $1 RETURNING ${memberColumns()}`;
 
 const CANCEL_MEMBERSHIP =
@@ -318,16 +321,22 @@ export async function isActiveMember(
   return membershipIsActive(member?.membershipUntil, now);
 }
 
+export type PaidMembership = {
+  member: ClubMember;
+  /** Plaintext only when this payment created the member. Never stored. */
+  memberCode: string | null;
+};
+
 /**
- * One paid membership order extends access by a month. A second call with the
- * same order reference does nothing, so capture and mark-paid can both run.
+ * One paid sign-up fee opens the club. A second call with the same order
+ * reference does nothing, so capture and mark-paid can both run.
  */
 export async function activatePaidMembership(
   input: { email: string; firstName?: string; orderReference: string },
   sql: Sql | null = getSql(),
   makeCode: () => string = generateMemberCode,
   secret?: string,
-): Promise<ClubMember | null> {
+): Promise<PaidMembership | null> {
   const email = normalizeClubEmail(input.email);
   const reference = input.orderReference.trim();
   if (!isClubEmail(email) || !reference) return null;
@@ -335,11 +344,14 @@ export async function activatePaidMembership(
   await ensureClubTables(db);
 
   const existing = await firstMember(db, SELECT_MEMBER, [email]);
+  let memberCode: string | null = null;
   if (!existing) {
     const firstName = (input.firstName ?? "").trim().slice(0, 120);
-    const hash = hashMemberCode(makeCode(), secret ?? clubCodeSecret());
+    const code = makeCode();
+    const hash = hashMemberCode(code, secret ?? clubCodeSecret());
     if (!hash) return null;
-    await firstMember(db, INSERT_MEMBER, [email, firstName, hash]);
+    const created = await firstMember(db, INSERT_MEMBER, [email, firstName, hash]);
+    if (created) memberCode = code;
   }
 
   const inserted = rowsOf(
@@ -348,11 +360,15 @@ export async function activatePaidMembership(
       0,
       "membership",
       reference,
-      "One month of member pricing",
+      "Club sign-up",
     ]),
   );
-  if (inserted.length === 0) return firstMember(db, SELECT_MEMBER, [email]);
-  return firstMember(db, EXTEND_MEMBERSHIP, [email]);
+  if (inserted.length === 0) {
+    const member = await firstMember(db, SELECT_MEMBER, [email]);
+    return member ? { member, memberCode: null } : null;
+  }
+  const member = await firstMember(db, EXTEND_MEMBERSHIP, [email]);
+  return member ? { member, memberCode } : null;
 }
 
 /** Access continues until the paid period ends. Renewal is what stops. */
