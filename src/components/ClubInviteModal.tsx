@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CLUB_PROGRAM, formatCents } from "@/lib/club";
-import { shouldInviteOnPath } from "@/lib/club-invite";
+import { shouldKeepInviteOpen } from "@/lib/club-invite";
 import { MEMBERSHIP_PRICE_CENTS } from "@/lib/membership";
 import { formatPrice } from "@/lib/products";
 
@@ -45,16 +45,21 @@ export function ClubInviteModal() {
     setOpen(false);
   }, []);
 
+  // Providers keeps this mounted, and the cart drawer (z-50) can navigate to
+  // checkout while this layer (z-[45]) is still open. Hide from the path so
+  // that navigation unmounts the dialog and releases the scroll lock.
+  const visible = open && shouldKeepInviteOpen(pathname, false);
+
   useEffect(() => {
-    if (!shouldInviteOnPath(pathname) || alreadySeen()) return;
+    if (!shouldKeepInviteOpen(pathname, alreadySeen())) return;
     const timer = window.setTimeout(() => {
-      if (!alreadySeen()) setOpen(true);
+      if (shouldKeepInviteOpen(pathname, alreadySeen())) setOpen(true);
     }, DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [pathname]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!visible) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
@@ -66,9 +71,9 @@ export function ClubInviteModal() {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open, dismiss]);
+  }, [visible, dismiss]);
 
-  if (!open) return null;
+  if (!visible) return null;
 
   const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
 
