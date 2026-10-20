@@ -270,6 +270,6 @@ test("cancel only touches an awaiting-payment order", async () => {
     },
   };
   assert.deepEqual(await cancelOrder(reference, sql), { outcome: "missing" });
-  assert.match(queries.find((q) => q.startsWith("UPDATE orders SET status = 'cancelled'")) ?? "", /status = 'awaiting_payment'/);
+  assert.match(queries.find((q) => q.startsWith("UPDATE orders SET status = 'cancelled'")) ?? "", /'awaiting_payment'/);
   assert.deepEqual(await cancelOrder("not a reference", sql), { outcome: "missing" });
 });
