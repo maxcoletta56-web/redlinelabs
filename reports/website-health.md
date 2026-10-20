@@ -40,13 +40,16 @@ None confirmed in this pass. PayID checkout and the order database still refuse 
 
 - `node --experimental-strip-types --import ./scripts/register-test-hooks.mjs --test` on the club invite, club rules, membership, mailer, admin mark-paid, and orders-club files: 50 passed, 0 failed. Includes the new checkout-close and sign-up retry cases.
 - `npm ci` failed in this environment with `SSL_ERROR_SYSCALL` to `registry.npmjs.org` while fetching `@neondatabase/serverless`. Lint, `tsc`, and `next build` were not run locally. A local Neon stub was used only so the unit tests could load, and it was not committed.
+- GitHub CI on this branch, run `39359580684`, passed lint, typecheck, and build.
 - No browser pass. The dev server needs the install that could not finish. The close behaviour is covered by `shouldKeepInviteOpen` for `/checkout`, `/checkout/success`, `/club`, `/club/balance`, and `/order/[reference]`.
 
 ## Build Status
 
 GitHub CI for `7f2cafe` succeeded: https://github.com/maxcoletta56-web/redlinelabs/actions/runs/39358730384
 
-GitHub recorded production deployment `7189915695` for that commit as successful. This health branch is not deployed. Do not promote it unless asked.
+GitHub CI for this health branch succeeded: https://github.com/maxcoletta56-web/redlinelabs/actions/runs/39359580684
+
+GitHub recorded production deployment `7189915695` for `7f2cafe` as successful. This health branch is not deployed. Do not promote it unless asked.
 
 ## Outstanding Work
 
