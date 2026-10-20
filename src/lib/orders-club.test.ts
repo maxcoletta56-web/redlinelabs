@@ -135,6 +135,68 @@ test("reconciliation recovers an award whose retry never came", async () => {
   assert.equal(db.balance(ADA), 100);
 });
 
+const SIGN_UP_ITEM = {
+  slug: "redline-membership",
+  name: "Redline Club",
+  option: null,
+  variantLabel: null,
+  sku: "CLUB",
+  qty: 1,
+  unitAmountCents: 1_500,
+};
+
+test("a sign-up emails the member code once, and a failed activation retries", async () => {
+  let row = stored("awaiting_payment", {
+    items: [SIGN_UP_ITEM],
+    subtotalCents: 1_500,
+    totalCents: 1_500,
+  });
+  let failures = 1;
+  let opened = false;
+  const sent: Array<{ memberCode?: string }> = [];
+  const jobs: Promise<void>[] = [];
+  const hooks = {
+    findOrder: async () => row,
+    markOrderPaid: async () => {
+      row = { ...row, status: "paid" as const, paidAt: row.paidAt ?? "2026-10-02T01:00:00.000Z" };
+      return row;
+    },
+    awardClubPoints: async () => ({ status: "not_member" as const }),
+    activateMembership: async () => {
+      if (failures > 0) {
+        failures -= 1;
+        throw new Error("club database is down");
+      }
+      if (opened) return { memberCode: null };
+      opened = true;
+      return { memberCode: "RL-ACDEFGHJKM" };
+    },
+    scheduleEmail: (_reference: string, task: () => Promise<void>) => {
+      jobs.push(task());
+    },
+    sendPaymentReceivedEmail: async (notice: { memberCode?: string }) => {
+      sent.push(notice);
+    },
+  };
+
+  const first = await quietly(() => markOrderPaidWithPaymentEmail(reference, hooks));
+  await Promise.all(jobs);
+  assert.equal(first.value?.status, "paid");
+  assert.match(JSON.stringify(first.lines), /membership activation failed/);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0]?.memberCode, undefined);
+
+  const retry = await markOrderPaidWithPaymentEmail(reference, hooks);
+  await Promise.all(jobs);
+  assert.equal(retry?.status, "paid");
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1]?.memberCode, "RL-ACDEFGHJKM");
+
+  await markOrderPaidWithPaymentEmail(reference, hooks);
+  await Promise.all(jobs);
+  assert.equal(sent.length, 2);
+});
+
 test("a non-member's paid order earns nothing and is not an error", async () => {
   const db = createFakeClubSql();
   const { hooks } = paidHooks(db, stored("awaiting_payment", { email: "stranger@example.com" }));

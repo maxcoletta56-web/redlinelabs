@@ -428,6 +428,9 @@ export type PaymentReceivedNotice = {
 export type MarkPaidEmailHooks = {
   findOrder?: (reference: string) => Promise<StoredOrder | null>;
   awardClubPoints?: (order: StoredOrder) => Promise<unknown>;
+  activateMembership?: (
+    order: StoredOrder,
+  ) => Promise<{ memberCode: string | null } | null>;
   markOrderPaid?: (reference: string) => Promise<StoredOrder | null>;
   scheduleEmail?: (reference: string, task: () => Promise<void>) => void;
   sendPaymentReceivedEmail?: (notice: PaymentReceivedNotice) => Promise<void>;
@@ -494,8 +497,11 @@ function paymentReceivedNotice(order: StoredOrder, memberCode: string | null): P
 /**
  * Lookup, then mark paid, then schedule the receipt when this transition is
  * the one that leaves `awaiting_payment`. A lookup failure is logged and does
- * not block the update. The email task is not awaited: `scheduleEmail`
- * already swallows mail errors and runs after the response.
+ * not block the update. Club sign-up is idempotent, so it also runs when an
+ * already-paid order is marked paid again: that is the retry when the first
+ * activation failed. A code that appears on that retry sends the receipt
+ * again so the customer still receives it. The email task is not awaited:
+ * `scheduleEmail` already swallows mail errors and runs after the response.
  */
 export async function markOrderPaidWithPaymentEmail(
   reference: string,
@@ -531,17 +537,19 @@ export async function markOrderPaidWithPaymentEmail(
     });
   }
 
-  if (existing?.status !== "paid") {
-    let memberCode: string | null = null;
-    try {
-      memberCode = (await activateMembershipForPaidOrder(order))?.memberCode ?? null;
-    } catch (error) {
-      console.error("[club] membership activation failed", {
-        reference: order.reference,
-        errorName: error instanceof Error ? error.name : "unknown",
-      });
-    }
+  let memberCode: string | null = null;
+  try {
+    const activate = hooks.activateMembership ?? activateMembershipForPaidOrder;
+    memberCode = (await activate(order))?.memberCode ?? null;
+  } catch (error) {
+    console.error("[club] membership activation failed", {
+      reference: order.reference,
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+  }
 
+  const firstPayment = existing?.status !== "paid";
+  if (firstPayment || memberCode) {
     try {
       const deps: PaymentEmailDeps =
         hooks.scheduleEmail && hooks.sendPaymentReceivedEmail
