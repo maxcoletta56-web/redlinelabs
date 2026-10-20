@@ -1,5 +1,13 @@
 # Redline Club v1
 
+> **19 October 2026:** The customer offer on `6b62464` is Redline VIP Membership
+> (`src/lib/membership.ts`): $50 a month, 30% off six catalogue products that
+> change on the 1st (Sydney), charged through the existing PayID and PayPal
+> checkout. Paying the same membership order twice does not add a second month.
+> Points redemption was removed from the storefront. Do not turn
+> `CLUB_PROGRAM.approved` on, and do not rebuild point redemption, to “match”
+> this document. The ledger and hashed member codes below stay for accounting.
+
 Redline Club is an optional points programme. It has no logins, sessions, point
 expiry or referral bonuses in v1. Every Club surface carries the research-use
 disclaimer (`ResearchDisclaimer`) and uses no health or wellness language.
