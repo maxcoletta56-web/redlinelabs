@@ -18,8 +18,12 @@ test("sandbox is the default and live is only WHOP_SANDBOX=false", () => {
 });
 
 test("checkout configuration prices AUD from server cents and attaches orderId", async () => {
-  let captured: { url: string; body: Record<string, unknown>; authorization: string | null } | null =
-    null;
+  let captured: {
+    url: string;
+    body: Record<string, unknown>;
+    authorization: string | null;
+    apiVersion: string | null;
+  } | null = null;
   const result = await createWhopCheckoutConfiguration({
     orderId: "RL-ABC234",
     totalCents: 20816,
@@ -31,6 +35,7 @@ test("checkout configuration prices AUD from server cents and attaches orderId",
         url: String(url),
         body: JSON.parse(String(init?.body)) as Record<string, unknown>,
         authorization: headers.get("Authorization"),
+        apiVersion: headers.get("Api-Version-Date"),
       };
       return new Response(JSON.stringify({ id: "ch_testsession", plan: { id: "plan_testplan" } }), {
         status: 200,
@@ -43,6 +48,7 @@ test("checkout configuration prices AUD from server cents and attaches orderId",
   assert.ok(captured);
   assert.equal(captured.url, "https://sandbox-api.whop.com/api/v1/checkout_configurations");
   assert.equal(captured.authorization, "Bearer apik_test");
+  assert.equal(captured.apiVersion, "2026-10-24");
   assert.equal(captured.body.mode, "payment");
   assert.deepEqual(captured.body.metadata, { orderId: "RL-ABC234" });
   assert.equal(captured.body.redirect_url, "https://redlinelabs.shop/checkout/return?reference=RL-ABC234");
