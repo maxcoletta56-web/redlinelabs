@@ -20,8 +20,8 @@ const LIVE_API = "https://api.whop.com/api/v1";
  */
 const THREE_DS_LEVEL = "mandate_if_required";
 
-/** Dated API pin. Raw REST calls must send this; the SDK's current pin is the same day. */
-const API_VERSION_DATE = "2026-10-15-1";
+/** Dated API pin. Raw REST calls must send this. Matches `@whop/sdk` 2.6.0. */
+const API_VERSION_DATE = "2026-10-24";
 
 export type WhopEnvironmentName = "sandbox" | "production";
 
