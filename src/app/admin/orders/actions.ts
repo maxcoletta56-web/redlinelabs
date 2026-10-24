@@ -6,6 +6,7 @@ import { redirect, RedirectType } from "next/navigation";
 import { settleAdminOrderPaid } from "@/lib/admin-mark-paid";
 import { adminSecretMatches, adminSessionValid } from "@/lib/admin-auth";
 import { clearAdminSession, readAdminSessionToken, setAdminSession } from "@/lib/admin-session";
+import { adminDeskPath } from "@/lib/admin-orders";
 import { normalizeOrderReference } from "@/lib/order-reference";
 import { cancelOrderAndReleasePoints, ordersConfigured } from "@/lib/orders";
 import { rateLimit } from "@/lib/rate-limit";
@@ -16,6 +17,7 @@ function clientIp(headerList: Headers) {
 }
 
 export async function loginAdmin(formData: FormData) {
+  const next = adminDeskPath(formData.get("next"));
   const provided = formData.get("secret");
   const secret = process.env.ADMIN_API_SECRET;
   const attempt = typeof provided === "string" ? provided : "";
@@ -23,17 +25,18 @@ export async function loginAdmin(formData: FormData) {
     const headerList = await headers();
     const limit = rateLimit(`admin-login:${clientIp(headerList)}`, 8, 15 * 60 * 1000);
     redirect(
-      limit.ok ? "/admin/orders?error=rejected" : "/admin/orders?error=limited",
+      limit.ok ? `${next}?error=rejected` : `${next}?error=limited`,
       RedirectType.replace,
     );
   }
   await setAdminSession(secret);
-  redirect("/admin/orders", RedirectType.replace);
+  redirect(next, RedirectType.replace);
 }
 
-export async function logoutAdmin() {
+export async function logoutAdmin(formData: FormData) {
+  const next = adminDeskPath(formData.get("next"));
   await clearAdminSession();
-  redirect("/admin/orders", RedirectType.replace);
+  redirect(next, RedirectType.replace);
 }
 
 /**
