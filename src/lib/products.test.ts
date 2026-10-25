@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { optionLabel, variantGroupLabel } from "./variant-label.ts";
 
@@ -24,6 +24,14 @@ test("every listing has a SKU and unique slugs", () => {
     assert.ok(product.sku.trim(), `${product.slug} is missing a SKU`);
     assert.ok(product.image, `${product.slug} is missing an image`);
     assert.ok(product.description, `${product.slug} is missing a description`);
+  }
+});
+
+test("catalogue images are local named vials", () => {
+  for (const product of products) {
+    assert.equal(product.image, `/products/${product.slug}.jpg`);
+    const file = new URL(`../../public${product.image}`, import.meta.url);
+    assert.ok(existsSync(file), `${product.slug} image file is missing`);
   }
 });
 
