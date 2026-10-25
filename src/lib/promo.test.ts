@@ -7,6 +7,7 @@ import {
   normalizePromoCode,
   promoDiscountCents,
 } from "./promo.ts";
+import { priceCardOrderCents } from "./promo-pricing.ts";
 import { creditToApplyCents } from "./store-credit.ts";
 
 test("DGC20 is a 20 percent checkout code", () => {
@@ -77,4 +78,19 @@ test("applies store credit after 20 percent off the total", () => {
   const creditCents = creditToApplyCents(1000, totals.discountedCents);
   assert.equal(creditCents, 1000);
   assert.equal(totals.discountedCents - creditCents, 23240);
+});
+
+test("card orders of $200 or more take 10% off before the coupon", () => {
+  const below = priceCardOrderCents(19_999, lookupPromo("DGC20"));
+  assert.equal(below.volumeCents, 0);
+  assert.equal(below.totalCents, applyPercentOff(19_999, 20));
+
+  const priced = priceCardOrderCents(34_000, null);
+  assert.equal(priced.volumeCents, 3_400);
+  assert.equal(priced.totalCents, 30_600);
+
+  const withCoupon = priceCardOrderCents(30_300, lookupPromo("DGC20"));
+  assert.equal(withCoupon.volumeCents, 3_030);
+  assert.equal(withCoupon.promoCents, 5_454);
+  assert.equal(withCoupon.totalCents, 21_816);
 });
