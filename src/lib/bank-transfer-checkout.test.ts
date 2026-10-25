@@ -120,7 +120,7 @@ test("createBankTransferOrder stores a trimmed address and still succeeds if mai
     assert.equal(created.redirectUrl, `/order/${created.reference}`);
     assert.equal(created.totalCents, 8900);
     const insert = calls.find((call) => call.query.startsWith("INSERT"));
-    const stored = JSON.parse(String(insert?.params?.[9])) as { line1: string; postcode: string };
+    const stored = JSON.parse(String(insert?.params?.[10])) as { line1: string; postcode: string };
     assert.equal(stored.line1, "1 Laboratory Road");
     assert.equal(stored.postcode, "2000");
     assert.equal(mailed?.shipping?.line1, "1 Laboratory Road");
@@ -249,8 +249,27 @@ test("a club redemption sent with PayPal is ignored and the charge stays the ful
   assert.equal(order.paymentMethod, "paypal");
   assert.equal(order.totalCents, 8_900);
   const insert = calls.find((call) => call.query.startsWith("INSERT"));
-  assert.equal(insert?.params?.[10], null);
-  assert.equal(insert?.params?.[11], 0);
+  assert.equal(insert?.params?.[11], null);
   assert.equal(insert?.params?.[12], 0);
-  assert.equal(insert?.params?.[13], "paypal");
+  assert.equal(insert?.params?.[13], 0);
+  assert.equal(insert?.params?.[14], "paypal");
+});
+
+test("a bank transfer of $200 or more does not take the card volume discount", async () => {
+  const restore = payIdEnv();
+  const { sql } = recorder();
+  try {
+    const order = await createBankTransferOrder(
+      {
+        ...orderInput,
+        items: [{ slug: "glow", option: "70", qty: 2 }],
+        shipping: goodAddress,
+      },
+      { sql, deliver: async () => {} },
+    );
+    assert.equal(order.totalCents, 34_000);
+    assert.equal(order.paymentMethod, "bank_transfer");
+  } finally {
+    restore();
+  }
 });
