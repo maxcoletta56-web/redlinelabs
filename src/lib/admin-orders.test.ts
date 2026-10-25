@@ -3,6 +3,7 @@ import test from "node:test";
 import { createAdminSessionValue } from "./admin-auth.ts";
 import {
   adminDeskNotice,
+  adminDeskPath,
   adminLoginError,
   adminOrderStats,
   customerEmailHref,
@@ -17,6 +18,13 @@ import {
 } from "./admin-orders.ts";
 
 const now = 1_700_000_000_000;
+
+test("admin login only returns to the orders or distribution desk", () => {
+  assert.equal(adminDeskPath("/admin/distribution"), "/admin/distribution");
+  assert.equal(adminDeskPath("/admin/orders"), "/admin/orders");
+  assert.equal(adminDeskPath("https://evil.example"), "/admin/orders");
+  assert.equal(adminDeskPath("/admin/distribution/../../account"), "/admin/orders");
+});
 
 test("no cookie does not load order data", async () => {
   let calls = 0;

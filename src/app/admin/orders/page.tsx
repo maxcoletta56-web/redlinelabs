@@ -156,11 +156,16 @@ function AdminDesk({
             PayID, bank transfer, and PayPal orders. Mark a transfer paid after the money lands.
           </p>
         </header>
-        <form action={logoutAdmin}>
-          <button type="submit" className="btn-ghost min-h-11 w-full sm:w-auto">
-            Log out
-          </button>
-        </form>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/admin/distribution" className="btn-ghost min-h-11 w-full sm:w-auto">
+            Distribution
+          </Link>
+          <form action={logoutAdmin}>
+            <button type="submit" className="btn-ghost min-h-11 w-full sm:w-auto">
+              Log out
+            </button>
+          </form>
+        </div>
       </div>
 
       {notice ? (

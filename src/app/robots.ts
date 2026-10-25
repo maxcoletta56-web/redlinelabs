@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { absoluteUrl } from "@/lib/seo";
 
-const privatePaths = ["/account", "/admin", "/cart", "/checkout", "/order", "/api/"];
+const privatePaths = ["/account", "/admin", "/cart", "/checkout", "/distribution", "/order", "/api/"];
 
 const aiCrawlers = [
   "GPTBot",

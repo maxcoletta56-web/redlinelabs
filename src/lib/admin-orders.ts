@@ -135,6 +135,11 @@ function createdAtMs(value: string | null) {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
+/** Only the two admin desks. Anything else stays on orders. */
+export function adminDeskPath(value: unknown) {
+  return value === "/admin/distribution" ? "/admin/distribution" : "/admin/orders";
+}
+
 export function adminLoginError(code: string | undefined): string | null {
   if (code === "rejected") return "That secret was not accepted.";
   if (code === "limited") return "Too many attempts. Try again in a few minutes.";

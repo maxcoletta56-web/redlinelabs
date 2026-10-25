@@ -89,9 +89,16 @@ export default function AccountPage() {
             <h1 className="mb-4 text-[2.15rem] font-semibold tracking-[-0.03em] text-white">
               Sign up to access your profile
             </h1>
-            <p className="mb-8 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
+            <p className="mb-4 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
               An account is required to view full history, store credit, saved
               addresses, and stock alerts.
+            </p>
+            <p className="mb-8 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
+              Wholesale box quotes use a separate login.{" "}
+              <Link href="/distribution" className="text-[#d4af37] hover:text-white">
+                Apply for a distribution account
+              </Link>
+              .
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               {benefits.map((item) => (
@@ -305,6 +312,12 @@ function AccountDashboard({
             {user.firstName} {user.lastName}
           </h1>
           <p className="mt-3 text-[15px] text-[#8f8c84]">{user.email}</p>
+          <p className="mt-2 text-sm text-[#8f8c84]">
+            <Link href="/distribution" className="text-[#d4af37] hover:text-white">
+              Distribution login
+            </Link>{" "}
+            is separate from this shop account.
+          </p>
         </div>
         <button type="button" className="btn-ghost" onClick={onSignOut}>
           Sign out

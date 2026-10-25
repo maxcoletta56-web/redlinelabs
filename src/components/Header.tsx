@@ -16,6 +16,7 @@ const links = [
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
+  { href: "/distribution", label: "Distribution" },
 ];
 
 export function Header() {
