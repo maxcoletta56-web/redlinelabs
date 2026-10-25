@@ -27,7 +27,7 @@ test("every listing has a SKU and unique slugs", () => {
   }
 });
 
-test("catalogue images are local named vials", () => {
+test("catalogue images are local product photos", () => {
   for (const product of products) {
     assert.equal(product.image, `/products/${product.slug}.jpg`);
     const file = new URL(`../../public${product.image}`, import.meta.url);
