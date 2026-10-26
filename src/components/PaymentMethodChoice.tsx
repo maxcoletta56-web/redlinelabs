@@ -144,7 +144,7 @@ export function useSelectedPaymentMethod(showChoice: boolean) {
 export function PaymentMethodChoice({
   value,
   onChange,
-  methods = ["bank_transfer", "paypal"],
+  methods = ["bank_transfer"],
   name = "paymentMethod",
   stacked = false,
 }: {
