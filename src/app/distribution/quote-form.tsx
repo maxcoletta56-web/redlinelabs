@@ -20,11 +20,11 @@ export type QuoteOffer = {
   name: string;
   sku: string;
   optionLabel: string;
-  retailUnitCents: number;
+  boxCents: number;
   unitsPerBox: number;
 };
 
-export function QuoteForm({ offers }: { offers: QuoteOffer[] }) {
+export function QuoteForm({ offers, minBoxes }: { offers: QuoteOffer[]; minBoxes: number }) {
   const [state, action, pending] = useActionState(requestDistributionQuote, initialState);
   const [query, setQuery] = useState("");
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -56,8 +56,8 @@ export function QuoteForm({ offers }: { offers: QuoteOffer[] }) {
           placeholder="Name or SKU"
         />
         <p className="mt-3 text-sm leading-6 text-[#8f8c84]">
-          Each box is {offers[0]?.unitsPerBox ?? 10} units. Enter how many boxes you want. The box price is added after
-          the request. Empty rows are left off the quote.
+          Each box is {offers[0]?.unitsPerBox ?? 10} units. The price shown is the distributor price for one box. Each
+          product needs at least {minBoxes} boxes. Empty rows are left off the quote.
         </p>
       </div>
       {groups.map((group) => {
@@ -77,7 +77,9 @@ export function QuoteForm({ offers }: { offers: QuoteOffer[] }) {
                     <p className="text-sm text-white">{offer.optionLabel}</p>
                     <p className="text-[12px] text-[#8f8c84]">SKU {offer.sku}</p>
                   </div>
-                  <p className="text-sm text-[#8f8c84]">Retail {money(offer.retailUnitCents)} each</p>
+                  <p className="text-sm text-white">
+                    {offer.boxCents > 0 ? `Box ${money(offer.boxCents)}` : "Box price on request"}
+                  </p>
                   <label className="block">
                     <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
                       Boxes
@@ -85,10 +87,11 @@ export function QuoteForm({ offers }: { offers: QuoteOffer[] }) {
                     <input
                       name={boxFieldName(offer.sku)}
                       type="number"
-                      min={0}
+                      min={minBoxes}
                       max={50}
                       step={1}
                       inputMode="numeric"
+                      placeholder={String(minBoxes)}
                       aria-label={`Boxes of ${offer.name} ${offer.optionLabel}`}
                       className="field w-full"
                     />

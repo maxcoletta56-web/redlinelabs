@@ -116,8 +116,8 @@ export const UPDATE_DISTRIBUTION_ACCOUNT =
   `WHERE id = $1 RETURNING ${ACCOUNT_COLUMNS}`;
 
 export const INSERT_DISTRIBUTION_QUOTE =
-  "INSERT INTO distribution_quotes (reference, account_id, lines, note, subtotal_cents) " +
-  "VALUES ($1, $2, $3::jsonb, $4, $5) " +
+  "INSERT INTO distribution_quotes (reference, account_id, lines, note, subtotal_cents, status) " +
+  "VALUES ($1, $2, $3::jsonb, $4, $5, $6) " +
   "RETURNING reference, account_id, status, lines, note, admin_note, subtotal_cents, created_at, updated_at";
 
 export const LIST_ACCOUNT_DISTRIBUTION_QUOTES =
@@ -397,6 +397,7 @@ export async function createDistributionQuote(
           JSON.stringify(lines),
           note,
           subtotalCents,
+          quoteIsPriced(lines) ? "quoted" : "requested",
         ]),
       );
       const quote = readDistributionQuoteRow(rows[0]);

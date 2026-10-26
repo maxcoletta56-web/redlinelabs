@@ -21,6 +21,7 @@ import {
   distributionPortalNotice,
   distributionQuoteStatusLabel,
   distributionRegionLabel,
+  DISTRIBUTION_MIN_BOXES,
   DISTRIBUTION_UNITS_PER_BOX,
   quoteIsPriced,
   summarizeDistributionQuote,
@@ -106,14 +107,14 @@ function SignedOut({
           </h1>
           <p className="mb-6 max-w-xl text-[15px] leading-7 text-[#8f8c84]">
             Distribution accounts are not shop accounts. Apply with the business that will receive the supply.
-            An application has to be approved before you can request a quote. The box price is set on that quote.
+            An application has to be approved before you can request a quote. Listed products show a price per box.
             Approved quotes are saved under their own references so they can be tracked apart from shop orders.
           </p>
           <ul className="space-y-3 text-sm leading-6 text-[#cfc8b8]">
             <li>Submit an application. Approval is selective.</li>
             <li>Sign in on this page. A shop sign-in does not open distribution quotes.</li>
             <li>
-              Request a quote in boxes of {DISTRIBUTION_UNITS_PER_BOX}. The box price is added after the request. It is
+              Request at least {DISTRIBUTION_MIN_BOXES} boxes. Listed products show the distributor price per box. It is
               not charged at shop checkout.
             </li>
           </ul>
@@ -237,12 +238,13 @@ function ApprovedPortal({
       <section>
         <h2 className="text-xl font-semibold text-white">Request a box quote</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#8f8c84]">
-          {account.businessName} is approved. Request quantities in boxes of {DISTRIBUTION_UNITS_PER_BOX}. The box
-          price is entered on the distribution desk after the request is saved. A saved quote is a request, not a shop
-          order, and it is not paid here. Each quote gets a DQ reference so it can be tracked on the distribution desk.
+          {account.businessName} is approved. A box is {DISTRIBUTION_UNITS_PER_BOX} units, and each product needs at
+          least {DISTRIBUTION_MIN_BOXES} boxes. The price on a listed product is the distributor price for one box. A
+          saved quote is a request, not a shop order, and it is not paid here. Each quote gets a DQ reference so it can
+          be tracked on the distribution desk.
         </p>
         <div className="mt-8">
-          <QuoteForm offers={offers} />
+          <QuoteForm offers={offers} minBoxes={DISTRIBUTION_MIN_BOXES} />
         </div>
       </section>
       <section>

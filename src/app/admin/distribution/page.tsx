@@ -26,6 +26,7 @@ import {
   distributionDeskStats,
   distributionQuoteStatusLabel,
   distributionRegionLabel,
+  DISTRIBUTION_MIN_BOXES,
   DISTRIBUTION_UNITS_PER_BOX,
   quoteIsPriced,
   summarizeDistributionQuote,
@@ -151,8 +152,9 @@ function Desk({
           <p className="kicker mb-3">Admin</p>
           <h1 className="text-[2.15rem] font-semibold tracking-[-0.03em] text-white">Distribution</h1>
           <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[#8f8c84]">
-            Applications and box quotes, separate from shop orders. Approved accounts request quantities in boxes of{" "}
-            {DISTRIBUTION_UNITS_PER_BOX}. You enter the box price on each quote. A quote is a request, not a payment.
+            Applications and box quotes, separate from shop orders. Approved accounts request at least{" "}
+            {DISTRIBUTION_MIN_BOXES} boxes of {DISTRIBUTION_UNITS_PER_BOX} units. Listed products already carry a box
+            price, and you can change it on the quote. A quote is a request, not a payment.
           </p>
         </header>
         <div className="flex flex-col gap-2 sm:flex-row">
