@@ -6,11 +6,15 @@ import { optionLabel } from "./variant-label.ts";
 /**
  * Distribution accounts are a separate login from shop accounts.
  * A box is 10 retail units. The shop catalogue price is unchanged.
- * Listed products carry a distributor price per box. Each line needs at least
- * four boxes. The desk can still replace a box price on a saved quote.
+ * Listed products carry a distributor price per box. Each product needs at
+ * least five boxes. That price is 10% off the sheet price for the item.
+ * The discount is not taken off the order total. The desk can still replace
+ * a box price on a saved quote.
  */
 export const DISTRIBUTION_UNITS_PER_BOX = 10;
-export const DISTRIBUTION_MIN_BOXES = 4;
+export const DISTRIBUTION_MIN_BOXES = 5;
+/** Taken off each item's box price. It is not applied to the order total. */
+export const DISTRIBUTION_ITEM_DISCOUNT_PERCENT = 10;
 
 /**
  * Distributor price for one box, in cents. Keys are catalogue SKUs.
@@ -85,7 +89,7 @@ export const DISTRIBUTION_ERRORS = {
   unconfigured: "Distribution sign-in is not configured.",
   credentials: "Email or password was not recognised.",
   empty: "Enter at least one box.",
-  minimum: "Each product needs at least 4 boxes.",
+  minimum: "Each product needs at least 5 boxes.",
   quote: "Check the box quantities and try again.",
   note: "Keep the note under 500 characters.",
   forbidden: "Quote requests are available after the application is approved.",
@@ -182,6 +186,13 @@ export function retailCents(price: number) {
   return Math.round(price * 100);
 }
 
+/** 10% off one item's sheet box price, in cents. */
+export function distributorBoxCents(sheetCents: number) {
+  if (!Number.isInteger(sheetCents) || sheetCents < 1) return 0;
+  const kept = 100 - DISTRIBUTION_ITEM_DISCOUNT_PERCENT;
+  return Math.round((sheetCents * kept) / 100);
+}
+
 function catalogVariants(product: CatalogProduct): CatalogVariant[] {
   if (product.variants.length > 0) return product.variants;
   if (!product.sku || product.minPrice == null || !Number.isFinite(product.minPrice)) return [];
@@ -204,7 +215,7 @@ export function boxOffers(catalog: readonly CatalogProduct[]): BoxOffer[] {
         option: variant.option,
         optionLabel: optionLabel(product, variant.option),
         retailUnitCents: retailCents(variant.price),
-        boxCents: DISTRIBUTION_BOX_CENTS[variant.sku] ?? 0,
+        boxCents: distributorBoxCents(DISTRIBUTION_BOX_CENTS[variant.sku] ?? 0),
         unitsPerBox: DISTRIBUTION_UNITS_PER_BOX,
       });
     }

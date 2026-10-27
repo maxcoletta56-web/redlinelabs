@@ -56,8 +56,8 @@ export function QuoteForm({ offers, minBoxes }: { offers: QuoteOffer[]; minBoxes
           placeholder="Name or SKU"
         />
         <p className="mt-3 text-sm leading-6 text-[#8f8c84]">
-          Each box is {offers[0]?.unitsPerBox ?? 10} units. The price shown is the distributor price for one box. Each
-          product needs at least {minBoxes} boxes. Empty rows are left off the quote.
+          Each box is {offers[0]?.unitsPerBox ?? 10} units. The price shown is 10% off that item. Each product needs at
+          least {minBoxes} boxes. Empty rows are left off the quote.
         </p>
       </div>
       {groups.map((group) => {
@@ -77,9 +77,14 @@ export function QuoteForm({ offers, minBoxes }: { offers: QuoteOffer[]; minBoxes
                     <p className="text-sm text-white">{offer.optionLabel}</p>
                     <p className="text-[12px] text-[#8f8c84]">SKU {offer.sku}</p>
                   </div>
-                  <p className="text-sm text-white">
-                    {offer.boxCents > 0 ? `Box ${money(offer.boxCents)}` : "Box price on request"}
-                  </p>
+                  <div>
+                    <p className="text-sm text-white">
+                      {offer.boxCents > 0 ? `Box ${money(offer.boxCents)}` : "Box price on request"}
+                    </p>
+                    {offer.boxCents > 0 ? (
+                      <p className="text-[12px] text-[#8f8c84]">10% off this item</p>
+                    ) : null}
+                  </div>
                   <label className="block">
                     <span className="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-[#8f8c84] uppercase">
                       Boxes

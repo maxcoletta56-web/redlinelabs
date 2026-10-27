@@ -15,7 +15,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - Home, shop (search / category / sort), product pages with MG/IU options
 - Account profile (sign-up required): order history with COA requests and tracking, store credit, saved addresses, stock alerts
-- Distribution login, separate from shop accounts: applications stay pending until approved, then box quantities are requested at the distributor price per box (minimum 4 boxes). The desk can change a box price. Quotes use DQ references, apart from shop orders
+- Distribution login, separate from shop accounts: applications stay pending until approved, then box quantities are requested at 10% off each item's box price (minimum 5 boxes of that item). The desk can change a box price. Quotes use DQ references, apart from shop orders
 - Persistent cart (localStorage), drawer, cart page, checkout form
 - About, contact, FAQ, shipping, refund, privacy, and terms pages
 - Research-use-only notices throughout
