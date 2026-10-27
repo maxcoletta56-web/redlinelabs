@@ -47,7 +47,9 @@ export async function createWhopCardCheckout(
     paymentMethod: "whop",
     skipBankConfiguration: true,
     skipCreatedEmail: true,
-    sql: hooks.sql,
+    // An omitted hook must not count as "no database". `sql: undefined` is
+    // present on the options object and would skip DATABASE_URL.
+    ...(hooks.sql !== undefined ? { sql: hooks.sql } : {}),
   });
   const returnUrl = absoluteUrl(`/checkout/return?reference=${encodeURIComponent(order.reference)}`);
   try {
