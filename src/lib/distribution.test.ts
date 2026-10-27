@@ -11,6 +11,9 @@ import {
   distributionAdminNotice,
   distributionDeskStats,
   distributionPortalNotice,
+  DISTRIBUTION_BOX_CENTS,
+  DISTRIBUTION_MIN_BOXES,
+  distributorBoxCents,
   DISTRIBUTION_UNITS_PER_BOX,
   generateDistributionQuoteReference,
   groupBoxOffers,
@@ -49,7 +52,25 @@ test("a box is ten retail units and the catalogue does not invent a box price", 
   assert.equal(offers[0]?.retailUnitCents, 9500);
   assert.equal(offers[0]?.unitsPerBox, 10);
   assert.equal(offers[0]?.optionLabel, "10 MG");
-  assert.equal("boxCents" in (offers[0] ?? {}), false);
+  assert.equal(offers[0]?.boxCents, 0);
+});
+
+test("each listed item is 10% off its own box price, and unlisted sizes stay open", () => {
+  assert.equal(DISTRIBUTION_MIN_BOXES, 5);
+  assert.equal(distributorBoxCents(50000), 45000);
+  assert.equal(distributorBoxCents(38500), 34650);
+  assert.equal(distributorBoxCents(37500), 33750);
+  assert.equal(distributorBoxCents(0), 0);
+  const offers = boxOffers(catalog);
+  const bySku = new Map(offers.map((offer) => [offer.sku, offer]));
+  for (const [sku, cents] of Object.entries(DISTRIBUTION_BOX_CENTS)) {
+    assert.equal(bySku.get(sku)?.boxCents, distributorBoxCents(cents), sku);
+  }
+  assert.equal(bySku.get("Dsip15")?.boxCents, 45000);
+  assert.equal(bySku.get("Dsip10")?.boxCents, 0);
+  assert.equal(bySku.get("ghkcu")?.optionLabel, "Vial");
+  assert.equal(bySku.get("Motc10")?.boxCents, 34650);
+  assert.equal(bySku.get("Bac09")?.boxCents, 4500);
 });
 
 test("catalogue offers keep the retail unit price for the desk to read", () => {
@@ -65,33 +86,62 @@ test("catalogue offers keep the retail unit price for the desk to read", () => {
   }
 });
 
-test("a quote stores quantities only, then the desk price is applied", () => {
+test("a quote stores the sheet box price, and the desk can replace it", () => {
   const offers = boxOffers(catalog);
+  const short = new FormData();
+  short.set("box_Dsip15", "2");
+  assert.equal(parseQuoteRequest(short, offers).ok, false);
+  const tooFew = parseQuoteRequest(short, offers);
+  if (!tooFew.ok) assert.equal(tooFew.error, "minimum");
+
+  const four = new FormData();
+  four.set("box_Dsip15", "5");
+  four.set("box_Motc10", "4");
+  const belowItemMinimum = parseQuoteRequest(four, offers);
+  assert.equal(belowItemMinimum.ok, false);
+  if (!belowItemMinimum.ok) assert.equal(belowItemMinimum.error, "minimum");
+
   const form = new FormData();
-  form.set("box_Dsip10", "2");
-  form.set(priceFieldName("Dsip10"), "1");
+  form.set("box_Dsip15", "5");
+  form.set("box_Dsip10", "5");
+  form.set(priceFieldName("Dsip15"), "1");
   form.set("boxUnitCents", "1");
   const parsed = parseQuoteRequest(form, offers);
   assert.equal(parsed.ok, true);
   if (!parsed.ok) return;
-  assert.equal(parsed.lines.length, 1);
-  assert.equal(parsed.lines[0]?.retailUnitCents, 9500);
-  assert.equal(parsed.lines[0]?.boxCents, 0);
-  assert.equal(parsed.lines[0]?.boxUnitCents, 0);
-  assert.equal(parsed.lines[0]?.lineCents, 0);
-  assert.equal(parsed.subtotalCents, 0);
+  assert.equal(parsed.lines.length, 2);
+  const listed = parsed.lines.find((line) => line.sku === "Dsip15");
+  const open = parsed.lines.find((line) => line.sku === "Dsip10");
+  assert.equal(listed?.retailUnitCents, 11000);
+  assert.equal(listed?.boxCents, 45000);
+  assert.equal(listed?.boxUnitCents, 4500);
+  assert.equal(listed?.lineCents, 225000);
+  assert.equal(open?.boxCents, 0);
+  assert.equal(open?.lineCents, 0);
+  assert.equal(parsed.subtotalCents, 225000);
   assert.equal(quoteIsPriced(parsed.lines), false);
-  assert.equal(parsed.lines[0]?.name, "DSIP");
+
+  const listedOnly = new FormData();
+  listedOnly.set("box_Dsip15", "5");
+  listedOnly.set("box_Motc10", "5");
+  const sheet = parseQuoteRequest(listedOnly, offers);
+  assert.equal(sheet.ok, true);
+  if (!sheet.ok) return;
+  assert.equal(quoteIsPriced(sheet.lines), true);
+  const mots = sheet.lines.find((line) => line.sku === "Motc10");
+  assert.equal(mots?.boxCents, 34650);
+  assert.equal(mots?.lineCents, 173250);
+  assert.equal(sheet.subtotalCents, 225000 + 173250);
 
   const pricedForm = new FormData();
   pricedForm.set(priceFieldName("Dsip10"), "665.00");
-  const priced = applyQuotePrices(parsed.lines, pricedForm);
+  const priced = applyQuotePrices([open ?? parsed.lines[0]], pricedForm);
   assert.equal(priced.ok, true);
   if (!priced.ok) return;
   assert.equal(priced.lines[0]?.boxCents, 66500);
   assert.equal(priced.lines[0]?.boxUnitCents, 6650);
-  assert.equal(priced.lines[0]?.lineCents, 133000);
-  assert.equal(priced.subtotalCents, 133000);
+  assert.equal(priced.lines[0]?.lineCents, 332500);
+  assert.equal(priced.subtotalCents, 332500);
   assert.equal(quoteIsPriced(priced.lines), true);
 
   const missing = new FormData();
@@ -105,11 +155,11 @@ test("a quote stores quantities only, then the desk price is applied", () => {
 test("empty, fractional, and unknown box quantities are rejected", () => {
   const offers = boxOffers(catalog);
   const empty = new FormData();
-  empty.set("box_Dsip10", "0");
+  empty.set("box_Dsip15", "0");
   assert.equal(parseQuoteRequest(empty, offers).ok, false);
 
   const fraction = new FormData();
-  fraction.set("box_Dsip10", "1.5");
+  fraction.set("box_Dsip15", "1.5");
   const fractional = parseQuoteRequest(fraction, offers);
   assert.equal(fractional.ok, false);
   if (!fractional.ok) assert.equal(fractional.error, "quote");
@@ -161,7 +211,7 @@ test("quote references are distinct from shop order references", () => {
   assert.equal(distributionPortalNotice("quoted", "<script>"), "Quote saved.");
   assert.equal(
     distributionPortalNotice("quoted", reference),
-    `Quote ${reference} is saved. The box price is added on the distribution desk. It is not a shop order.`,
+    `Quote ${reference} is saved at the distributor box prices. It is not a shop order.`,
   );
   assert.equal(distributionAdminNotice("approved", undefined), "Account approved. They can sign in and request box quotes.");
 });

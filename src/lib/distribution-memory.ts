@@ -59,11 +59,11 @@ export function createDistributionMemorySql() {
         const row = {
           reference: params[0],
           account_id: params[1],
-          status: "requested",
           lines: params[2],
           note: params[3],
           admin_note: "",
           subtotal_cents: params[4],
+          status: params[5] === "quoted" ? "quoted" : "requested",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };

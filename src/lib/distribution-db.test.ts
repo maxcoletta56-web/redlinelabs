@@ -146,3 +146,20 @@ test("box quotes stay unpriced until the desk saves a price, and a declined quot
   assert.equal(await authenticateDistributionAccount("ada@example.com", "nope", db.sql), null);
   assert.equal(await authenticateDistributionAccount("missing@example.com", "research1", db.sql), null);
 });
+
+test("a quote whose lines already have box prices is stored as priced", async () => {
+  const db = createFakeSql();
+  const password = await hashDistributionPassword("research1");
+  const created = await createDistributionAccount(APPLICATION, password.hash, password.salt, db.sql);
+  const id = created.account?.id ?? "";
+  await reviewDistributionAccount(id, "approved", "", db.sql);
+  const quote = await createDistributionQuote(
+    id,
+    [{ ...PRICED_LINE, boxes: 4, lineCents: 266000 }],
+    "Sheet",
+    266000,
+    db.sql,
+  );
+  assert.equal(quote.status, "quoted");
+  assert.equal(quote.lines[0]?.boxCents, 66500);
+});
