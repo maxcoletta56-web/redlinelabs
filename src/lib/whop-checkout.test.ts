@@ -63,3 +63,42 @@ test("card checkout stores a pending order at the catalogue total, including 10%
     else process.env.WHOP_API_KEY = previous;
   }
 });
+
+test("card checkout uses DATABASE_URL when no test client is injected", async () => {
+  const previousKey = process.env.WHOP_API_KEY;
+  const previousDb = process.env.DATABASE_URL;
+  process.env.WHOP_API_KEY = "apik_test";
+  process.env.DATABASE_URL = "postgres://user:pass@127.0.0.1:1/orders";
+  try {
+    await assert.rejects(
+      () =>
+        createWhopCardCheckout(
+          {
+            items: [{ slug: "glow", option: "70", qty: 1 }],
+            email: "ada@example.com",
+            firstName: "Ada",
+            lastName: "Lovelace",
+            shipping: address,
+            ageConfirmed: true,
+            researchUse: true,
+          },
+          {
+            createConfiguration: async () => {
+              throw new Error("configuration should not run before the order is stored");
+            },
+          },
+        ),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.notEqual(error.message, "Orders are unavailable until the database is configured");
+        assert.match(error.message, /database/i);
+        return true;
+      },
+    );
+  } finally {
+    if (previousKey === undefined) delete process.env.WHOP_API_KEY;
+    else process.env.WHOP_API_KEY = previousKey;
+    if (previousDb === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDb;
+  }
+});

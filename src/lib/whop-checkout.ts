@@ -47,7 +47,9 @@ export async function createWhopCardCheckout(
     paymentMethod: "whop",
     skipBankConfiguration: true,
     skipCreatedEmail: true,
-    sql: hooks.sql,
+    // An explicit test client is injected. Omitting the key lets the order
+    // use DATABASE_URL. Passing `sql: undefined` is treated as "no database".
+    ...(hooks.sql !== undefined ? { sql: hooks.sql } : {}),
   });
   const returnUrl = absoluteUrl(`/checkout/return?reference=${encodeURIComponent(order.reference)}`);
   try {
