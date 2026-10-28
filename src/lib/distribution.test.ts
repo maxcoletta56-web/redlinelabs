@@ -94,12 +94,23 @@ test("a quote stores the sheet box price, and the desk can replace it", () => {
   const tooFew = parseQuoteRequest(short, offers);
   if (!tooFew.ok) assert.equal(tooFew.error, "minimum");
 
-  const four = new FormData();
-  four.set("box_Dsip15", "5");
-  four.set("box_Motc10", "4");
-  const belowItemMinimum = parseQuoteRequest(four, offers);
-  assert.equal(belowItemMinimum.ok, false);
-  if (!belowItemMinimum.ok) assert.equal(belowItemMinimum.error, "minimum");
+  const shortMix = new FormData();
+  shortMix.set("box_Dsip15", "2");
+  shortMix.set("box_Motc10", "2");
+  const belowTotal = parseQuoteRequest(shortMix, offers);
+  assert.equal(belowTotal.ok, false);
+  if (!belowTotal.ok) assert.equal(belowTotal.error, "minimum");
+
+  const split = new FormData();
+  split.set("box_Dsip15", "2");
+  split.set("box_Motc10", "3");
+  const mixed = parseQuoteRequest(split, offers);
+  assert.equal(mixed.ok, true);
+  if (!mixed.ok) return;
+  assert.equal(mixed.lines.find((line) => line.sku === "Dsip15")?.lineCents, 90000);
+  assert.equal(mixed.lines.find((line) => line.sku === "Motc10")?.boxCents, 34650);
+  assert.equal(mixed.lines.find((line) => line.sku === "Motc10")?.lineCents, 103950);
+  assert.equal(mixed.subtotalCents, 193950);
 
   const form = new FormData();
   form.set("box_Dsip15", "5");

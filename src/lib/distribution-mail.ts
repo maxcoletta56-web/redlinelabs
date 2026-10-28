@@ -142,7 +142,7 @@ export function buildDistributionDecisionEmail(
   const approved = account.status === "approved";
   const heading = approved ? "Distribution account approved" : "Distribution application not approved";
   const detail = approved
-    ? `Sign in at ${portal} to request a quote. Each box is ${DISTRIBUTION_UNITS_PER_BOX} units, and each product needs at least ${DISTRIBUTION_MIN_BOXES} boxes. Listed prices are 10% off that item, not off the order total. Quotes are tracked separately from shop orders.`
+    ? `Sign in at ${portal} to request a quote. Each box is ${DISTRIBUTION_UNITS_PER_BOX} units. The quote needs at least ${DISTRIBUTION_MIN_BOXES} boxes in total. Listed prices are 10% off that item, not off the order total. Quotes are tracked separately from shop orders.`
     : `The application for ${account.businessName} was not approved. Box prices stay hidden.`;
   const note = account.reviewNote ? `Note: ${account.reviewNote}` : "";
   const text = [
