@@ -36,3 +36,30 @@ export function checkoutTotals({
     discountCents,
   };
 }
+
+/** Card checkout takes 10% off once the catalogue subtotal reaches $200. */
+export const VOLUME_DISCOUNT_MINIMUM_CENTS = 20_000;
+export const VOLUME_DISCOUNT_PERCENT = 10;
+
+export function volumeDiscountCents(subtotalCents: number) {
+  const amount = Math.max(0, Math.round(subtotalCents));
+  if (amount < VOLUME_DISCOUNT_MINIMUM_CENTS) return 0;
+  return amount - applyPercentOff(amount, VOLUME_DISCOUNT_PERCENT);
+}
+
+/**
+ * Card total from the catalogue subtotal. The 10% volume discount is taken
+ * first. A promo code, when one applies, is taken off what remains.
+ */
+export function whopChargeCents(subtotalCents: number, promo: CheckoutPromo | null) {
+  const subtotal = Math.max(0, Math.round(subtotalCents));
+  const volume = volumeDiscountCents(subtotal);
+  const afterVolume = subtotal - volume;
+  const promoOff = promoDiscountCents(afterVolume, promo);
+  return {
+    subtotalCents: subtotal,
+    volumeDiscountCents: volume,
+    promoDiscountCents: promoOff,
+    totalCents: afterVolume - promoOff,
+  };
+}

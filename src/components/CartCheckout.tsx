@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { startCartCheckoutSession } from "@/app/actions/checkout";
+import { WhopCardCheckout } from "@/components/WhopCardCheckout";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
 import { COMPANY_EMAIL } from "@/lib/company";
 import type { CartLineInput } from "@/lib/order";
 import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
+import type { WhopEmbedSession } from "@/lib/whop-session";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** Longer than the server-side provider timeout so the server message wins. */
@@ -13,6 +15,7 @@ const SUBMIT_TIMEOUT_MS = 25_000;
 
 const PENDING_COPY = {
   bank_transfer: "Creating your order and payment instructions.",
+  whop: "Opening secure card checkout.",
   paypal: "Redirecting to PayPal card checkout to take payment.",
 } as const;
 
@@ -39,6 +42,7 @@ export function CartCheckout({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [cardSession, setCardSession] = useState<WhopEmbedSession | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +63,11 @@ export function CartCheckout({
     )
       .then((result) => {
         if (cancelled) return;
-        if (result.ok) {
+        if (result.ok && result.whop) {
+          setCardSession(result.whop);
+          return;
+        }
+        if (result.ok && result.redirectUrl) {
           window.location.assign(result.redirectUrl);
           return;
         }
@@ -89,6 +97,10 @@ export function CartCheckout({
     ageConfirmed,
     researchUse,
   ]);
+
+  if (cardSession) {
+    return <WhopCardCheckout session={cardSession} />;
+  }
 
   if (error) {
     return (

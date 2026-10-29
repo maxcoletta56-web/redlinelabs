@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ reference: string }>;
-  searchParams: Promise<{ paypal?: string | string[] }>;
+  searchParams: Promise<{ paypal?: string | string[]; whop?: string | string[] }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -54,7 +54,15 @@ function StatusBadge({ order }: { order: StoredOrder }) {
       className="text-[11px] font-semibold tracking-[0.14em] text-[#d4af37] uppercase"
       role="status"
     >
-      {paid ? "Payment received" : order.status === "cancelled" ? "Order cancelled" : "Awaiting payment"}
+      {paid
+        ? "Payment received"
+        : order.status === "cancelled"
+          ? "Order cancelled"
+          : order.status === "failed"
+            ? "Card payment failed"
+            : order.status === "pending"
+              ? "Confirming card payment"
+              : "Awaiting payment"}
     </p>
   );
 }
@@ -86,6 +94,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
 
   const paid = order.status === "paid";
   const awaiting = order.status === "awaiting_payment";
+  const cardPending = order.paymentMethod === "whop" && order.status === "pending";
+  const cardFailed = order.paymentMethod === "whop" && order.status === "failed";
   const bank = resolveBankTransfer(process.env);
   const placedAt = formatDate(order.createdAt);
   const paidAt = formatDate(order.paidAt);
@@ -95,20 +105,29 @@ export default async function OrderPage({ params, searchParams }: Props) {
     paypalConfigured(),
   );
   const paypalFlag = Array.isArray(query.paypal) ? query.paypal[0] : query.paypal;
-  const returnNotice = paypalReturnNotice(paypalFlag);
+  const whopFlag = Array.isArray(query.whop) ? query.whop[0] : query.whop;
+  const returnNotice =
+    paypalReturnNotice(paypalFlag) ??
+    (whopFlag === "return" && cardPending
+      ? "If your bank asked you to verify this card, finish that step and come back. This page updates when Whop confirms the payment. Nothing else is charged until then."
+      : null);
   const clubSignup =
     order.items.length > 0 && order.items.every((item) => item.slug === MEMBERSHIP_SLUG);
-  const statusCopy = clubSignup
-    ? paid
+  const statusCopy = paid
+    ? clubSignup
       ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. Your club sign-up is active. Your member code is in the payment email. Nothing is shipped.`
-      : "Transfer the amount below and quote the order reference. Nothing is shipped. Your member code arrives in the payment email."
-    : paid
-      ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
-      : !awaiting
-        ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
-        : paypalOrder
-          ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
-          : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day.";
+      : `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
+    : cardFailed
+      ? "The card payment did not go through. Nothing was charged. You can return to checkout and try again."
+      : cardPending
+        ? "The card payment is confirmed only after Whop sends it. If your bank opened a verification step, finish it. We'll email you when the payment clears."
+        : !awaiting
+          ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
+          : clubSignup
+            ? "Transfer the amount below and quote the order reference. Nothing is shipped. Your member code arrives in the payment email."
+            : paypalOrder
+              ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
+              : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day.";
 
   return (
     <div className="wrap max-w-[760px] py-16">
@@ -169,7 +188,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
           </div>
         )}
         <div className="flex justify-between border-t border-[rgba(212,175,55,0.16)] pt-4">
-          <span>{paid ? "Paid" : awaiting ? "Amount due" : "Order total"}</span>
+          <span>{paid ? "Paid" : awaiting || cardPending ? "Amount due" : "Order total"}</span>
           <span className="text-[#d4af37]">
             {formatPrice(order.totalCents / 100)} {order.currency.toUpperCase()}
           </span>
@@ -209,7 +228,13 @@ export default async function OrderPage({ params, searchParams }: Props) {
         </form>
       )}
 
-      {awaiting && (
+      {cardFailed && (
+        <Link href="/checkout" className="btn mb-8">
+          Return to checkout
+        </Link>
+      )}
+
+      {awaiting && order.paymentMethod !== "whop" && (
         <section className="surface mb-8 p-6" aria-labelledby="payment-instructions">
           <h2
             id="payment-instructions"

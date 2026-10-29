@@ -6,10 +6,12 @@ import {
   paymentsProvider,
   paypalCheckoutOffered,
   resolveRequestedPaymentMethod,
+  whopCheckoutOffered,
 } from "@/lib/payments-provider";
 import { PaypalOrderSavedError } from "@/lib/paypal-checkout";
 import { resolvePaypal } from "@/lib/paypal";
 import { checkoutBodySchema } from "@/lib/validation";
+import { createWhopCheckout, whopConfigured } from "@/lib/whop-checkout";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
@@ -21,25 +23,37 @@ const BANK_TRANSFER_SETUP =
 const PAYPAL_SETUP =
   "PayPal is not configured. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET. Production uses the live PayPal API.";
 
+const WHOP_SETUP =
+  "Card checkout is not configured. Add WHOP_API_KEY and DATABASE_URL. Sandbox mode is the default until WHOP_ENV=production.";
+
 export async function GET() {
   const provider = paymentsProvider();
   const paypalReady = paypalConfigured();
   const bankReady = bankTransferConfigured();
+  const cardReady = whopConfigured();
   const surface = checkoutSurface({
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured: paypalReady,
     bankTransferConfigured: bankReady,
+    whopConfigured: cardReady,
   });
   return NextResponse.json({
     provider,
     configured: surface.setup === null,
     showChoice: surface.showChoice,
+    methods: surface.methods,
     defaultMethod: surface.defaultMethod,
     setup: surface.setup,
-    paypalOffered: surface.showChoice,
+    paypalOffered: surface.paypalOffered,
+    whopOffered: surface.whopOffered,
     paypalConfigured: paypalReady,
+    whopConfigured: cardReady,
     bankTransferConfigured: bankReady,
-    mode: paypalReady ? (resolvePaypal(process.env)?.mode ?? null) : null,
+    mode: cardReady
+      ? (process.env.WHOP_ENV?.trim().toLowerCase() === "production" ? "production" : "sandbox")
+      : paypalReady
+        ? (resolvePaypal(process.env)?.mode ?? null)
+        : null,
   });
 }
 
@@ -47,6 +61,10 @@ export async function POST(request: Request) {
   const paypalOffered = paypalCheckoutOffered(
     process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured(),
+  );
+  const cardOffered = whopCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    whopConfigured(),
   );
 
   let json: unknown;
@@ -68,15 +86,22 @@ export async function POST(request: Request) {
     requested: parsed.data.paymentMethod,
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalOffered,
+    whopOffered: cardOffered,
   });
   if (method === "unavailable") {
-    return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+    return NextResponse.json(
+      { error: parsed.data.paymentMethod === "whop" ? WHOP_SETUP : PAYPAL_SETUP },
+      { status: 503 },
+    );
   }
   if (method === "bank_transfer" && !bankTransferConfigured()) {
     return NextResponse.json({ error: BANK_TRANSFER_SETUP }, { status: 503 });
   }
   if (method === "paypal" && !paypalConfigured()) {
     return NextResponse.json({ error: PAYPAL_SETUP }, { status: 503 });
+  }
+  if (method === "whop" && !whopConfigured()) {
+    return NextResponse.json({ error: WHOP_SETUP }, { status: 503 });
   }
 
   try {
@@ -97,6 +122,30 @@ export async function POST(request: Request) {
         reference: order.reference,
         redirectUrl: order.redirectUrl,
         amountCents: order.totalCents,
+        currency: "aud",
+      });
+    }
+
+    if (method === "whop") {
+      const whop = await withTimeout(
+        createWhopCheckout({
+          items: parsed.data.items,
+          email: parsed.data.email,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          shipping: parsed.data.shipping,
+          promoCode: parsed.data.promoCode,
+          club: parsed.data.club,
+          ageConfirmed: true,
+          researchUse: true,
+        }),
+        PROVIDER_TIMEOUT_MS,
+        "Card checkout",
+      );
+      return NextResponse.json({
+        provider: method,
+        reference: whop.reference,
+        whop,
         currency: "aud",
       });
     }

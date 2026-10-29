@@ -20,11 +20,13 @@ export function CartDrawer() {
     useCart();
   const { promo } = usePromo();
   const availability = useCheckoutAvailability();
-  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const { method, choose } = useSelectedPaymentMethod(availability.showChoice, availability.methods);
   const checkoutHref = availability.showChoice
-    ? method === "paypal"
-      ? "/checkout?pay=paypal"
-      : "/checkout?pay=payid"
+    ? method === "whop"
+      ? "/checkout?pay=card"
+      : method === "paypal"
+        ? "/checkout?pay=paypal"
+        : "/checkout?pay=payid"
     : "/checkout";
   const totals = checkoutTotals({ items, promo });
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -153,7 +155,13 @@ export function CartDrawer() {
             )}
             {availability.showChoice && (
               <div className="mb-4">
-                <PaymentMethodChoice value={method} onChange={choose} name="drawerPaymentMethod" stacked />
+                <PaymentMethodChoice
+                  methods={availability.methods}
+                  value={method}
+                  onChange={choose}
+                  name="drawerPaymentMethod"
+                  stacked
+                />
               </div>
             )}
             <Link

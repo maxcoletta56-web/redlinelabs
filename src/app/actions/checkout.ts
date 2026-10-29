@@ -15,6 +15,9 @@ import {
 } from "@/lib/payments-provider";
 import { PaypalOrderSavedError } from "@/lib/paypal-checkout";
 import { checkoutBodySchema } from "@/lib/validation";
+import { createWhopCheckout, whopConfigured } from "@/lib/whop-checkout";
+import type { WhopEmbedSession } from "@/lib/whop-session";
+import { whopCheckoutOffered } from "@/lib/payments-provider";
 import { withTimeout } from "@/lib/with-timeout";
 
 /** A hung card processor must not leave the browser on a spinner forever. */
@@ -26,7 +29,8 @@ const PROVIDER_TIMEOUT_MS = 15_000;
  * spinner with nothing for the customer to act on.
  */
 export type CheckoutStart =
-  | { ok: true; redirectUrl: string }
+  | { ok: true; redirectUrl: string; whop: null }
+  | { ok: true; redirectUrl: null; whop: WhopEmbedSession }
   | { ok: false; error: string };
 
 export async function startCartCheckoutSession(input: {
@@ -61,13 +65,24 @@ export async function startCartCheckoutSession(input: {
     process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalConfigured(),
   );
+  const cardOffered = whopCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    whopConfigured(),
+  );
   const method = resolveRequestedPaymentMethod({
     requested: parsed.data.paymentMethod,
     envValue: process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
     paypalOffered,
+    whopOffered: cardOffered,
   });
   if (method === "unavailable") {
-    return { ok: false, error: "PayPal checkout is not available. Nothing has been charged." };
+    return {
+      ok: false,
+      error:
+        parsed.data.paymentMethod === "whop"
+          ? "Card checkout is not available. Nothing has been charged."
+          : "PayPal checkout is not available. Nothing has been charged.",
+    };
   }
 
   try {
@@ -83,7 +98,26 @@ export async function startCartCheckoutSession(input: {
         ageConfirmed: true,
         researchUse: true,
       });
-      return { ok: true, redirectUrl: order.redirectUrl };
+      return { ok: true, redirectUrl: order.redirectUrl, whop: null };
+    }
+
+    if (method === "whop") {
+      const whop = await withTimeout(
+        createWhopCheckout({
+          items: parsed.data.items,
+          email: parsed.data.email,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          shipping: input.shipping,
+          promoCode: parsed.data.promoCode,
+          club: parsed.data.club,
+          ageConfirmed: true,
+          researchUse: true,
+        }),
+        PROVIDER_TIMEOUT_MS,
+        "Card checkout",
+      );
+      return { ok: true, redirectUrl: null, whop };
     }
 
     const redirectUrl = await withTimeout(
@@ -100,10 +134,10 @@ export async function startCartCheckoutSession(input: {
       PROVIDER_TIMEOUT_MS,
       "PayPal",
     );
-    return { ok: true, redirectUrl };
+    return { ok: true, redirectUrl, whop: null };
   } catch (error) {
     if (error instanceof PaypalOrderSavedError) {
-      return { ok: true, redirectUrl: `/order/${error.reference}?paypal=unavailable` };
+      return { ok: true, redirectUrl: `/order/${error.reference}?paypal=unavailable`, whop: null };
     }
     console.error("[checkout] submit failed", {
       provider: method,
@@ -119,7 +153,9 @@ export async function startCartCheckoutSession(input: {
       error:
         method === "bank_transfer"
           ? "We could not create your order. Nothing has been charged."
-          : "PayPal did not respond. Nothing has been charged.",
+          : method === "whop"
+            ? "Card checkout did not open. Nothing has been charged."
+            : "PayPal did not respond. Nothing has been charged.",
     };
   }
 }
