@@ -6,10 +6,36 @@ import { ProductImage } from "@/components/ProductImage";
 import { PromoCodeForm } from "@/components/PromoCodeForm";
 import { MAX_QTY, itemKey, useCart } from "@/lib/cart";
 import { useCheckoutAvailability } from "@/components/PaymentMethodChoice";
+import type { CheckoutPaymentMethod } from "@/lib/payments-provider";
 import { checkoutTotals } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
+
+function checkoutRailCopy(availability: {
+  showChoice: boolean;
+  defaultMethod: CheckoutPaymentMethod;
+  methods: readonly CheckoutPaymentMethod[];
+}) {
+  if (!availability.showChoice) {
+    if (availability.defaultMethod === "paypal") {
+      return "Checkout is charged through PayPal card checkout.";
+    }
+    if (availability.defaultMethod === "whop") {
+      return "Checkout is paid by card on this site.";
+    }
+    return "Checkout is paid by Australian bank transfer or PayID.";
+  }
+  const names = [
+    availability.methods.includes("bank_transfer") ? "PayID / bank transfer" : null,
+    availability.methods.includes("whop") ? "card" : null,
+    availability.methods.includes("paypal") ? "PayPal" : null,
+  ].filter((name): name is string => name !== null);
+  if (names.length < 2) return "Checkout is paid by Australian bank transfer or PayID.";
+  const last = names[names.length - 1];
+  const listed = names.slice(0, -1).join(", ");
+  return `Checkout can be paid by ${listed}${names.length > 2 ? "," : ""} or ${last}.`;
+}
 
 export default function CartPage() {
   const { items, updateQty, removeItem } = useCart();
@@ -107,12 +133,7 @@ export default function CartPage() {
               </div>
             )}
             <p className="mb-4 text-xs leading-6 text-[#8f8c84]">
-              {availability.showChoice
-                ? "Checkout can be paid by PayID / bank transfer, or with PayPal or card."
-                : availability.defaultMethod === "paypal"
-                  ? "Checkout is charged through PayPal card checkout."
-                  : "Checkout is paid by Australian bank transfer or PayID."}{" "}
-              Apply a coupon for 20% off the
+              {checkoutRailCopy(availability)} Apply a coupon for 20% off the
               total order amount. Dispatch notes are on the{" "}
               <Link href="/shipping-policy" className="text-[#d4af37]">
                 Shipping Policy
