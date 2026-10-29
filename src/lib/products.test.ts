@@ -17,6 +17,20 @@ const products = JSON.parse(
   readFileSync(new URL("../data/products.json", import.meta.url), "utf8"),
 ) as CatalogProduct[];
 
+test("catalogue names are uppercase so they match the vial labels", () => {
+  for (const product of products) {
+    assert.equal(product.name, product.name.toUpperCase(), product.slug);
+  }
+});
+
+test("SLU-PP-332 uses one compound name", () => {
+  const product = products.find((entry) => entry.slug === "slu-pp-332");
+  assert.ok(product);
+  assert.equal(product.name, "SLU-PP-332");
+  assert.equal(product.description.includes("SLU-PP-322"), false);
+  assert.equal(product.description.includes("Catalogue name"), false);
+});
+
 test("every listing has a SKU and unique slugs", () => {
   const slugs = products.map((product) => product.slug);
   assert.equal(new Set(slugs).size, slugs.length);

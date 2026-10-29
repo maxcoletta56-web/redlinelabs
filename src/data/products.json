@@ -33,7 +33,7 @@
   },
   {
     "id": 118,
-    "name": "Epitalon",
+    "name": "EPITALON",
     "slug": "epitalon",
     "sku": "Epi50",
     "categories": [
@@ -229,7 +229,7 @@
       "ENERGY"
     ],
     "image": "/products/slu-pp-332.jpg",
-    "description": "SLU-PP-332 is a small-molecule research compound described in published literature as an agonist of estrogen-related receptors (ERR\u03b1/\u03b2/\u03b3). Experimental work has examined mitochondrial and oxidative-metabolism pathways in laboratory models. Supplied for laboratory research only. (Catalogue name: SLU-PP-322.)",
+    "description": "SLU-PP-332 is a small-molecule research compound described in published literature as an agonist of estrogen-related receptors (ERR\u03b1/\u03b2/\u03b3). Experimental work has examined mitochondrial and oxidative-metabolism pathways in laboratory models. Supplied for laboratory research only.",
     "variantLabel": null,
     "variants": [],
     "minPrice": 165,
@@ -299,7 +299,7 @@
   },
   {
     "id": 195,
-    "name": "Kisspeptin",
+    "name": "KISSPEPTIN",
     "slug": "kisspeptin",
     "sku": "Kisspep",
     "categories": [
@@ -555,7 +555,7 @@
   },
   {
     "id": 139,
-    "name": "Semax",
+    "name": "SEMAX",
     "slug": "semax",
     "sku": "Semax130",
     "categories": [
