@@ -8,6 +8,8 @@ import {
   useCheckoutAvailability,
   useSelectedPaymentMethod,
 } from "@/components/PaymentMethodChoice";
+import { WhopCardCheckout } from "@/components/WhopCardCheckout";
+import type { WhopEmbedSession } from "@/lib/whop-session";
 import { useAccount } from "@/lib/account";
 import { MEMBERSHIP_PRICE_CENTS, MEMBERSHIP_SLUG } from "@/lib/membership";
 import { formatPrice } from "@/lib/products";
@@ -19,9 +21,10 @@ import { formatPrice } from "@/lib/products";
 export function ClubJoinForm() {
   const { user, hydrated } = useAccount();
   const availability = useCheckoutAvailability();
-  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const { method, choose } = useSelectedPaymentMethod(availability.showChoice, availability.methods);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [cardSession, setCardSession] = useState<WhopEmbedSession | null>(null);
   const price = formatPrice(MEMBERSHIP_PRICE_CENTS / 100);
 
   if (!hydrated) {
@@ -47,6 +50,14 @@ export function ClubJoinForm() {
   }
 
   const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
+
+  if (cardSession) {
+    return (
+      <div className="surface space-y-4 p-6">
+        <WhopCardCheckout session={cardSession} />
+      </div>
+    );
+  }
 
   return (
     <form
@@ -80,7 +91,12 @@ export function ClubJoinForm() {
           researchUse: true,
         })
           .then((result) => {
-            if (result.ok) {
+            if (result.ok && result.whop) {
+              setCardSession(result.whop);
+              setPending(false);
+              return;
+            }
+            if (result.ok && result.redirectUrl) {
               window.location.assign(result.redirectUrl);
               return;
             }
@@ -98,7 +114,7 @@ export function ClubJoinForm() {
         shipped.
       </p>
       {availability.showChoice && (
-        <PaymentMethodChoice value={paymentMethod} onChange={choose} />
+        <PaymentMethodChoice methods={availability.methods} value={paymentMethod} onChange={choose} />
       )}
       <label className="flex items-start gap-3 text-sm leading-6 text-[#cfc8b8]">
         <input name="ageConfirmed" type="checkbox" className="mt-1" />

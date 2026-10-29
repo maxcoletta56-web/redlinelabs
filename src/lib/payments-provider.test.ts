@@ -8,6 +8,7 @@ import {
   parsePaymentsProvider,
   paypalCheckoutOffered,
   resolveRequestedPaymentMethod,
+  whopCheckoutOffered,
 } from "./payments-provider.ts";
 
 test("bank transfer is the default rail", () => {
@@ -89,6 +90,40 @@ test("a legacy paypal env without PayID stays on the PayPal page", () => {
   assert.equal(ready.showChoice, false);
   assert.equal(ready.defaultMethod, "bank_transfer");
   assert.equal(ready.setup, null);
+});
+
+test("Whop card checkout sits beside PayID and the kill switch hides it", () => {
+  assert.equal(whopCheckoutOffered(undefined, false), false);
+  assert.equal(whopCheckoutOffered("bank_transfer_only", true), false);
+  assert.equal(whopCheckoutOffered("bank_transfer", true), true);
+
+  const card = checkoutPaymentChoices({
+    envValue: "bank_transfer",
+    paypalConfigured: false,
+    whopConfigured: true,
+    bankTransferConfigured: true,
+  });
+  assert.equal(card.showChoice, true);
+  assert.deepEqual(card.methods, ["bank_transfer", "whop"]);
+  assert.equal(card.defaultMethod, "bank_transfer");
+  assert.equal(CHECKOUT_METHOD_LABELS.whop, "Pay by card");
+  assert.equal(
+    resolveRequestedPaymentMethod({
+      requested: "whop",
+      envValue: "bank_transfer_only",
+      paypalOffered: false,
+      whopOffered: false,
+    }),
+    "unavailable",
+  );
+  assert.equal(
+    resolveRequestedPaymentMethod({
+      requested: "whop",
+      paypalOffered: false,
+      whopOffered: true,
+    }),
+    "whop",
+  );
 });
 
 test("an omitted payment method follows the legacy rail", () => {

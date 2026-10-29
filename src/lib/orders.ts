@@ -3,7 +3,7 @@ import { MEMBERSHIP_SLUG } from "./membership.ts";
 import { generateOrderReference, normalizeOrderReference } from "./order-reference.ts";
 import type { CheckoutPaymentMethod } from "./payments-provider.ts";
 
-export const ORDER_STATUSES = ["awaiting_payment", "paid", "cancelled"] as const;
+export const ORDER_STATUSES = ["awaiting_payment", "pending", "paid", "failed", "cancelled"] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -45,6 +45,9 @@ export type StoredOrder = {
   clubDiscountCents: number;
   paymentMethod: CheckoutPaymentMethod;
   paypalOrderId: string | null;
+  whopPaymentId: string | null;
+  whopCheckoutId: string | null;
+  whopPlanId: string | null;
   createdAt: string | null;
   paidAt: string | null;
 };
@@ -66,6 +69,9 @@ export type NewOrder = {
   clubDiscountCents?: number;
   paymentMethod?: CheckoutPaymentMethod;
   paypalOrderId?: string | null;
+  whopPaymentId?: string | null;
+  whopCheckoutId?: string | null;
+  whopPlanId?: string | null;
 };
 
 export class OrderCancelledError extends Error {
@@ -101,7 +107,10 @@ export const CREATE_ORDERS = `CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ,
   payment_method TEXT NOT NULL DEFAULT 'bank_transfer',
-  paypal_order_id TEXT
+  paypal_order_id TEXT,
+  whop_payment_id TEXT,
+  whop_checkout_id TEXT,
+  whop_plan_id TEXT
 )`;
 
 /** Postgres returns timestamptz in a driver-dependent shape, so pin it to ISO-8601 here. */
@@ -124,13 +133,16 @@ const ORDER_COLUMNS = [
   "club_discount_cents",
   "payment_method",
   "paypal_order_id",
+  "whop_payment_id",
+  "whop_checkout_id",
+  "whop_plan_id",
   `to_char(created_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS created_at`,
   `to_char(paid_at AT TIME ZONE 'UTC', ${ISO_UTC}) AS paid_at`,
 ].join(", ");
 
 const INSERT_ORDER =
-  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, club_discount_cents, payment_method, paypal_order_id) " +
-  "VALUES ($1, 'awaiting_payment', $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15) " +
+  "INSERT INTO orders (reference, status, currency, subtotal_cents, total_cents, promo_code, first_name, last_name, email, items, shipping, club_email, club_points_redeemed, club_discount_cents, payment_method, paypal_order_id, whop_payment_id, whop_checkout_id, whop_plan_id) " +
+  "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13, $14, $15, $16, $17, $18, $19) " +
   "ON CONFLICT (reference) DO NOTHING RETURNING reference";
 
 const ATTACH_PAYPAL_ORDER =
@@ -150,7 +162,24 @@ const MARK_ORDER_PAID =
   `AND NOT (status = 'cancelled' AND club_points_redeemed > 0) RETURNING ${ORDER_COLUMNS}`;
 
 const CANCEL_ORDER =
-  `UPDATE orders SET status = 'cancelled' WHERE reference = $1 AND status = 'awaiting_payment' ` +
+  `UPDATE orders SET status = 'cancelled' WHERE reference = $1 AND status IN ('awaiting_payment', 'pending', 'failed') ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+const ATTACH_WHOP_CHECKOUT =
+  "UPDATE orders SET whop_checkout_id = $2, whop_plan_id = $3 WHERE reference = $1 AND payment_method = 'whop' AND status = 'pending' " +
+  "RETURNING reference";
+
+const MARK_WHOP_PAID =
+  `UPDATE orders SET status = 'paid', paid_at = COALESCE(paid_at, now()), whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND payment_method = 'whop' AND total_cents = $3 AND lower(currency) = lower($4) ` +
+  `AND status IN ('pending', 'failed', 'awaiting_payment') ` +
+  `AND (whop_payment_id IS NULL OR whop_payment_id = $2 OR status = 'failed') ` +
+  `RETURNING ${ORDER_COLUMNS}`;
+
+const MARK_WHOP_FAILED =
+  `UPDATE orders SET status = 'failed', whop_payment_id = $2 ` +
+  `WHERE reference = $1 AND payment_method = 'whop' AND total_cents = $3 AND lower(currency) = lower($4) ` +
+  `AND status = 'pending' AND (whop_payment_id IS NULL OR whop_payment_id = $2) ` +
   `RETURNING ${ORDER_COLUMNS}`;
 
 export function ensureOrdersTable(sql: Sql) {
@@ -204,7 +233,14 @@ function readItems(value: unknown): OrderItemSnapshot[] {
 }
 
 function readPaymentMethod(value: unknown): CheckoutPaymentMethod {
-  return value === "paypal" ? "paypal" : "bank_transfer";
+  if (value === "paypal") return "paypal";
+  if (value === "whop") return "whop";
+  return "bank_transfer";
+}
+
+function storedPaymentMethod(method: CheckoutPaymentMethod | undefined): CheckoutPaymentMethod {
+  if (method === "paypal" || method === "whop") return method;
+  return "bank_transfer";
 }
 
 function readShipping(value: unknown): OrderShippingSnapshot | null {
@@ -248,6 +284,9 @@ export function readOrderRow(row: unknown): StoredOrder | null {
     clubDiscountCents: readInt(record.club_discount_cents),
     paymentMethod: readPaymentMethod(record.payment_method),
     paypalOrderId: readText(record.paypal_order_id) || null,
+    whopPaymentId: readText(record.whop_payment_id) || null,
+    whopCheckoutId: readText(record.whop_checkout_id) || null,
+    whopPlanId: readText(record.whop_plan_id) || null,
     createdAt: readTimestamp(record.created_at),
     paidAt: readTimestamp(record.paid_at),
   };
@@ -271,8 +310,10 @@ export async function insertOrder(
   if (order.reference && !fixed) throw new Error("Invalid order reference");
   for (let attempt = 0; attempt < (fixed ? 1 : attempts); attempt += 1) {
     const reference = fixed ?? generateOrderReference();
+    const paymentMethod = storedPaymentMethod(order.paymentMethod);
     const result = await sql.query(INSERT_ORDER, [
       reference,
+      paymentMethod === "whop" ? "pending" : "awaiting_payment",
       order.currency,
       order.subtotalCents,
       order.totalCents,
@@ -285,8 +326,11 @@ export async function insertOrder(
       order.clubEmail ?? null,
       Math.max(0, Math.floor(order.clubPointsRedeemed ?? 0)),
       Math.max(0, Math.floor(order.clubDiscountCents ?? 0)),
-      order.paymentMethod === "paypal" ? "paypal" : "bank_transfer",
+      paymentMethod,
       order.paypalOrderId ?? null,
+      order.whopPaymentId ?? null,
+      order.whopCheckoutId ?? null,
+      order.whopPlanId ?? null,
     ]);
     if (rowsOf(result).length > 0) return reference;
   }
@@ -332,6 +376,66 @@ export async function attachPaypalOrderId(
   await ensureOrdersTable(database);
   const result = await database.query(ATTACH_PAYPAL_ORDER, [normalized, paypalOrderId.trim()]);
   return rowsOf(result).length > 0;
+}
+
+/** Stores the checkout configuration created for a pending card order. */
+export async function attachWhopCheckout(
+  reference: string,
+  checkoutId: string,
+  planId: string,
+  sql: Sql | null | undefined = getSql(),
+): Promise<boolean> {
+  const normalized = normalizeOrderReference(reference);
+  const database = sql === undefined ? getSql() : sql;
+  const checkout = checkoutId.trim();
+  const plan = planId.trim();
+  if (!normalized || !checkout || !plan) return false;
+  if (!database) throw new OrdersUnavailableError();
+  await ensureOrdersTable(database);
+  const result = await database.query(ATTACH_WHOP_CHECKOUT, [normalized, checkout, plan]);
+  return rowsOf(result).length > 0;
+}
+
+export type WhopPaymentUpdate = {
+  reference: string;
+  paymentId: string;
+  amountCents: number;
+  currency: string;
+};
+
+/** One row updated means this call won the payment-id transition. */
+export async function markWhopOrderPaid(
+  update: WhopPaymentUpdate,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(update.reference);
+  if (!normalized) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_WHOP_PAID, [
+    normalized,
+    update.paymentId,
+    update.amountCents,
+    update.currency,
+  ]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
+}
+
+export async function markWhopOrderFailed(
+  update: WhopPaymentUpdate,
+  sql: Sql | null = getSql(),
+): Promise<StoredOrder | null> {
+  const normalized = normalizeOrderReference(update.reference);
+  if (!normalized) return null;
+  if (!sql) throw new OrdersUnavailableError();
+  await ensureOrdersTable(sql);
+  const result = await sql.query(MARK_WHOP_FAILED, [
+    normalized,
+    update.paymentId,
+    update.amountCents,
+    update.currency,
+  ]);
+  return readOrderRow(rowsOf(result)[0]) ?? null;
 }
 
 /** Idempotent: re-posting keeps the original paid_at. */

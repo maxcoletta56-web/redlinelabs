@@ -16,7 +16,7 @@ import { useAccount } from "@/lib/account";
 import { AU_STATES, defaultAddress, formatAddress, isAuState, type SavedAddress } from "@/lib/account-data";
 import { useCart } from "@/lib/cart";
 import type { ShippingAddressInput } from "@/lib/checkout-session";
-import { checkoutTotals } from "@/lib/promo-pricing";
+import { checkoutTotals, whopChargeCents } from "@/lib/promo-pricing";
 import { usePromo } from "@/lib/promo-state";
 import { formatPrice, optionLabel } from "@/lib/products";
 import { centsToDollars } from "@/lib/store-credit";
@@ -76,6 +76,23 @@ const PROVIDER_COPY = {
       </>
     ),
   },
+  whop: {
+    intro:
+      "Payment stays on this page. Card details are collected by Whop. If your bank asks you to verify the payment, finish that step in the card form.",
+    paying: "Paying as",
+    payingDetail: "The card form below charges the catalogue total in AUD.",
+    addressNote: "This address is saved with the order before the card form opens.",
+    creditNote: "It is not deducted from the card total.",
+    summaryNote:
+      "Orders of $200 or more take 10% off before any coupon. Store credit saved in this browser is not deducted. The amount charged is calculated on the server from the catalogue.",
+    setup: (
+      <>
+        Card checkout is not configured. Add <code className="text-[#d4af37]">WHOP_API_KEY</code> and{" "}
+        <code className="text-[#d4af37]">DATABASE_URL</code>. Sandbox mode is on until{" "}
+        <code className="text-[#d4af37]">WHOP_ENV=production</code>.
+      </>
+    ),
+  },
   paypal: {
     intro:
       "Payment continues on PayPal card checkout. PayPal collects the card, and the charge is sent to the merchant account. You return here after payment.",
@@ -98,7 +115,7 @@ const PROVIDER_COPY = {
 
 export default function CheckoutPage() {
   const availability = useCheckoutAvailability();
-  const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
+  const { method, choose } = useSelectedPaymentMethod(availability.showChoice, availability.methods);
   const copy =
     PROVIDER_COPY[availability.showChoice ? method : availability.defaultMethod];
   const paymentMethod = availability.showChoice ? method : availability.defaultMethod;
@@ -129,8 +146,11 @@ export default function CheckoutPage() {
     items,
     promo,
   });
+  const cardCharge =
+    paymentMethod === "whop" ? whopChargeCents(totals.catalogCents, promo) : null;
   const browserCreditCents = user?.storeCreditCents ?? 0;
-  const payable = centsToDollars(totals.discountedCents);
+  const payable = centsToDollars(cardCharge?.totalCents ?? totals.discountedCents);
+  const promoOffCents = cardCharge?.promoDiscountCents ?? totals.discountCents;
   const summaryItems = items;
 
   const cartItems = useMemo(
@@ -306,7 +326,7 @@ export default function CheckoutPage() {
               </fieldset>
             )}
             {availability.showChoice && (
-              <PaymentMethodChoice value={method} onChange={choose} />
+              <PaymentMethodChoice methods={availability.methods} value={method} onChange={choose} />
             )}
             <p className="text-sm leading-6 text-[#8f8c84]">{copy.intro}</p>
             <fieldset className="space-y-4">
@@ -465,11 +485,19 @@ export default function CheckoutPage() {
           <span className="text-[#d4af37]">{formatPrice(centsToDollars(totals.catalogCents))}</span>
         </div>
         <PromoCodeForm id="summary-checkout-code" />
-        {totals.discountCents > 0 && (
+        {(cardCharge?.volumeDiscountCents ?? 0) > 0 && (
+          <div className="mb-3 flex justify-between text-sm">
+            <span>10% off orders over $200</span>
+            <span className="text-[#d4af37]">
+              −{formatPrice(centsToDollars(cardCharge?.volumeDiscountCents ?? 0))}
+            </span>
+          </div>
+        )}
+        {promoOffCents > 0 && (
           <div className="mb-3 flex justify-between text-sm">
             <span>{promo?.percentOff}% off total</span>
             <span className="text-[#d4af37]">
-              −{formatPrice(centsToDollars(totals.discountCents))}
+              −{formatPrice(centsToDollars(promoOffCents))}
             </span>
           </div>
         )}
