@@ -21,11 +21,13 @@ export function CartDrawer() {
   const { promo } = usePromo();
   const availability = useCheckoutAvailability();
   const { method, choose } = useSelectedPaymentMethod(availability.showChoice);
-  const checkoutHref = availability.showChoice
-    ? method === "paypal"
-      ? "/checkout?pay=paypal"
-      : "/checkout?pay=payid"
-    : "/checkout";
+  const checkoutHref = !availability.showChoice
+    ? "/checkout"
+    : method === "whop"
+      ? "/checkout?pay=card"
+      : method === "paypal"
+        ? "/checkout?pay=paypal"
+        : "/checkout?pay=payid";
   const totals = checkoutTotals({ items, promo });
   const closeRef = useRef<HTMLButtonElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -153,7 +155,13 @@ export function CartDrawer() {
             )}
             {availability.showChoice && (
               <div className="mb-4">
-                <PaymentMethodChoice value={method} onChange={choose} name="drawerPaymentMethod" stacked />
+                <PaymentMethodChoice
+                  value={method}
+                  onChange={choose}
+                  methods={availability.methods}
+                  name="drawerPaymentMethod"
+                  stacked
+                />
               </div>
             )}
             <Link
