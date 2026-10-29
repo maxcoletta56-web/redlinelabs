@@ -110,6 +110,46 @@ test("a legacy paypal env without PayID stays on the PayPal page", () => {
   assert.equal(ready.setup, null);
 });
 
+test("card checkout appears beside PayID when Whop is configured, and does not reveal PayPal", () => {
+  const card = checkoutPaymentChoices({
+    envValue: "bank_transfer",
+    paypalConfigured: true,
+    bankTransferConfigured: true,
+    whopConfigured: true,
+  });
+  assert.equal(card.paypalOffered, false);
+  assert.equal(card.whopOffered, true);
+  assert.equal(card.showChoice, true);
+  assert.deepEqual(card.methods, ["bank_transfer", "whop"]);
+  assert.equal(card.defaultMethod, "bank_transfer");
+  assert.equal(CHECKOUT_METHOD_LABELS.whop, "Pay by card");
+
+  const withPaypal = checkoutPaymentChoices({
+    envValue: "paypal",
+    paypalConfigured: true,
+    bankTransferConfigured: true,
+    whopConfigured: true,
+  });
+  assert.deepEqual(withPaypal.methods, ["bank_transfer", "whop", "paypal"]);
+
+  assert.equal(
+    resolveRequestedPaymentMethod({
+      requested: "whop",
+      paypalOffered: false,
+      whopOffered: true,
+    }),
+    "whop",
+  );
+  assert.equal(
+    resolveRequestedPaymentMethod({
+      requested: "whop",
+      paypalOffered: true,
+      whopOffered: false,
+    }),
+    "unavailable",
+  );
+});
+
 test("an omitted payment method follows the legacy rail", () => {
   assert.equal(
     resolveRequestedPaymentMethod({ envValue: "paypal", paypalOffered: true }),
