@@ -6,6 +6,9 @@ photograph and replaces the product name and dose so the label matches
 src/data/products.json. Dose text follows the same rules as
 src/lib/variant-label.ts: numeric options gain MG, IU, or ML; form
 options such as Nasal Spray stay off the strength badge.
+
+The strength sits in a gold double rule, the same mark used on the
+house label, so every listing reads as one design.
 """
 
 from __future__ import annotations
@@ -104,20 +107,24 @@ def draw_filter(lines: list[str], name_size: int, dose: str | None) -> str:
     if dose:
         dose_size = fit_size(dose, DOSE_MAX_W, 15, 24)
         dose_w = text_width(dose, dose_size)
-        badge_h = round(CAP_RATIO * dose_size + 26)
-        badge_w = round(dose_w + 44)
-        badge_y = 646
+        badge_h = round(CAP_RATIO * dose_size + 28)
+        badge_w = max(148, round(dose_w + 48))
+        badge_y = 640
         badge_x = round((1024 - badge_w) / 2)
         text_y = round(badge_y + (badge_h - CAP_RATIO * dose_size) / 2)
         filters.append(
             f"drawbox=x={badge_x}:y={badge_y}:w={badge_w}:h={badge_h}:"
-            "color=0xF4F4F4@1:t=fill"
+            "color=0xD4AF37:t=2"
+        )
+        filters.append(
+            f"drawbox=x={badge_x + 5}:y={badge_y + 5}:w={badge_w - 10}:h={badge_h - 10}:"
+            "color=0xD4AF37:t=1"
         )
         filters.append(
             "drawtext="
             f"fontfile={FONT}:"
             f"text='{escape_drawtext(dose)}':"
-            "fontcolor=0x111111:"
+            "fontcolor=0xD4AF37:"
             f"fontsize={dose_size}:"
             "x=(w-text_w)/2:"
             f"y={text_y}"
