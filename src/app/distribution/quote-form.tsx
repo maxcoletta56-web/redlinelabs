@@ -56,8 +56,8 @@ export function QuoteForm({ offers, minBoxes }: { offers: QuoteOffer[]; minBoxes
           placeholder="Name or SKU"
         />
         <p className="mt-3 text-sm leading-6 text-[#8f8c84]">
-          Each box is {offers[0]?.unitsPerBox ?? 10} units. The price shown is 10% off that item. Each product needs at
-          least {minBoxes} boxes. Empty rows are left off the quote.
+          Each box is {offers[0]?.unitsPerBox ?? 10} units. The price shown is 10% off that item. The quote needs at
+          least {minBoxes} boxes in total. Empty rows are left off the quote.
         </p>
       </div>
       {groups.map((group) => {
@@ -92,11 +92,10 @@ export function QuoteForm({ offers, minBoxes }: { offers: QuoteOffer[]; minBoxes
                     <input
                       name={boxFieldName(offer.sku)}
                       type="number"
-                      min={minBoxes}
+                      min={1}
                       max={50}
                       step={1}
                       inputMode="numeric"
-                      placeholder={String(minBoxes)}
                       aria-label={`Boxes of ${offer.name} ${offer.optionLabel}`}
                       className="field w-full"
                     />

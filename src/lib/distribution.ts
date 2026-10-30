@@ -6,8 +6,8 @@ import { optionLabel } from "./variant-label.ts";
 /**
  * Distribution accounts are a separate login from shop accounts.
  * A box is 10 retail units. The shop catalogue price is unchanged.
- * Listed products carry a distributor price per box. Each product needs at
- * least five boxes. That price is 10% off the sheet price for the item.
+ * Listed products carry a distributor price per box. A quote needs at least
+ * five boxes in total. That price is 10% off the sheet price for the item.
  * The discount is not taken off the order total. The desk can still replace
  * a box price on a saved quote.
  */
@@ -89,7 +89,7 @@ export const DISTRIBUTION_ERRORS = {
   unconfigured: "Distribution sign-in is not configured.",
   credentials: "Email or password was not recognised.",
   empty: "Enter at least one box.",
-  minimum: "Each product needs at least 5 boxes.",
+  minimum: "The quote needs at least 5 boxes in total.",
   quote: "Check the box quantities and try again.",
   note: "Keep the note under 500 characters.",
   forbidden: "Quote requests are available after the application is approved.",
@@ -353,7 +353,6 @@ export function parseQuoteRequest(
     }
     const offer = bySku.get(sku);
     if (!offer) return { ok: false, error: "quote" };
-    if (boxes < DISTRIBUTION_MIN_BOXES) return { ok: false, error: "minimum" };
     const boxCents = offer.boxCents;
     lines.push({
       slug: offer.slug,
@@ -372,6 +371,7 @@ export function parseQuoteRequest(
   if (lines.length === 0) return { ok: false, error: "empty" };
   if (lines.length > MAX_QUOTE_LINES) return { ok: false, error: "quote" };
   const totalBoxes = lines.reduce((sum, line) => sum + line.boxes, 0);
+  if (totalBoxes < DISTRIBUTION_MIN_BOXES) return { ok: false, error: "minimum" };
   if (totalBoxes > MAX_BOXES_PER_QUOTE) return { ok: false, error: "quote" };
   return {
     ok: true,

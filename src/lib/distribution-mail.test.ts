@@ -51,7 +51,7 @@ test("approval mail points at the distribution login and quote mail is not a sho
     ENV,
   );
   assert.match(decision.text, /10% off that item, not off the order total/);
-  assert.match(decision.text, /at least 5 boxes/);
+  assert.match(decision.text, /at least 5 boxes in total/);
   assert.equal(decision.text.includes("30%"), false);
   assert.match(decision.text, /https:\/\/redlinelabs.shop\/distribution/);
   assert.equal(decision.text.includes("/shop"), false);

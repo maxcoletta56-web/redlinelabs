@@ -114,7 +114,7 @@ function SignedOut({
             <li>Submit an application. Approval is selective.</li>
             <li>Sign in on this page. A shop sign-in does not open distribution quotes.</li>
             <li>
-              Request at least {DISTRIBUTION_MIN_BOXES} boxes of each product. The box price is 10% off that item. It is
+              Request at least {DISTRIBUTION_MIN_BOXES} boxes in total. The box price is 10% off that item. It is
               not charged at shop checkout.
             </li>
           </ul>
@@ -238,10 +238,10 @@ function ApprovedPortal({
       <section>
         <h2 className="text-xl font-semibold text-white">Request a box quote</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#8f8c84]">
-          {account.businessName} is approved. A box is {DISTRIBUTION_UNITS_PER_BOX} units, and each product needs at
-          least {DISTRIBUTION_MIN_BOXES} boxes. The price on a listed product is 10% off that item. The discount is not
-          taken off the order total. A saved quote is a request, not a shop order, and it is not paid here. Each quote
-          gets a DQ reference so it can be tracked on the distribution desk.
+          {account.businessName} is approved. A box is {DISTRIBUTION_UNITS_PER_BOX} units. The quote needs at least{" "}
+          {DISTRIBUTION_MIN_BOXES} boxes in total, in any mix of products. The price on a listed product is 10% off that
+          item. The discount is not taken off the order total. A saved quote is a request, not a shop order, and it is
+          not paid here. Each quote gets a DQ reference so it can be tracked on the distribution desk.
         </p>
         <div className="mt-8">
           <QuoteForm offers={offers} minBoxes={DISTRIBUTION_MIN_BOXES} />
