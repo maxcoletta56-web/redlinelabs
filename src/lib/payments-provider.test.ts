@@ -30,18 +30,19 @@ test("known providers are read case insensitively", () => {
   assert.equal(parsePaymentsProvider("Bank_Transfer"), "bank_transfer");
 });
 
-test("PayPal is hidden unless credentials exist and the kill switch is off", () => {
+test("PayPal stays hidden unless the flag is paypal and credentials exist", () => {
   assert.equal(paypalCheckoutOffered(undefined, false), false);
   assert.equal(paypalCheckoutOffered("paypal", false), false);
   assert.equal(paypalCheckoutOffered("bank_transfer", false), false);
+  assert.equal(paypalCheckoutOffered(undefined, true), false);
+  assert.equal(paypalCheckoutOffered("bank_transfer", true), false);
   assert.equal(paypalCheckoutOffered("bank_transfer_only", true), false);
   assert.equal(paypalCheckoutOffered(" BANK_TRANSFER_ONLY ", true), false);
-  assert.equal(paypalCheckoutOffered(undefined, true), true);
-  assert.equal(paypalCheckoutOffered("bank_transfer", true), true);
   assert.equal(paypalCheckoutOffered("paypal", true), true);
+  assert.equal(paypalCheckoutOffered(" PAYPAL ", true), true);
 });
 
-test("checkout offers PayID by default and PayPal beside it when both can run", () => {
+test("checkout offers PayID alone, and PayPal beside it only when explicitly enabled", () => {
   const hidden = checkoutPaymentChoices({
     envValue: "bank_transfer",
     paypalConfigured: false,
@@ -51,6 +52,15 @@ test("checkout offers PayID by default and PayPal beside it when both can run", 
   assert.deepEqual(hidden.methods, ["bank_transfer"]);
   assert.equal(hidden.defaultMethod, "bank_transfer");
 
+  const credentialsStillHidden = checkoutPaymentChoices({
+    envValue: "bank_transfer",
+    paypalConfigured: true,
+    bankTransferConfigured: true,
+  });
+  assert.equal(credentialsStillHidden.paypalOffered, false);
+  assert.equal(credentialsStillHidden.showChoice, false);
+  assert.deepEqual(credentialsStillHidden.methods, ["bank_transfer"]);
+
   const killed = checkoutPaymentChoices({
     envValue: "bank_transfer_only",
     paypalConfigured: true,
@@ -58,6 +68,15 @@ test("checkout offers PayID by default and PayPal beside it when both can run", 
   });
   assert.equal(killed.showChoice, false);
   assert.deepEqual(killed.methods, ["bank_transfer"]);
+
+  const unset = checkoutSurface({
+    envValue: undefined,
+    paypalConfigured: true,
+    bankTransferConfigured: true,
+  });
+  assert.equal(unset.showChoice, false);
+  assert.equal(unset.defaultMethod, "bank_transfer");
+  assert.equal(unset.setup, null);
 
   const both = checkoutPaymentChoices({
     envValue: "paypal",

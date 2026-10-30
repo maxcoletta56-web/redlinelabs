@@ -15,9 +15,8 @@ export const CHECKOUT_METHOD_LABELS: Record<CheckoutPaymentMethod, string> = {
 };
 
 /**
- * Hides the PayPal choice without turning off bank transfer. Unset or unknown
- * values keep today's default rail, so an existing `bank_transfer` or `paypal`
- * env still allows PayPal when credentials are present.
+ * Kept so an older `bank_transfer_only` flag still parses as PayID-only.
+ * PayPal is hidden for that value, and for every value other than `paypal`.
  */
 export const BANK_TRANSFER_ONLY = "bank_transfer_only";
 
@@ -30,8 +29,8 @@ export function parsePaymentsProvider(value: string | null | undefined): Payment
 
 /**
  * Legacy single-rail value. Checkout no longer uses this to hide PayID.
- * `bank_transfer_only` is the kill switch; anything else still parses as
- * `bank_transfer` or `paypal` so older env values keep working.
+ * `paypal` is the only value that offers card checkout. `bank_transfer`,
+ * `bank_transfer_only`, and an unset flag stay on PayID.
  *
  * Read through `process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER` directly so the
  * value is inlined into the client bundle at build time.
@@ -40,13 +39,15 @@ export function paymentsProvider(): PaymentsProvider {
   return parsePaymentsProvider(process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER);
 }
 
-/** True when PayPal credentials exist and the kill switch is off. */
+/** True only when credentials exist and the public flag explicitly asks for PayPal. */
 export function paypalCheckoutOffered(
   envValue: string | null | undefined,
   paypalConfigured: boolean,
 ) {
   if (!paypalConfigured) return false;
-  return (envValue?.trim().toLowerCase() ?? "") !== BANK_TRANSFER_ONLY;
+  const flag = envValue?.trim().toLowerCase() ?? "";
+  if (flag === BANK_TRANSFER_ONLY) return false;
+  return flag === "paypal";
 }
 
 export function checkoutPaymentChoices(input: {
@@ -90,10 +91,10 @@ export type CheckoutSurface = {
 };
 
 /**
- * What checkout should render. Both rails are a choice when each can run.
- * A legacy `paypal` env with no PayID config stays PayPal-only, including the
- * not-configured state. Otherwise a missing PayPal config leaves the PayID page
- * unchanged.
+ * What checkout should render. PayID is the page customers see. PayPal is a
+ * second choice only when the public flag is `paypal` and both rails can run.
+ * That same flag with no PayID config stays PayPal-only, including the
+ * not-configured state.
  */
 export function checkoutSurface(input: {
   envValue?: string | null;

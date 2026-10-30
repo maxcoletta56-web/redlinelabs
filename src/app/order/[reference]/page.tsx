@@ -59,12 +59,16 @@ function StatusBadge({ order }: { order: StoredOrder }) {
   );
 }
 
-function paypalReturnNotice(flag: string | undefined) {
+function paypalReturnNotice(flag: string | undefined, offered: boolean) {
   if (flag === "cancelled") {
-    return "PayPal checkout was cancelled. Nothing was charged. You can retry PayPal or pay by PayID below.";
+    return offered
+      ? "PayPal checkout was cancelled. Nothing was charged. You can retry PayPal or pay by PayID below."
+      : "PayPal checkout was cancelled. Nothing was charged. Pay by PayID below.";
   }
   if (flag === "unavailable") {
-    return "PayPal did not respond. Nothing was charged. You can retry PayPal or pay by PayID below.";
+    return offered
+      ? "PayPal did not respond. Nothing was charged. You can retry PayPal or pay by PayID below."
+      : "PayPal checkout is not available. Nothing was charged. Pay by PayID below.";
   }
   return null;
 }
@@ -95,7 +99,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
     paypalConfigured(),
   );
   const paypalFlag = Array.isArray(query.paypal) ? query.paypal[0] : query.paypal;
-  const returnNotice = paypalReturnNotice(paypalFlag);
+  const returnNotice = paypalReturnNotice(paypalFlag, paypalOffered);
   const clubSignup =
     order.items.length > 0 && order.items.every((item) => item.slug === MEMBERSHIP_SLUG);
   const statusCopy = clubSignup
@@ -106,7 +110,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
       ? `Payment for this order has cleared${paidAt ? ` on ${paidAt}` : ""}. It is queued for dispatch.`
       : !awaiting
         ? "This order was cancelled and nothing is due. Any Club points reserved for it were returned."
-        : paypalOrder
+        : paypalOrder && paypalOffered
           ? "This order is awaiting payment. Pay with PayPal or card, or send a PayID transfer for the same amount. The order ships once payment clears, usually the same business day."
           : "Transfer the amount below and quote the order reference in the description. The order ships once payment clears, usually the same business day.";
 

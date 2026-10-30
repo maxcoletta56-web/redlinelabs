@@ -3,7 +3,8 @@ import Link from "next/link";
 import { retryPaypalOrder } from "@/app/actions/checkout";
 import { CapturePaidOrder } from "@/components/CapturePaidOrder";
 import { ClearCartOnSuccess } from "@/components/ClearCartOnSuccess";
-import { loadPaypalReceipt } from "@/lib/checkout-session";
+import { loadPaypalReceipt, paypalConfigured } from "@/lib/checkout-session";
+import { paypalCheckoutOffered } from "@/lib/payments-provider";
 import { formatPrice } from "@/lib/products";
 import { pageMetadata } from "@/lib/seo";
 
@@ -39,6 +40,10 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
 
   const { receipt, paid } = loaded;
   const total = formatPrice(receipt.amountCents / 100);
+  const paypalOffered = paypalCheckoutOffered(
+    process.env.NEXT_PUBLIC_PAYMENTS_PROVIDER,
+    paypalConfigured(),
+  );
 
   return (
     <div className="wrap max-w-[700px] py-20 text-center">
@@ -51,7 +56,9 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       <p className="mb-4 text-sm leading-7 text-[#8f8c84]">
         {paid
           ? "PayPal accepted this card payment. A receipt is sent by PayPal to the email used at checkout. Signed-in orders, COA requests, and tracking appear on your account."
-          : "PayPal has not completed this payment. Nothing else was charged. You can retry PayPal or pay by PayID. The order stays open until one of those clears."}
+          : paypalOffered
+            ? "PayPal has not completed this payment. Nothing else was charged. You can retry PayPal or pay by PayID. The order stays open until one of those clears."
+            : "This payment was not completed. Nothing else was charged. Pay by PayID. The order stays open until that clears."}
       </p>
       <p className="mb-8 text-[15px] text-[#d4af37]">Amount {total} AUD</p>
       <div className="flex flex-wrap items-center justify-center gap-3">
@@ -62,13 +69,18 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         ) : null}
         {!paid && receipt.orderReference ? (
           <>
-            <form action={retryPaypalOrder}>
-              <input type="hidden" name="reference" value={receipt.orderReference} />
-              <button type="submit" className="btn">
-                Pay with PayPal or card
-              </button>
-            </form>
-            <Link href={`/order/${receipt.orderReference}#payment-instructions`} className="btn-ghost">
+            {paypalOffered ? (
+              <form action={retryPaypalOrder}>
+                <input type="hidden" name="reference" value={receipt.orderReference} />
+                <button type="submit" className="btn">
+                  Pay with PayPal or card
+                </button>
+              </form>
+            ) : null}
+            <Link
+              href={`/order/${receipt.orderReference}#payment-instructions`}
+              className={paypalOffered ? "btn-ghost" : "btn"}
+            >
               Pay by PayID / bank transfer
             </Link>
           </>
