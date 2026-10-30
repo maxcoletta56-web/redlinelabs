@@ -15,7 +15,8 @@ serving Australia and deployed at **https://redlinelabs.shop**. It is a rebuild 
 original catalogue as a Next.js application with dark-gold branding, a full product
 catalogue, a persistent cart, PayID bank transfer, PayPal card checkout beside PayID
 when those credentials exist, a one-time Redline Club sign-up, and a separate
-distribution login for box quotes.
+distribution login. Listed box quotes are 10% off that item's sheet price, with at
+least five boxes of that size. Seventeen catalogue sizes have no sheet price yet.
 
 - **Repository:** `github.com/maxcoletta56-web/redlinelabs`
 - **Production site:** `https://redlinelabs.shop`
@@ -204,3 +205,4 @@ Specialist reports live in `reports/`. The catalogue audit is `reports/catalogue
 | 2026-09-25 | Re-checked against `cursor/redlinelabs-shop-1c01` at `0ad846f`. Named the site social images (`src/app/opengraph-image.png`, `src/app/twitter-image.png`). Noted `index.mts` / `ai` sit outside the storefront. Filed the catalogue audit under `reports/` (it had landed at the repo root in `#39`). Image check the same day: 16 of 30 catalogue URLs returned PNG bytes from `i0.wp.com`; 14 returned HTTP 403. |
 | 2026-09-26 | Checkout charges through Payoneer hosted payment instead of Stripe. |
 | 2026-10-25 | Corrected this overview for production at `72ef9e3`: PayID by default, PayPal beside it, Redline Club $15 sign-up, distribution login, `vercel.json`, and `VercelTelemetry`. The 26 September Payoneer row is historical. |
+| 2026-10-27 | Production at `e19511f` prices listed distributor boxes at 10% off the sheet price and requires five boxes of that size. Seventeen catalogue sizes stay unpriced. Shop prices are unchanged. |
